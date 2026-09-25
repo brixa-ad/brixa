@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2, Search, UserRound, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
 import { OPERATION_TYPES, STATUSES } from "@/lib/options";
@@ -10,10 +10,11 @@ import { OPERATION_TYPES, STATUSES } from "@/lib/options";
 export function PropertyFilters({
   categories,
   brokers,
+  currentUserId,
 }: {
   categories: { id: string; name: string }[];
-  /** only passed for managers */
   brokers: { id: string; name: string }[];
+  currentUserId: string;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -40,6 +41,9 @@ export function PropertyFilters({
   }
 
   const hasFilters = ["q", "op", "status", "cat", "broker"].some((key) => searchParams.get(key));
+  const brokerParam = searchParams.get("broker") ?? "";
+  const brokerValue = brokerParam === "me" ? currentUserId : brokerParam;
+  const onlyMine = brokerValue === currentUserId;
   const selectClass = `${inputClass} sm:w-auto`;
 
   return (
@@ -98,10 +102,24 @@ export function PropertyFilters({
         ))}
       </select>
 
-      {brokers.length > 0 && (
+      <button
+        type="button"
+        aria-pressed={onlyMine}
+        onClick={() => update("broker", onlyMine ? "" : "me")}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+          onlyMine
+            ? "border-accent bg-accent-soft text-accent-fg"
+            : "border-line-strong bg-raised text-fg-2 hover:bg-overlay"
+        }`}
+      >
+        <UserRound className="size-4" />
+        {t.list.onlyMine}
+      </button>
+
+      {brokers.length > 1 && (
         <select
           aria-label={t.form.broker}
-          value={searchParams.get("broker") ?? ""}
+          value={brokerValue}
           onChange={(event) => update("broker", event.target.value)}
           className={selectClass}
         >

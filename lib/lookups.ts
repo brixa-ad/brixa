@@ -31,20 +31,23 @@ async function fetchAllSettlements(supabase: SupabaseClient) {
 export async function getMembers(supabase: SupabaseClient, organizationId: string) {
   const { data, error } = await supabase
     .from("organization_members")
-    .select("profile_id, role, created_at, profiles(full_name, email)")
+    .select("profile_id, role, created_at, profiles(full_name, email, avatar_path, job_title, phone)")
     .eq("organization_id", organizationId)
     .order("created_at");
 
   if (error) throw error;
 
   return (data ?? []).map((row) => {
-    const profile = row.profiles as unknown as { full_name: string | null; email: string } | null;
+    const profile = row.profiles as unknown as Omit<Member, "profile_id" | "role"> | null;
     return {
       profile_id: row.profile_id,
       role: row.role as Role,
       created_at: row.created_at as string,
       full_name: profile?.full_name ?? null,
       email: profile?.email ?? "",
+      avatar_path: profile?.avatar_path ?? null,
+      job_title: profile?.job_title ?? null,
+      phone: profile?.phone ?? null,
     };
   });
 }
@@ -86,8 +89,6 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     subtypeFeatures: featuresBySubtype,
     regions: (regions.data ?? []).sort((a, b) => a.name.localeCompare(b.name, "bg")),
     settlements,
-    members: members.map(
-      (m): Member => ({ profile_id: m.profile_id, role: m.role, full_name: m.full_name, email: m.email })
-    ),
+    members,
   };
 }

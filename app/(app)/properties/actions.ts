@@ -189,11 +189,12 @@ export async function setPropertyStatus(id: string, status: string) {
   if (!isOneOf(STATUSES, status)) return { ok: false };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("properties").update({ status }).eq("id", id);
+  // RLS skips rows the user may not edit without an error — check a row actually changed.
+  const { data, error } = await supabase.from("properties").update({ status }).eq("id", id).select("id");
 
   revalidatePath("/properties");
   revalidatePath(`/properties/${id}`);
-  return { ok: !error };
+  return { ok: !error && Boolean(data?.length) };
 }
 
 export async function deleteProperty(id: string) {

@@ -13,7 +13,14 @@ create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
   full_name text,
-  created_at timestamptz not null default now()
+  phone text check (phone is null or char_length(phone) <= 40),
+  job_title text check (job_title is null or char_length(job_title) <= 80),
+  bio text check (bio is null or char_length(bio) <= 1000),
+  areas text[] not null default '{}' check (cardinality(areas) <= 20),
+  -- avatars/<profile id>/<file>
+  avatar_path text,
+  created_at timestamptz not null default now(),
+  constraint profiles_avatar_path_check check (avatar_path is null or avatar_path like id::text || '/%')
 );
 
 create table public.organizations (
@@ -231,8 +238,23 @@ as $$
   );
 $$;
 
+create or replace function public.can_view_property(target_property uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.properties p
+    join public.organization_members m on m.organization_id = p.organization_id
+    where p.id = target_property and m.profile_id = auth.uid()
+  );
+$$;
+
 -- Managers: any property of their agency. Brokers: only their own.
-create or replace function public.can_access_property(target_property uuid)
+create or replace function public.can_edit_property(target_property uuid)
 returns boolean
 language sql
 stable
@@ -250,7 +272,25 @@ as $$
 $$;
 
 -- Storage paths are <organization_id>/<property_id>/<file>
-create or replace function public.can_access_photo_path(object_name text)
+create or replace function public.can_view_photo_path(object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.properties p
+    join public.organization_members m on m.organization_id = p.organization_id
+    where array_length(string_to_array(object_name, '/'), 1) = 3
+      and p.organization_id::text = split_part(object_name, '/', 1)
+      and p.id::text = split_part(object_name, '/', 2)
+      and m.profile_id = auth.uid()
+  );
+$$;
+
+create or replace function public.can_edit_photo_path(object_name text)
 returns boolean
 language sql
 stable
@@ -398,6 +438,22 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Email and id come from sign-up; users edit everything else on their profile.
+create or replace function public.protect_profile_identity()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.id := old.id;
+  new.email := old.email;
+  return new;
+end;
+$$;
+
+create trigger profiles_protect_identity
+  before update on public.profiles
+  for each row execute function public.protect_profile_identity();
+
 -- Keep updated_at fresh
 create or replace function public.touch_updated_at()
 returns trigger
@@ -510,12 +566,8 @@ create policy "settlements: read" on public.geo_settlements for select to authen
 create policy "neighborhoods: read" on public.geo_neighborhoods for select to authenticated using (true);
 
 -- properties
-create policy "properties: read own or as manager" on public.properties
-  for select to authenticated
-  using (
-    public.is_org_manager(organization_id)
-    or (public.is_org_member(organization_id) and responsible_broker_id = auth.uid())
-  );
+create policy "properties: members read" on public.properties
+  for select to authenticated using (public.is_org_member(organization_id));
 
 create policy "properties: create own or as manager" on public.properties
   for insert to authenticated
@@ -544,28 +596,28 @@ create policy "properties: managers delete" on public.properties
 
 -- property_feature_values
 create policy "feature values: read" on public.property_feature_values
-  for select to authenticated using (public.can_access_property(property_id));
+  for select to authenticated using (public.can_view_property(property_id));
 create policy "feature values: insert" on public.property_feature_values
-  for insert to authenticated with check (public.can_access_property(property_id));
+  for insert to authenticated with check (public.can_edit_property(property_id));
 create policy "feature values: delete" on public.property_feature_values
-  for delete to authenticated using (public.can_access_property(property_id));
+  for delete to authenticated using (public.can_edit_property(property_id));
 
 -- property_price_history (inserted only by trigger)
 create policy "price history: read" on public.property_price_history
-  for select to authenticated using (public.can_access_property(property_id));
+  for select to authenticated using (public.can_view_property(property_id));
 
 -- property_photos
 create policy "photos: read" on public.property_photos
-  for select to authenticated using (public.can_access_property(property_id));
+  for select to authenticated using (public.can_view_property(property_id));
 create policy "photos: insert" on public.property_photos
   for insert to authenticated
-  with check (public.can_access_property(property_id) and created_by = auth.uid());
+  with check (public.can_edit_property(property_id) and created_by = auth.uid());
 create policy "photos: update" on public.property_photos
   for update to authenticated
-  using (public.can_access_property(property_id))
-  with check (public.can_access_property(property_id));
+  using (public.can_edit_property(property_id))
+  with check (public.can_edit_property(property_id));
 create policy "photos: delete" on public.property_photos
-  for delete to authenticated using (public.can_access_property(property_id));
+  for delete to authenticated using (public.can_edit_property(property_id));
 
 -- ---------------------------------------------------------------------
 -- Storage: private bucket for property photos
@@ -579,12 +631,32 @@ on conflict (id) do nothing;
 
 create policy "property photos: read" on storage.objects
   for select to authenticated
-  using (bucket_id = 'property-photos' and public.can_access_photo_path(name));
+  using (bucket_id = 'property-photos' and public.can_view_photo_path(name));
 
 create policy "property photos: upload" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'property-photos' and public.can_access_photo_path(name));
+  with check (bucket_id = 'property-photos' and public.can_edit_photo_path(name));
 
 create policy "property photos: delete" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'property-photos' and public.can_access_photo_path(name));
+  using (bucket_id = 'property-photos' and public.can_edit_photo_path(name));
+
+-- ---------------------------------------------------------------------
+-- Storage: public bucket for profile photos, each user writes only
+-- into their own folder  avatars/<profile id>/<file>.jpg
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 2097152, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+
+create policy "avatars: read own" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);
+
+create policy "avatars: upload own" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);
+
+create policy "avatars: delete own" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);

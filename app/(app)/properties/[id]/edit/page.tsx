@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PhotoManager } from "@/components/property/PhotoManager";
 import { PropertyForm } from "@/components/property/PropertyForm";
@@ -56,6 +56,9 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
   ]);
 
   if (!property) notFound();
+  if (!session.isManager && property.responsible_broker_id !== session.userId) {
+    redirect(`/properties/${id}`);
+  }
 
   return (
     <>

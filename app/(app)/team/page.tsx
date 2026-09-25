@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Mail, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Mail, Phone, ShieldCheck } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
@@ -66,18 +68,35 @@ export default async function TeamPage() {
 
               return (
                 <li key={member.profile_id} className="flex items-center gap-3 px-5 py-4 sm:px-6">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-fg">
-                    {name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">
-                      {name}
-                      {isYou && <span className="ml-1.5 text-xs font-normal text-subtle">({t.team.you})</span>}
-                    </p>
-                    <p className="truncate text-sm text-muted">{member.email}</p>
-                  </div>
+                  <Link
+                    href={`/team/${member.profile_id}`}
+                    className="group flex min-w-0 flex-1 items-center gap-3"
+                  >
+                    <Avatar path={member.avatar_path} name={name} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium group-hover:text-accent-fg">
+                        {name}
+                        {isYou && <span className="ml-1.5 text-xs font-normal text-subtle">({t.team.you})</span>}
+                      </p>
+                      <p className="truncate text-sm text-muted">{member.job_title || member.email}</p>
+                      {member.phone && (
+                        <p className="flex items-center gap-1 truncate text-xs text-subtle sm:hidden">
+                          <Phone className="size-3" />
+                          {member.phone}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
 
-                  <p className="hidden text-xs text-subtle sm:block">{formatDate(member.created_at, lang)}</p>
+                  {member.phone && (
+                    <a
+                      href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
+                      className="hidden items-center gap-1.5 text-sm text-muted hover:text-fg sm:flex"
+                    >
+                      <Phone className="size-3.5" />
+                      {member.phone}
+                    </a>
+                  )}
 
                   {canChangeRole ? (
                     <RoleSelect profileId={member.profile_id} role={member.role} />

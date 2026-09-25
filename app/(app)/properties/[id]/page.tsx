@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, MapPin, Pencil, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Eye, MapPin, Pencil, ShieldCheck } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
 import { PhotoGallery } from "@/components/property/PhotoGallery";
+import { StatusBadge } from "@/components/property/StatusBadge";
 import { StatusSelect } from "@/components/property/StatusSelect";
 import { Card, buttonClass } from "@/components/ui/form";
 import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/format";
@@ -24,6 +26,10 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const [{ t, lang }, property, session] = await Promise.all([getI18n(), getProperty(id), getSession()]);
 
   if (!property) notFound();
+
+  // Everyone in the agency can view; only the responsible broker and managers can change it.
+  const canEdit = Boolean(session?.isManager || property.responsible_broker_id === session?.userId);
+  const brokerName = property.broker?.full_name || property.broker?.email || "";
 
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
     code ? ((t.options[group] as Record<string, string>)[code] ?? code) : null;
@@ -79,16 +85,36 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           </span>
         }
         actions={
-          <>
-            <StatusSelect propertyId={property.id} status={property.status} />
-            <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
-              <Pencil className="size-4" />
-              {t.common.edit}
-            </Link>
-            {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
-          </>
+          canEdit ? (
+            <>
+              <StatusSelect propertyId={property.id} status={property.status} />
+              <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
+                <Pencil className="size-4" />
+                {t.common.edit}
+              </Link>
+              {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
+            </>
+          ) : (
+            <StatusBadge
+              status={property.status}
+              label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status}
+            />
+          )
         }
       />
+
+      {!canEdit && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4 text-sm text-fg-2">
+          <Eye className="size-4 shrink-0 text-accent-fg" />
+          <p className="min-w-0 flex-1">{fmt(t.detail.readOnly, { name: brokerName })}</p>
+          {property.responsible_broker_id && (
+            <Link href={`/team/${property.responsible_broker_id}`} className={buttonClass.secondary}>
+              <Avatar path={property.broker?.avatar_path} name={brokerName} size="sm" className="-my-1 -ml-1" />
+              {t.detail.contactBroker}
+            </Link>
+          )}
+        </div>
+      )}
 
       {photosParam === "failed" && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
@@ -171,7 +197,22 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             )}
 
             <dl className="mt-5 space-y-3 border-t border-line-soft pt-4 text-sm">
-              <Row name={t.detail.broker} value={property.broker?.full_name || property.broker?.email} />
+              <div className="flex items-center justify-between gap-4">
+                <dt className="shrink-0 text-muted">{t.detail.broker}</dt>
+                <dd>
+                  {property.responsible_broker_id ? (
+                    <Link
+                      href={`/team/${property.responsible_broker_id}`}
+                      className="flex items-center gap-2 font-medium text-fg hover:text-accent-fg"
+                    >
+                      <Avatar path={property.broker?.avatar_path} name={brokerName} size="sm" />
+                      {brokerName}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
               <Row name={t.detail.location} value={locationParts.join(", ") || null} />
               {property.address && <Row name={t.location.address} value={property.address} />}
               <Row name={t.detail.created} value={formatDate(property.created_at, lang)} />

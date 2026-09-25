@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
@@ -24,12 +25,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const displayName = session.fullName || session.email;
-  const initials = displayName
-    .split(/[\s@.]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
 
   return (
     <div className="min-h-screen">
@@ -50,17 +45,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <ThemeToggle initialTheme={theme} />
             <LanguageToggle />
 
-            <div className="hidden items-center gap-2 md:flex">
-              <span className="grid size-8 place-items-center rounded-full bg-raised text-xs font-semibold text-fg-2">
-                {initials}
-              </span>
-              <div className="leading-tight">
+            <Link
+              href="/profile"
+              title={t.profile.title}
+              className="flex items-center gap-2 rounded-lg p-1 transition hover:bg-raised md:pr-2"
+            >
+              <Avatar path={session.avatarPath} name={displayName} size="sm" />
+              <div className="hidden leading-tight md:block">
                 <p className="max-w-40 truncate text-sm font-medium">{displayName}</p>
                 <p className="max-w-48 truncate text-xs text-muted">
                   {session.organizationName} · {t.roles[session.role]}
                 </p>
               </div>
-            </div>
+            </Link>
 
             <form action={signOut}>
               <button

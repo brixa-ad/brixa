@@ -6,6 +6,7 @@ import type { Feature, Photo } from "./types";
 
 type NameRow = { name: string; name_en: string | null };
 type PersonRow = { full_name: string | null; email: string };
+type BrokerRow = PersonRow & { avatar_path: string | null };
 
 export type PropertyDetail = {
   id: string;
@@ -42,7 +43,7 @@ export type PropertyDetail = {
   region: { name: string } | null;
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
-  broker: PersonRow | null;
+  broker: BrokerRow | null;
   features: Feature[];
   priceHistory: {
     id: string;
@@ -70,7 +71,7 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
       region:geo_regions(name),
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
-      broker:profiles!properties_responsible_broker_id_fkey(full_name, email),
+      broker:profiles!properties_responsible_broker_id_fkey(full_name, email, avatar_path),
       feature_values:property_feature_values(feature:property_features(id, code, name, name_en)),
       price_history:property_price_history(id, old_price, new_price, currency, changed_at, changed_by:profiles(full_name, email)),
       photos:property_photos(id, storage_path, position)`

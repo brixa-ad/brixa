@@ -49,8 +49,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   const session = (await getSession())!;
   const supabase = await createClient();
   const { t, lang } = await getI18n();
-  // Brokers only ever get their own rows back (RLS); the broker filter is for managers.
-  const broker = session.isManager ? brokerParam : "";
+  // "me" is the quick "only mine" filter
+  const broker = brokerParam === "me" ? session.userId : brokerParam;
 
   let query = supabase
     .from("properties")
@@ -78,7 +78,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     query,
     supabase.from("properties").select("status").eq("organization_id", session.organizationId),
     supabase.from("property_categories").select("id, name, name_en").order("sort_order"),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    getMembers(supabase, session.organizationId),
   ]);
 
   if (error) console.error("Loading properties failed:", error);
@@ -103,7 +103,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     <>
       <PageHeader
         title={t.list.title}
-        subtitle={session.isManager ? t.list.subtitle : t.list.subtitleBroker}
+        subtitle={t.list.subtitle}
         actions={
           <Link href="/properties/new" className={buttonClass.primary}>
             <Plus className="size-4" />
@@ -129,6 +129,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
       <PropertyFilters
         categories={(categories ?? []).map((c) => ({ id: c.id, name: localName(c, lang) }))}
         brokers={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
+        currentUserId={session.userId}
       />
 
       {rows.length === 0 ? (
@@ -198,7 +199,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                         <span className="truncate">{location}</span>
                       </p>
                     )}
-                    {session.isManager && row.broker && (
+                    {row.broker && (
                       <p className="mt-1 flex items-center gap-1 text-sm text-muted">
                         <UserRound className="size-3.5 shrink-0" />
                         <span className="truncate">{row.broker.full_name || row.broker.email}</span>

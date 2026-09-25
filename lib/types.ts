@@ -28,6 +28,9 @@ export type Member = {
   role: Role;
   full_name: string | null;
   email: string;
+  avatar_path: string | null;
+  job_title: string | null;
+  phone: string | null;
 };
 
 /** Everything the property form needs to render. */
