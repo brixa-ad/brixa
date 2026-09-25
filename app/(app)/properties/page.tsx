@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ImageIcon, MapPin, Plus } from "lucide-react";
+import { Building2, ImageIcon, MapPin, Plus, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyFilters } from "@/components/property/PropertyFilters";
 import { StatusBadge } from "@/components/property/StatusBadge";
@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/form";
 import { formatNumber, formatPrice, settlementLabel } from "@/lib/format";
 import { localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { getMembers } from "@/lib/lookups";
 import { OPERATION_TYPES, STATUSES, isOneOf } from "@/lib/options";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { getSession } from "@/lib/session";
@@ -34,6 +35,7 @@ type ListRow = {
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
   photos: { storage_path: string }[];
+  broker: { full_name: string | null; email: string } | null;
 };
 
 export default async function PropertiesPage({ searchParams }: PageProps<"/properties">) {
@@ -42,10 +44,13 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   const op = isOneOf(OPERATION_TYPES, params.op) ? params.op : "";
   const status = isOneOf(STATUSES, params.status) ? params.status : "";
   const cat = typeof params.cat === "string" ? params.cat : "";
+  const brokerParam = typeof params.broker === "string" ? params.broker : "";
 
   const session = (await getSession())!;
   const supabase = await createClient();
   const { t, lang } = await getI18n();
+  // Brokers only ever get their own rows back (RLS); the broker filter is for managers.
+  const broker = session.isManager ? brokerParam : "";
 
   let query = supabase
     .from("properties")
@@ -54,7 +59,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
       subtype:property_subtypes(name, name_en),
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
-      photos:property_photos(storage_path)`
+      photos:property_photos(storage_path),
+      broker:profiles!properties_responsible_broker_id_fkey(full_name, email)`
     )
     .eq("organization_id", session.organizationId)
     .order("created_at", { ascending: false })
@@ -66,11 +72,13 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   if (op) query = query.eq("operation_type", op);
   if (status) query = query.eq("status", status);
   if (cat) query = query.eq("category_id", cat);
+  if (broker) query = query.eq("responsible_broker_id", broker);
 
-  const [{ data, error }, { data: statusRows }, { data: categories }] = await Promise.all([
+  const [{ data, error }, { data: statusRows }, { data: categories }, members] = await Promise.all([
     query,
     supabase.from("properties").select("status").eq("organization_id", session.organizationId),
     supabase.from("property_categories").select("id, name, name_en").order("sort_order"),
+    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
   ]);
 
   if (error) console.error("Loading properties failed:", error);
@@ -89,13 +97,13 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     if (row.status === "sold" || row.status === "rented") counts.closed++;
   }
 
-  const filtered = Boolean(q || op || status || cat);
+  const filtered = Boolean(q || op || status || cat || broker);
 
   return (
     <>
       <PageHeader
         title={t.list.title}
-        subtitle={t.list.subtitle}
+        subtitle={session.isManager ? t.list.subtitle : t.list.subtitleBroker}
         actions={
           <Link href="/properties/new" className={buttonClass.primary}>
             <Plus className="size-4" />
@@ -120,6 +128,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
 
       <PropertyFilters
         categories={(categories ?? []).map((c) => ({ id: c.id, name: localName(c, lang) }))}
+        brokers={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
       />
 
       {rows.length === 0 ? (
@@ -187,6 +196,12 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                       <p className="mt-1 flex items-center gap-1 text-sm text-muted">
                         <MapPin className="size-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
+                      </p>
+                    )}
+                    {session.isManager && row.broker && (
+                      <p className="mt-1 flex items-center gap-1 text-sm text-muted">
+                        <UserRound className="size-3.5 shrink-0" />
+                        <span className="truncate">{row.broker.full_name || row.broker.email}</span>
                       </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-fg-2">

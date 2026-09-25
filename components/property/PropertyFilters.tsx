@@ -7,7 +7,14 @@ import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
 import { OPERATION_TYPES, STATUSES } from "@/lib/options";
 
-export function PropertyFilters({ categories }: { categories: { id: string; name: string }[] }) {
+export function PropertyFilters({
+  categories,
+  brokers,
+}: {
+  categories: { id: string; name: string }[];
+  /** only passed for managers */
+  brokers: { id: string; name: string }[];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,7 +39,7 @@ export function PropertyFilters({ categories }: { categories: { id: string; name
     debounce.current = setTimeout(() => update("q", value.trim()), 300);
   }
 
-  const hasFilters = ["q", "op", "status", "cat"].some((key) => searchParams.get(key));
+  const hasFilters = ["q", "op", "status", "cat", "broker"].some((key) => searchParams.get(key));
   const selectClass = `${inputClass} sm:w-auto`;
 
   return (
@@ -90,6 +97,22 @@ export function PropertyFilters({ categories }: { categories: { id: string; name
           </option>
         ))}
       </select>
+
+      {brokers.length > 0 && (
+        <select
+          aria-label={t.form.broker}
+          value={searchParams.get("broker") ?? ""}
+          onChange={(event) => update("broker", event.target.value)}
+          className={selectClass}
+        >
+          <option value="">{t.list.allBrokers}</option>
+          {brokers.map((broker) => (
+            <option key={broker.id} value={broker.id}>
+              {broker.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {pending && <Loader2 className="size-4 animate-spin text-accent-fg" />}
 

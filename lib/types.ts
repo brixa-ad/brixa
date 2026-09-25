@@ -21,9 +21,11 @@ export type Settlement = {
 
 export type Neighborhood = { id: string; settlement_id: string; name: string };
 
+export type Role = "owner" | "manager" | "broker";
+
 export type Member = {
   profile_id: string;
-  role: "owner" | "broker";
+  role: Role;
   full_name: string | null;
   email: string;
 };

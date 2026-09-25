@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
+import type { Role } from "./types";
 
 export type SessionContext = {
   userId: string;
@@ -9,7 +10,9 @@ export type SessionContext = {
   fullName: string | null;
   organizationId: string;
   organizationName: string;
-  role: "owner" | "broker";
+  role: Role;
+  /** owner or manager — sees and manages everything in the agency */
+  isManager: boolean;
 };
 
 /**
@@ -46,6 +49,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     fullName: profile?.full_name ?? null,
     organizationId: membership.organization_id,
     organizationName: org?.name ?? "",
-    role: membership.role,
+    role: membership.role as Role,
+    isManager: membership.role === "owner" || membership.role === "manager",
   };
 });

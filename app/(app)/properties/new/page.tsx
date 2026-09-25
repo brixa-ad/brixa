@@ -29,6 +29,7 @@ export default async function NewPropertyPage() {
         initialValues={emptyFormValues(session.userId)}
         organizationId={session.organizationId}
         userId={session.userId}
+        canAssignBroker={session.isManager}
       />
     </>
   );

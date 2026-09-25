@@ -47,6 +47,7 @@ export function PropertyForm({
   userId,
   coverUrl,
   existingPhotoCount = 0,
+  canAssignBroker,
 }: {
   mode: "create" | "edit";
   lookups: FormLookups;
@@ -56,6 +57,8 @@ export function PropertyForm({
   userId: string;
   coverUrl?: string | null;
   existingPhotoCount?: number;
+  /** managers pick the responsible broker; brokers always own what they create */
+  canAssignBroker: boolean;
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -438,12 +441,17 @@ export function PropertyForm({
           <Card title={t.form.sectionContract} id="contract">
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label={t.form.broker} error={errorText("brokerId")}>
+                <Field
+                  label={t.form.broker}
+                  error={errorText("brokerId")}
+                  hint={canAssignBroker ? undefined : t.form.brokerLocked}
+                >
                   {(props) => (
                     <select
                       {...props}
                       value={values.brokerId}
                       onChange={(e) => set("brokerId", e.target.value)}
+                      disabled={!canAssignBroker}
                       className={inputClass}
                     >
                       {lookups.members.map((m) => (

@@ -77,6 +77,10 @@ async function prepare(input: PropertyInput) {
     errors.neighborhoodId = "invalid";
   }
   if (input.brokerId && !brokerRes.data) errors.brokerId = "invalid";
+  // Brokers can only keep properties on their own name; managers assign freely.
+  if (!session.isManager && input.brokerId && input.brokerId !== session.userId) {
+    errors.brokerId = "invalid";
+  }
 
   if (Object.keys(errors).length > 0) return { ok: false as const, errors };
 
@@ -105,7 +109,7 @@ async function prepare(input: PropertyInput) {
     heating: building ? input.heating : null,
     current_price: input.price,
     currency: input.currency,
-    responsible_broker_id: input.brokerId ?? session.userId,
+    responsible_broker_id: session.isManager ? (input.brokerId ?? session.userId) : session.userId,
     exclusive_contract: input.exclusiveContract,
     description: input.description.trim() || null,
   };
@@ -193,6 +197,9 @@ export async function setPropertyStatus(id: string, status: string) {
 }
 
 export async function deleteProperty(id: string) {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+
   const supabase = await createClient();
 
   const { data: photos } = await supabase
@@ -200,9 +207,15 @@ export async function deleteProperty(id: string) {
     .select("storage_path")
     .eq("property_id", id);
 
-  const { error } = await supabase.from("properties").delete().eq("id", id);
-  if (error) {
-    console.error("Delete property failed:", error);
+  // .select() tells us whether a row was really deleted (RLS silently skips rows otherwise),
+  // so photos are only removed once the property is gone.
+  const { data: deleted, error } = await supabase
+    .from("properties")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error || !deleted?.length) {
+    console.error("Delete property failed:", error ?? "no row deleted");
     return { ok: false };
   }
 

@@ -56,7 +56,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
               <div className="leading-tight">
                 <p className="max-w-40 truncate text-sm font-medium">{displayName}</p>
-                <p className="max-w-40 truncate text-xs text-muted">{session.organizationName}</p>
+                <p className="max-w-48 truncate text-xs text-muted">
+                  {session.organizationName} · {t.roles[session.role]}
+                </p>
               </div>
             </div>
 

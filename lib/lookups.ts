@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./supabase/server";
-import type { Feature, FormLookups, Member, Settlement } from "./types";
+import type { Feature, FormLookups, Member, Role, Settlement } from "./types";
 
 const PAGE_SIZE = 1000;
 
@@ -41,7 +41,7 @@ export async function getMembers(supabase: SupabaseClient, organizationId: strin
     const profile = row.profiles as unknown as { full_name: string | null; email: string } | null;
     return {
       profile_id: row.profile_id,
-      role: row.role,
+      role: row.role as Role,
       created_at: row.created_at as string,
       full_name: profile?.full_name ?? null,
       email: profile?.email ?? "",

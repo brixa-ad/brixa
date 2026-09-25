@@ -6,16 +6,19 @@ import { createClient } from "@/lib/supabase/server";
 import { isValidEmail } from "@/lib/validation";
 
 export type TeamState = {
-  error?: "invalidEmail" | "alreadyMember" | "alreadyInvited" | "onlyOwner" | "generic";
+  error?: "invalidEmail" | "alreadyMember" | "alreadyInvited" | "forbidden" | "generic";
   success?: boolean;
 };
 
 export async function inviteMember(_: TeamState, formData: FormData): Promise<TeamState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = formData.get("role") === "manager" ? "manager" : "broker";
   if (!isValidEmail(email)) return { error: "invalidEmail" };
 
   const session = await getSession();
-  if (!session || session.role !== "owner") return { error: "onlyOwner" };
+  if (!session?.isManager) return { error: "forbidden" };
+  // Only the owner brings in other managers.
+  if (role === "manager" && session.role !== "owner") return { error: "forbidden" };
 
   const supabase = await createClient();
 
@@ -32,6 +35,7 @@ export async function inviteMember(_: TeamState, formData: FormData): Promise<Te
   const { error } = await supabase.from("organization_invitations").insert({
     organization_id: session.organizationId,
     email,
+    role,
     invited_by: session.userId,
   });
 
@@ -50,18 +54,46 @@ export async function revokeInvitation(id: string) {
   revalidatePath("/team");
 }
 
-export async function removeMember(profileId: string) {
+/** Remove a colleague; their properties move to `reassignTo` in the same transaction. */
+export async function removeMember(profileId: string, reassignTo: string) {
   const session = await getSession();
-  if (!session || session.role !== "owner") return;
+  if (!session?.isManager) return { ok: false };
 
   const supabase = await createClient();
-  await supabase
-    .from("organization_members")
-    .delete()
-    .eq("organization_id", session.organizationId)
-    .eq("profile_id", profileId);
+  const { error } = await supabase.rpc("remove_member", {
+    target_org: session.organizationId,
+    target_profile: profileId,
+    reassign_to: reassignTo,
+  });
+
+  if (error) {
+    console.error("Remove member failed:", error.message);
+    return { ok: false };
+  }
 
   revalidatePath("/team");
+  revalidatePath("/properties");
+  return { ok: true };
+}
+
+export async function setMemberRole(profileId: string, role: string) {
+  const session = await getSession();
+  if (session?.role !== "owner") return { ok: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_member_role", {
+    target_org: session.organizationId,
+    target_profile: profileId,
+    new_role: role,
+  });
+
+  if (error) {
+    console.error("Set role failed:", error.message);
+    return { ok: false };
+  }
+
+  revalidatePath("/team");
+  return { ok: true };
 }
 
 export async function renameOrganization(_: TeamState, formData: FormData): Promise<TeamState> {
@@ -69,7 +101,7 @@ export async function renameOrganization(_: TeamState, formData: FormData): Prom
   if (!name) return { error: "generic" };
 
   const session = await getSession();
-  if (!session || session.role !== "owner") return { error: "onlyOwner" };
+  if (session?.role !== "owner") return { error: "forbidden" };
 
   const supabase = await createClient();
   const { error } = await supabase

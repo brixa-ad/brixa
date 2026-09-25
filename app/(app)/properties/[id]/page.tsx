@@ -11,6 +11,7 @@ import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/fo
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getProperty } from "@/lib/properties";
+import { getSession } from "@/lib/session";
 
 export async function generateMetadata({ params }: PageProps<"/properties/[id]">): Promise<Metadata> {
   const property = await getProperty((await params).id);
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/properties/[id]">
 export default async function PropertyPage({ params, searchParams }: PageProps<"/properties/[id]">) {
   const { id } = await params;
   const { photos: photosParam } = await searchParams;
-  const [{ t, lang }, property] = await Promise.all([getI18n(), getProperty(id)]);
+  const [{ t, lang }, property, session] = await Promise.all([getI18n(), getProperty(id), getSession()]);
 
   if (!property) notFound();
 
@@ -84,7 +85,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               <Pencil className="size-4" />
               {t.common.edit}
             </Link>
-            <DeletePropertyButton propertyId={property.id} />
+            {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
           </>
         }
       />
