@@ -26,12 +26,12 @@ export function PhotoGrid({
       {photos.map((photo, index) => (
         <li
           key={photo.key}
-          className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+          className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-raised"
         >
           {photo.url && <img src={photo.url} alt="" className="size-full object-cover" />}
 
           {index === 0 && (
-            <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">
               {t.photos.cover}
             </span>
           )}
@@ -44,7 +44,7 @@ export function PhotoGrid({
                 onClick={() => onMakeCover(photo.key)}
                 title={t.photos.makeCover}
                 aria-label={t.photos.makeCover}
-                className="grid size-8 place-items-center rounded-lg bg-white/90 text-slate-700 hover:bg-white"
+                className="grid size-8 place-items-center rounded-lg bg-black/60 text-white backdrop-blur hover:bg-black/80"
               >
                 <Star className="size-4" />
               </button>
@@ -55,7 +55,7 @@ export function PhotoGrid({
               onClick={() => onRemove(photo.key)}
               title={t.photos.remove}
               aria-label={t.photos.remove}
-              className="grid size-8 place-items-center rounded-lg bg-white/90 text-red-600 hover:bg-white"
+              className="grid size-8 place-items-center rounded-lg bg-black/60 text-red-400 backdrop-blur hover:bg-black/80"
             >
               <Trash2 className="size-4" />
             </button>

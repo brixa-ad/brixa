@@ -11,7 +11,7 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-semibold"
+      className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold"
       aria-busy={pending}
     >
       {LANGS.map((code) => (
@@ -22,7 +22,7 @@ export function LanguageToggle() {
           onClick={() => code !== lang && startTransition(() => setLanguage(code))}
           aria-pressed={code === lang}
           className={`rounded-md px-2 py-1 uppercase transition ${
-            code === lang ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+            code === lang ? "bg-fg text-canvas" : "text-muted hover:text-fg"
           }`}
         >
           {code}

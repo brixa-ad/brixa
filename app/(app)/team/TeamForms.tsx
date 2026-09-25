@@ -36,8 +36,8 @@ export function InviteForm() {
         aria-label={t.team.inviteEmail}
         className={inputClass}
       />
-      {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-      {state.success && <p className="text-sm font-medium text-emerald-600">{t.team.inviteSent}</p>}
+      {error && <p className="text-sm font-medium text-danger">{error}</p>}
+      {state.success && <p className="text-sm font-medium text-success">{t.team.inviteSent}</p>}
       <button type="submit" disabled={pending} className={`${buttonClass.primary} w-full`}>
         {pending ? t.common.loading : t.team.inviteButton}
       </button>
@@ -60,7 +60,7 @@ export function RenameForm({ name }: { name: string }) {
         aria-label={t.team.agencyName}
         className={inputClass}
       />
-      {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+      {error && <p className="text-sm font-medium text-danger">{error}</p>}
       <button type="submit" disabled={pending} className={`${buttonClass.secondary} w-full`}>
         {pending ? t.common.saving : t.team.rename}
       </button>
@@ -77,7 +77,7 @@ export function RevokeButton({ id }: { id: string }) {
       type="button"
       disabled={pending}
       onClick={() => startTransition(() => revokeInvitation(id))}
-      className="text-xs font-semibold text-slate-500 hover:text-red-600 disabled:opacity-50"
+      className="text-xs font-semibold text-muted hover:text-danger disabled:opacity-50"
     >
       {t.team.revoke}
     </button>
@@ -98,7 +98,7 @@ export function RemoveMemberButton({ profileId, name }: { profileId: string; nam
         if (!window.confirm(fmt(t.team.removeConfirm, { name }))) return;
         startTransition(() => removeMember(profileId));
       }}
-      className="grid size-9 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+      className="grid size-9 place-items-center rounded-lg text-subtle transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
     >
       <UserMinus className="size-4" />
     </button>

@@ -16,7 +16,7 @@ export function NavLinks({ links }: { links: { href: string; label: string }[] }
             href={link.href}
             aria-current={active ? "page" : undefined}
             className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-              active ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900"
+              active ? "bg-raised text-fg" : "text-muted hover:text-fg"
             }`}
           >
             {link.label}

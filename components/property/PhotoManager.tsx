@@ -87,10 +87,10 @@ export function PhotoManager({
       title={
         <span className="flex items-center gap-2">
           {t.form.sectionPhotos}
-          <span className="text-sm font-normal text-slate-400">
+          <span className="text-sm font-normal text-subtle">
             {photos.length}/{MAX_PHOTOS}
           </span>
-          {working && <Loader2 className="size-4 animate-spin text-indigo-600" />}
+          {working && <Loader2 className="size-4 animate-spin text-accent-fg" />}
         </span>
       }
       description={t.photos.manageHint}
@@ -103,7 +103,7 @@ export function PhotoManager({
           disabled={working}
         />
         <PhotoDropzone onFiles={add} remaining={MAX_PHOTOS - photos.length} disabled={working} />
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {error && <p className="text-sm font-medium text-danger">{error}</p>}
       </div>
     </Card>
   );

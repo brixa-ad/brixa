@@ -139,7 +139,7 @@ export function Combobox({
         className={`${inputClass} pr-16`}
       />
 
-      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1 pr-2 text-slate-400">
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1 pr-2 text-subtle">
         {selected && !disabled && (
           <button
             type="button"
@@ -147,7 +147,7 @@ export function Combobox({
             aria-label="Clear"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onChange(null)}
-            className="pointer-events-auto grid size-6 place-items-center rounded hover:bg-slate-100 hover:text-slate-600"
+            className="pointer-events-auto grid size-6 place-items-center rounded hover:bg-overlay hover:text-fg-2"
           >
             <X className="size-3.5" />
           </button>
@@ -160,10 +160,10 @@ export function Combobox({
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
+          className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-line-strong bg-raised py-1 text-sm shadow-lg"
         >
           {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-slate-500">{emptyText}</li>
+            <li className="px-3 py-2 text-muted">{emptyText}</li>
           ) : (
             filtered.map((option, index) => (
               <li
@@ -175,12 +175,12 @@ export function Combobox({
                 onClick={() => choose(option)}
                 onMouseMove={() => setActive(index)}
                 className={`flex cursor-pointer items-center gap-2 px-3 py-2 ${
-                  index === active ? "bg-indigo-50 text-indigo-900" : "text-slate-700"
+                  index === active ? "bg-accent-soft text-fg" : "text-fg-2"
                 }`}
               >
                 <span className="flex-1 truncate">{option.label}</span>
-                {option.hint && <span className="shrink-0 text-xs text-slate-400">{option.hint}</span>}
-                {option.value === value && <Check className="size-4 shrink-0 text-indigo-600" />}
+                {option.hint && <span className="shrink-0 text-xs text-subtle">{option.hint}</span>}
+                {option.value === value && <Check className="size-4 shrink-0 text-accent-fg" />}
               </li>
             ))
           )}

@@ -208,7 +208,7 @@ export function PropertyForm({
           {(serverMessage || (submitted && hasErrors)) && (
             <div
               role="alert"
-              className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger"
             >
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
               {serverMessage ? t.errors[serverMessage] : t.form.fixErrors}
@@ -219,7 +219,7 @@ export function PropertyForm({
           <Card title={t.form.sectionBasics} id="basics">
             <div className="space-y-5">
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                <span className="mb-1.5 block text-sm font-medium text-fg-2">
                   {t.form.operation}
                 </span>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
@@ -232,8 +232,8 @@ export function PropertyForm({
                       onClick={() => set("operationType", op)}
                       className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                         values.operationType === op
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600"
-                          : "border-slate-200 text-slate-600 hover:border-slate-300"
+                          ? "border-accent bg-accent-soft text-accent-fg ring-1 ring-accent"
+                          : "border-line text-fg-2 hover:border-line-strong"
                       }`}
                     >
                       {t.options.operation[op]}
@@ -345,9 +345,9 @@ export function PropertyForm({
           {/* ---------------- Features ---------------- */}
           <Card title={t.form.sectionFeatures} id="features">
             {!values.subtypeId ? (
-              <p className="text-sm text-slate-500">{t.form.chooseSubtypeFirst}</p>
+              <p className="text-sm text-muted">{t.form.chooseSubtypeFirst}</p>
             ) : features.length === 0 ? (
-              <p className="text-sm text-slate-500">{t.form.noFeatures}</p>
+              <p className="text-sm text-muted">{t.form.noFeatures}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {features.map((feature) => {
@@ -361,8 +361,8 @@ export function PropertyForm({
                       onClick={() => toggleFeature(feature.id)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
                         checked
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                          ? "border-accent bg-accent text-on-accent"
+                          : "border-line bg-surface text-fg-2 hover:border-line-strong"
                       }`}
                     >
                       {checked && <Check className="size-3.5" />}
@@ -380,7 +380,7 @@ export function PropertyForm({
               title={
                 <span className="flex items-center gap-2">
                   {t.form.sectionPhotos}
-                  <span className="text-sm font-normal text-slate-400">
+                  <span className="text-sm font-normal text-subtle">
                     {queued.length}/{MAX_PHOTOS}
                   </span>
                 </span>
@@ -455,17 +455,17 @@ export function PropertyForm({
                   )}
                 </Field>
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 md:mt-6">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 md:mt-6">
                   <input
                     type="checkbox"
                     checked={values.exclusiveContract}
                     onChange={(e) => set("exclusiveContract", e.target.checked)}
                     className="peer sr-only"
                   />
-                  <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-3 peer-focus-visible:ring-indigo-500/30 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-4" />
+                  <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition peer-checked:bg-accent peer-focus-visible:ring-3 peer-focus-visible:ring-accent/35 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow after:transition peer-checked:after:translate-x-4" />
                   <span>
-                    <span className="block text-sm font-medium text-slate-800">{t.form.exclusive}</span>
-                    <span className="block text-xs text-slate-500">{t.form.exclusiveHint}</span>
+                    <span className="block text-sm font-medium text-fg">{t.form.exclusive}</span>
+                    <span className="block text-xs text-muted">{t.form.exclusiveHint}</span>
                   </span>
                 </label>
               </div>
@@ -494,55 +494,55 @@ export function PropertyForm({
         {/* ---------------- Sidebar: live preview + save ---------------- */}
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-              <div className="grid aspect-[4/3] place-items-center bg-slate-100">
+            <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">
+              <div className="grid aspect-[4/3] place-items-center bg-raised">
                 {previewImage ? (
                   <img src={previewImage} alt="" className="size-full object-cover" />
                 ) : (
-                  <ImageIcon className="size-8 text-slate-300" />
+                  <ImageIcon className="size-8 text-faint" />
                 )}
               </div>
               <div className="space-y-3 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
                   {t.form.summary}
                 </p>
                 <div>
-                  <p className="line-clamp-2 font-semibold text-slate-900">
+                  <p className="line-clamp-2 font-semibold text-fg">
                     {values.title.trim() || t.form.untitled}
                   </p>
-                  <p className="mt-0.5 text-sm text-slate-500">
+                  <p className="mt-0.5 text-sm text-muted">
                     {[subtype && localName(subtype, lang), t.options.operation[values.operationType]]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
                   {settlement && (
-                    <p className="mt-0.5 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-muted">
                       {settlementLabel(settlement)}
                       {region ? `, ${t.location.regionPrefix} ${region.name}` : ""}
                     </p>
                   )}
                 </div>
-                <dl className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-sm">
+                <dl className="grid grid-cols-2 gap-3 border-t border-line-soft pt-3 text-sm">
                   <div>
-                    <dt className="text-xs text-slate-400">{t.form.price}</dt>
+                    <dt className="text-xs text-subtle">{t.form.price}</dt>
                     <dd className="font-semibold">
                       {formatPrice(input.price, values.currency, lang) ?? t.common.notSet}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-400">{t.form.pricePerSqm}</dt>
+                    <dt className="text-xs text-subtle">{t.form.pricePerSqm}</dt>
                     <dd className="font-semibold">
                       {formatPrice(pricePerSqm, values.currency, lang) ?? t.common.notSet}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-400">{t.form.area}</dt>
+                    <dt className="text-xs text-subtle">{t.form.area}</dt>
                     <dd className="font-semibold">
                       {formatNumber(input.area, lang, 2) ?? t.common.notSet}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-400">{t.form.photosCount}</dt>
+                    <dt className="text-xs text-subtle">{t.form.photosCount}</dt>
                     <dd className="font-semibold">{existingPhotoCount + queued.length}</dd>
                   </div>
                 </dl>
@@ -563,7 +563,7 @@ export function PropertyForm({
       </div>
 
       {/* Mobile / tablet save bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/90 px-4 py-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-end gap-2">
           <Link href={cancelHref} className={buttonClass.secondary}>
             {t.common.cancel}

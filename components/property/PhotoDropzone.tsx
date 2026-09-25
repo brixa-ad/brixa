@@ -58,13 +58,13 @@ export function PhotoDropzone({
         }}
         className={`flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition disabled:cursor-not-allowed disabled:opacity-50 ${
           dragging
-            ? "border-indigo-400 bg-indigo-50"
-            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+            ? "border-accent bg-accent-soft"
+            : "border-line hover:border-line-strong hover:bg-raised"
         }`}
       >
-        <ImagePlus className="size-7 text-slate-400" />
-        <span className="text-sm font-semibold text-indigo-600">{t.photos.add}</span>
-        <span className="text-xs text-slate-500">{t.photos.dropHint}</span>
+        <ImagePlus className="size-7 text-subtle" />
+        <span className="text-sm font-semibold text-accent-fg">{t.photos.add}</span>
+        <span className="text-xs text-muted">{t.photos.dropHint}</span>
       </button>
 
       <input
@@ -79,7 +79,7 @@ export function PhotoDropzone({
         }}
       />
 
-      {warning && <p className="mt-2 text-xs font-medium text-amber-700">{warning}</p>}
+      {warning && <p className="mt-2 text-xs font-medium text-warning">{warning}</p>}
     </div>
   );
 }

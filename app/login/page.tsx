@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { getTheme } from "@/lib/theme-server";
 import { LoginForm } from "./LoginForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -10,13 +12,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { error, notice } = await searchParams;
+  const [{ error, notice }, theme] = await Promise.all([searchParams, getTheme()]);
 
   return (
     <main className="flex min-h-screen flex-col">
       <div className="flex items-center justify-between px-4 py-4 sm:px-8">
         <Logo />
-        <LanguageToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle initialTheme={theme} />
+          <LanguageToggle />
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 pb-16">

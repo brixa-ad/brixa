@@ -36,9 +36,9 @@ export function PropertyFilters({ categories }: { categories: { id: string; name
   const selectClass = `${inputClass} sm:w-auto`;
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-3 shadow-xs sm:flex-row sm:flex-wrap sm:items-center">
       <div className="relative flex-1 sm:min-w-64">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" />
         <input
           type="search"
           value={q}
@@ -91,7 +91,7 @@ export function PropertyFilters({ categories }: { categories: { id: string; name
         ))}
       </select>
 
-      {pending && <Loader2 className="size-4 animate-spin text-indigo-600" />}
+      {pending && <Loader2 className="size-4 animate-spin text-accent-fg" />}
 
       {hasFilters && (
         <button
@@ -100,7 +100,7 @@ export function PropertyFilters({ categories }: { categories: { id: string; name
             setQ("");
             startTransition(() => router.replace(pathname, { scroll: false }));
           }}
-          className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-muted hover:text-fg"
         >
           <X className="size-4" />
           {t.list.clearFilters}

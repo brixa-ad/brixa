@@ -11,7 +11,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
 
   if (photos.length === 0) {
     return (
-      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-400">
+      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-line bg-raised text-subtle">
         <div className="flex flex-col items-center gap-2">
           <ImageIcon className="size-8" />
           <span className="text-sm">{t.photos.none}</span>
@@ -25,7 +25,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-slate-900">
+      <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-black">
         {current.url && <img src={current.url} alt="" className="size-full object-contain" />}
 
         {photos.length > 1 && (
@@ -34,7 +34,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
               type="button"
               onClick={() => go(-1)}
               aria-label="Previous"
-              className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-slate-800 shadow transition hover:bg-white"
+              className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow backdrop-blur transition hover:bg-black/75"
             >
               <ChevronLeft className="size-5" />
             </button>
@@ -42,7 +42,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
               type="button"
               onClick={() => go(1)}
               aria-label="Next"
-              className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-slate-800 shadow transition hover:bg-white"
+              className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow backdrop-blur transition hover:bg-black/75"
             >
               <ChevronRight className="size-5" />
             </button>
@@ -62,7 +62,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
               onClick={() => setIndex(i)}
               aria-label={`${i + 1}`}
               className={`aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg ring-2 transition ${
-                i === index ? "ring-indigo-600" : "ring-transparent opacity-70 hover:opacity-100"
+                i === index ? "ring-accent" : "ring-transparent opacity-70 hover:opacity-100"
               }`}
             >
               {photo.url && <img src={photo.url} alt="" className="size-full object-cover" />}

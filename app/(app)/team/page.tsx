@@ -42,24 +42,24 @@ export default async function TeamPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card title={t.team.members} className="p-0! sm:p-0!">
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line-soft">
             {members.map((member) => {
               const name = member.full_name || member.email;
               const isYou = member.profile_id === session.userId;
               return (
                 <li key={member.profile_id} className="flex items-center gap-3 px-5 py-4 sm:px-6">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-fg">
                     {name.slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {name}
-                      {isYou && <span className="ml-1.5 text-xs font-normal text-slate-400">({t.team.you})</span>}
+                      {isYou && <span className="ml-1.5 text-xs font-normal text-subtle">({t.team.you})</span>}
                     </p>
-                    <p className="truncate text-sm text-slate-500">{member.email}</p>
+                    <p className="truncate text-sm text-muted">{member.email}</p>
                   </div>
-                  <div className="hidden text-right text-xs text-slate-500 sm:block">
-                    <p className="font-semibold text-slate-700">
+                  <div className="hidden text-right text-xs text-muted sm:block">
+                    <p className="font-semibold text-fg-2">
                       {member.role === "owner" ? t.team.owner : t.team.broker}
                     </p>
                     <p>{formatDate(member.created_at, lang)}</p>
@@ -82,15 +82,15 @@ export default async function TeamPage() {
 
               <Card title={t.team.invites}>
                 {!invitations || invitations.length === 0 ? (
-                  <p className="text-sm text-slate-500">{t.team.noInvites}</p>
+                  <p className="text-sm text-muted">{t.team.noInvites}</p>
                 ) : (
                   <ul className="space-y-3">
                     {invitations.map((invite) => (
                       <li key={invite.id} className="flex items-center gap-3 text-sm">
-                        <Mail className="size-4 shrink-0 text-slate-400" />
+                        <Mail className="size-4 shrink-0 text-subtle" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{invite.email}</p>
-                          <p className="text-xs text-slate-500">{formatDate(invite.created_at, lang)}</p>
+                          <p className="text-xs text-muted">{formatDate(invite.created_at, lang)}</p>
                         </div>
                         <RevokeButton id={invite.id} />
                       </li>
@@ -105,7 +105,7 @@ export default async function TeamPage() {
             </>
           ) : (
             <Card>
-              <p className="text-sm text-slate-500">{t.team.onlyOwner}</p>
+              <p className="text-sm text-muted">{t.team.onlyOwner}</p>
             </Card>
           )}
         </div>

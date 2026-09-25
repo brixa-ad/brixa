@@ -111,8 +111,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
           [t.list.statReserved, counts.reserved],
           [t.list.statClosed, counts.closed],
         ].map(([name, value]) => (
-          <div key={name} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xs">
-            <dt className="text-xs font-medium text-slate-500">{name}</dt>
+          <div key={name} className="rounded-2xl border border-line bg-surface px-4 py-3 shadow-xs">
+            <dt className="text-xs font-medium text-muted">{name}</dt>
             <dd className="mt-1 text-2xl font-bold tracking-tight">{value}</dd>
           </div>
         ))}
@@ -123,14 +123,14 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
       />
 
       {rows.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-          <Building2 className="mx-auto size-10 text-slate-300" />
+        <div className="mt-6 rounded-2xl border border-dashed border-line-strong bg-surface px-6 py-16 text-center">
+          <Building2 className="mx-auto size-10 text-faint" />
           {filtered ? (
-            <p className="mt-3 text-sm text-slate-500">{t.list.noResults}</p>
+            <p className="mt-3 text-sm text-muted">{t.list.noResults}</p>
           ) : (
             <>
               <p className="mt-3 font-semibold">{t.list.emptyTitle}</p>
-              <p className="mt-1 text-sm text-slate-500">{t.list.emptyHint}</p>
+              <p className="mt-1 text-sm text-muted">{t.list.emptyHint}</p>
               <Link href="/properties/new" className={`${buttonClass.primary} mt-5`}>
                 <Plus className="size-4" />
                 {t.list.newProperty}
@@ -155,13 +155,13 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
               <li key={row.id}>
                 <Link
                   href={`/properties/${row.id}`}
-                  className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg hover:shadow-black/40"
                 >
-                  <div className="relative grid aspect-[16/10] place-items-center bg-slate-100">
+                  <div className="relative grid aspect-[16/10] place-items-center bg-raised">
                     {cover ? (
                       <img src={cover} alt="" loading="lazy" className="size-full object-cover" />
                     ) : (
-                      <ImageIcon className="size-8 text-slate-300" />
+                      <ImageIcon className="size-8 text-faint" />
                     )}
                     <div className="absolute left-3 top-3 flex gap-1.5">
                       <StatusBadge
@@ -169,7 +169,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                         label={t.options.status[row.status as keyof typeof t.options.status] ?? row.status}
                       />
                     </div>
-                    <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                    <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
                       {t.options.operation[row.operation_type as keyof typeof t.options.operation] ??
                         row.operation_type}
                     </span>
@@ -180,21 +180,21 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                       {formatPrice(row.current_price === null ? null : Number(row.current_price), row.currency, lang) ??
                         t.common.notSet}
                     </p>
-                    <p className="mt-0.5 line-clamp-1 font-medium text-slate-800 group-hover:text-indigo-700">
+                    <p className="mt-0.5 line-clamp-1 font-medium text-fg group-hover:text-accent-fg">
                       {row.title}
                     </p>
                     {location && (
-                      <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                      <p className="mt-1 flex items-center gap-1 text-sm text-muted">
                         <MapPin className="size-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
                     )}
-                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-slate-600">
+                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-fg-2">
                       {row.subtype && (
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5">{localName(row.subtype, lang)}</span>
+                        <span className="rounded-md bg-raised px-2 py-0.5">{localName(row.subtype, lang)}</span>
                       )}
                       {specs.map((spec) => (
-                        <span key={spec as string} className="rounded-md bg-slate-100 px-2 py-0.5">
+                        <span key={spec as string} className="rounded-md bg-raised px-2 py-0.5">
                           {spec}
                         </span>
                       ))}

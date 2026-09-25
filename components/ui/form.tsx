@@ -1,20 +1,20 @@
 import { useId } from "react";
 
 export const inputClass =
-  "block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs " +
-  "placeholder:text-slate-400 transition focus:border-indigo-500 focus:outline-none focus:ring-3 focus:ring-indigo-500/15 " +
-  "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 " +
-  "aria-invalid:border-red-400 aria-invalid:focus:ring-red-500/15";
+  "block w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-fg shadow-xs " +
+  "placeholder:text-subtle transition focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/25 " +
+  "disabled:cursor-not-allowed disabled:bg-surface disabled:text-subtle " +
+  "aria-invalid:border-danger/70 aria-invalid:focus:ring-danger/25";
 
 export const buttonClass = {
   primary:
-    "inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-60",
+    "inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-xs transition hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60",
   secondary:
-    "inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:opacity-60",
+    "inline-flex items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-fg-2 shadow-xs transition hover:bg-raised disabled:opacity-60",
   danger:
-    "inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-xs transition hover:bg-red-50 disabled:opacity-60",
+    "inline-flex items-center justify-center gap-2 rounded-lg border border-danger/30 bg-surface px-4 py-2 text-sm font-semibold text-danger shadow-xs transition hover:bg-danger/10 disabled:opacity-60",
   ghost:
-    "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900",
+    "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-fg-2 transition hover:bg-raised hover:text-fg",
 };
 
 export function Card({
@@ -33,12 +33,12 @@ export function Card({
   return (
     <section
       id={id}
-      className={`scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6 ${className}`}
+      className={`scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6 ${className}`}
     >
       {title && (
         <header className="mb-5">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+          <h2 className="text-base font-semibold text-fg">{title}</h2>
+          {description && <p className="mt-1 text-sm text-muted">{description}</p>}
         </header>
       )}
       {children}
@@ -73,9 +73,9 @@ export function Field({
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-fg-2">
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
       {children({
         id,
@@ -83,11 +83,11 @@ export function Field({
         ...(error || hint ? { "aria-describedby": messageId } : {}),
       })}
       {error ? (
-        <p id={messageId} className="mt-1.5 text-xs font-medium text-red-600">
+        <p id={messageId} className="mt-1.5 text-xs font-medium text-danger">
           {error}
         </p>
       ) : hint ? (
-        <p id={messageId} className="mt-1.5 text-xs text-slate-500">
+        <p id={messageId} className="mt-1.5 text-xs text-muted">
           {hint}
         </p>
       ) : null}

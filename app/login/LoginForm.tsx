@@ -24,9 +24,9 @@ export function LoginForm({
 
   if (isSignUp && signUpState.checkEmail) {
     return (
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <MailCheck className="mx-auto size-10 text-indigo-600" />
-        <p className="mt-4 text-sm text-slate-600">{t.auth.checkEmail}</p>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-8 text-center shadow-sm">
+        <MailCheck className="mx-auto size-10 text-accent-fg" />
+        <p className="mt-4 text-sm text-fg-2">{t.auth.checkEmail}</p>
       </div>
     );
   }
@@ -45,16 +45,16 @@ export function LoginForm({
         <h1 className="text-2xl font-bold tracking-tight">
           {isSignUp ? t.auth.signUpTitle : t.auth.signInTitle}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{t.auth.tagline}</p>
+        <p className="mt-1 text-sm text-muted">{t.auth.tagline}</p>
       </div>
 
       <form
         key={mode}
         action={isSignUp ? signUpAction : signInAction}
-        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
       >
         {emailConfirmed && !isSignUp && !state.error && (
-          <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
             {t.auth.emailConfirmed}
           </p>
         )}
@@ -102,7 +102,7 @@ export function LoginForm({
         </Field>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
@@ -112,12 +112,12 @@ export function LoginForm({
         </button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-slate-500">
+      <p className="mt-4 text-center text-sm text-muted">
         {isSignUp ? t.auth.haveAccount : t.auth.noAccount}{" "}
         <button
           type="button"
           onClick={() => setMode(isSignUp ? "signIn" : "signUp")}
-          className="font-semibold text-indigo-600 hover:text-indigo-500"
+          className="font-semibold text-accent-fg hover:text-fg"
         >
           {isSignUp ? t.auth.signIn : t.auth.signUp}
         </button>

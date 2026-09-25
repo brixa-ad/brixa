@@ -117,7 +117,7 @@ export function LocationPicker({
     <div className="space-y-4">
       {popular.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          <span className="text-xs font-medium uppercase tracking-wide text-subtle">
             {t.location.popular}
           </span>
           {popular.map((settlement) => {
@@ -129,8 +129,8 @@ export function LocationPicker({
                 onClick={() => selectSettlement(settlement.id)}
                 className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition ${
                   active
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-line bg-surface text-fg-2 hover:border-line-strong hover:bg-raised"
                 }`}
               >
                 <MapPin className="size-3.5" />
