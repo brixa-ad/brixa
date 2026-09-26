@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <main className="flex min-h-screen flex-col">
-      <div className="flex items-center justify-between px-4 py-4 sm:px-8">
+      <div className="flex items-center justify-between px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8">
         <Logo />
         <div className="flex items-center gap-2">
           <ThemeToggle initialTheme={theme} />

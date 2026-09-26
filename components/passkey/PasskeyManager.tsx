@@ -6,7 +6,7 @@ import { useI18n } from "@/components/I18nProvider";
 import { Card, buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { enrollThisDevice, passkeySupported } from "@/lib/passkey";
+import { enrollThisDevice, passkeyProblem, passkeySupported } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
 
 type PasskeyRow = { id: string; friendly_name?: string; created_at: string; last_used_at?: string };
@@ -43,9 +43,15 @@ export function PasskeyManager() {
     if (result === "ok") setMessage({ kind: "ok", text: t.passkey.added });
     else if (result !== "cancelled") {
       console.error("Passkey registration failed:", result);
+      const problem = passkeyProblem(result);
       setMessage({
         kind: "error",
-        text: /disabled|not enabled/i.test(result.message) ? t.passkey.notEnabled : t.errors.generic,
+        text:
+          problem === "wrongDomain"
+            ? fmt(t.passkey.wrongDomain, { host: location.host })
+            : problem === "disabled"
+              ? t.passkey.notEnabled
+              : fmt(t.passkey.failedDetail, { detail: result.message }),
       });
     }
     await reload();

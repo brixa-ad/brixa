@@ -589,7 +589,7 @@ export function PropertyForm({
       </div>
 
       {/* Mobile / tablet save bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/90 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/90 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-end gap-2">
           <Link href={cancelHref} className={buttonClass.secondary}>
             {t.common.cancel}

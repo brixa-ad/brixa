@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { isCancelled, passkeySupported } from "@/lib/passkey";
+import { fmt } from "@/lib/i18n/dictionaries";
+import { passkeyProblem, passkeySupported } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
 
 /** "Sign in with Face ID" — shown only on devices that support passkeys. */
@@ -32,9 +33,16 @@ export function PasskeyLoginButton() {
       return;
     }
     setBusy(false);
-    if (isCancelled(signInError)) return;
+    const problem = passkeyProblem(signInError);
+    if (problem === "cancelled") return;
     console.error("Passkey sign-in failed:", signInError);
-    setError(/disabled|not enabled/i.test(signInError.message) ? t.passkey.notEnabled : t.passkey.failed);
+    setError(
+      problem === "wrongDomain"
+        ? fmt(t.passkey.wrongDomain, { host: location.host })
+        : problem === "disabled"
+          ? t.passkey.notEnabled
+          : t.passkey.failed
+    );
   }
 
   return (

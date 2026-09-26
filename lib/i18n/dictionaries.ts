@@ -26,6 +26,7 @@ const bg = {
     properties: "Имоти",
     team: "Екип",
     clients: "Клиенти",
+    profile: "Профил",
   },
   roles: {
     owner: "Собственик",
@@ -38,6 +39,8 @@ const bg = {
     or: "или с имейл и парола",
     failed: "Входът без парола не успя. Влезте с имейл и парола.",
     notEnabled: "Входът без парола още не е включен за BRIXA. Влезте с имейл и парола.",
+    wrongDomain: "Входът с лицево разпознаване още не е настроен за адреса {host}. Собственикът на агенцията трябва да го добави в настройките на Supabase.",
+    failedDetail: "Не успя: {detail}",
     sectionTitle: "Вход без парола",
     sectionHint: "Влизайте с лицето, пръста си или PIN кода на устройството вместо с парола. Паролата ви остава като резервен вариант.",
     addDevice: "Добави това устройство",
@@ -451,6 +454,7 @@ const en: Dictionary = {
     properties: "Properties",
     team: "Team",
     clients: "Clients",
+    profile: "Profile",
   },
   roles: {
     owner: "Owner",
@@ -463,6 +467,8 @@ const en: Dictionary = {
     or: "or with email and password",
     failed: "Passwordless sign-in didn't work. Please sign in with email and password.",
     notEnabled: "Passwordless sign-in isn't enabled for BRIXA yet. Please sign in with email and password.",
+    wrongDomain: "Face ID sign-in isn't set up for {host} yet. The agency owner needs to add it in the Supabase settings.",
+    failedDetail: "Didn't work: {detail}",
     sectionTitle: "Passwordless sign-in",
     sectionHint: "Sign in with your face, fingerprint or device PIN instead of a password. Your password still works as a backup.",
     addDevice: "Add this device",

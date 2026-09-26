@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Eye, LogOut } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { PasskeyManager } from "@/components/passkey/PasskeyManager";
 import { Card, buttonClass } from "@/components/ui/form";
@@ -8,6 +8,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { AvatarUploader } from "./AvatarUploader";
+import { signOut } from "../../login/actions";
 import { ProfileForm } from "./ProfileForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -48,6 +49,12 @@ export default async function ProfilePage() {
             <AvatarUploader userId={session.userId} avatarPath={profile?.avatar_path ?? null} name={name} />
           </Card>
           <PasskeyManager />
+          <form action={signOut} className="md:hidden">
+            <button type="submit" className={`${buttonClass.secondary} w-full`}>
+              <LogOut className="size-4" />
+              {t.common.signOut}
+            </button>
+          </form>
         </div>
 
         <Card>

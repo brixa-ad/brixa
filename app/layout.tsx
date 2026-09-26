@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { I18nProvider } from "@/components/I18nProvider";
 import { getLang } from "@/lib/i18n/server";
@@ -13,7 +13,24 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: "BRIXA", template: "%s · BRIXA" },
   description: "CRM for real estate agencies",
+  applicationName: "BRIXA",
+  // "Add to Home Screen" on iPhone opens full-screen, like an app.
+  appleWebApp: { capable: true, title: "BRIXA", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
+
+// Behave like an app on phones: no zooming, content runs under the notch/status bar.
+export async function generateViewport(): Promise<Viewport> {
+  const theme = await getTheme();
+  return {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover",
+    themeColor: theme === "light" ? "#f5f5f4" : "#000000",
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [lang, theme] = await Promise.all([getLang(), getTheme()]);

@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 export const inputClass =
-  "block w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-fg shadow-xs " +
+  "block w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-base text-fg shadow-xs sm:text-sm " +
   "placeholder:text-subtle transition focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/25 " +
   "disabled:cursor-not-allowed disabled:bg-surface disabled:text-subtle " +
   "aria-invalid:border-danger/70 aria-invalid:focus:ring-danger/25";

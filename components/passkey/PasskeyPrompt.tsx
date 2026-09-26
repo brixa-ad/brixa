@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { enrollThisDevice, passkeySupported } from "@/lib/passkey";
+import { fmt } from "@/lib/i18n/dictionaries";
+import { enrollThisDevice, passkeyProblem, passkeySupported } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
 
 const DISMISSED_KEY = "brixa.passkeyPrompt.dismissed";
@@ -33,7 +34,7 @@ export function PasskeyPrompt() {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (readDismissed()) return;
@@ -60,11 +61,17 @@ export function PasskeyPrompt() {
 
   async function enable() {
     setBusy(true);
-    setError(false);
+    setError(null);
     const result = await enrollThisDevice();
     setBusy(false);
     if (result === "ok") later();
-    else if (result !== "cancelled") setError(true);
+    else if (result !== "cancelled") {
+      setError(
+        passkeyProblem(result) === "wrongDomain"
+          ? fmt(t.passkey.wrongDomain, { host: location.host })
+          : fmt(t.passkey.failedDetail, { detail: result.message })
+      );
+    }
   }
 
   return (
@@ -74,7 +81,7 @@ export function PasskeyPrompt() {
       </span>
       <div className="min-w-0 flex-1 basis-56">
         <p className="font-semibold">{t.passkey.promptTitle}</p>
-        <p className="text-sm text-fg-2">{error ? t.errors.generic : t.passkey.promptText}</p>
+        <p className="text-sm text-fg-2">{error ?? t.passkey.promptText}</p>
       </div>
       <div className="flex items-center gap-2">
         <button type="button" onClick={enable} disabled={busy} className={buttonClass.primary}>

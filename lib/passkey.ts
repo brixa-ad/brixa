@@ -49,3 +49,23 @@ export async function enrollThisDevice(): Promise<"ok" | "cancelled" | Error> {
   }
   return "ok";
 }
+
+export type PasskeyProblem = "cancelled" | "disabled" | "wrongDomain" | "other";
+
+/** Sort a passkey failure into something we can explain to the user. */
+export function passkeyProblem(error: unknown): PasskeyProblem {
+  if (isCancelled(error)) return "cancelled";
+  const e = (error ?? {}) as { name?: string; code?: string; message?: string; cause?: { name?: string; message?: string } };
+  const text = `${e.message ?? ""} ${e.cause?.message ?? ""}`;
+  if (
+    e.code === "ERROR_INVALID_RP_ID" ||
+    e.code === "ERROR_INVALID_DOMAIN" ||
+    e.name === "SecurityError" ||
+    e.cause?.name === "SecurityError" ||
+    /rp ?id|relying party|origin/i.test(text)
+  ) {
+    return "wrongDomain";
+  }
+  if (/disabled|not enabled/i.test(text)) return "disabled";
+  return "other";
+}

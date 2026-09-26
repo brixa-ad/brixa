@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { BottomNav } from "@/components/BottomNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
@@ -29,19 +30,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:gap-8 sm:px-6">
           <Link href="/properties" className="shrink-0">
             <Logo />
           </Link>
 
-          <NavLinks
-            links={[
-              { href: "/properties", label: t.nav.properties },
-              { href: "/clients", label: t.nav.clients },
-              { href: "/team", label: t.nav.team },
-            ]}
-          />
+          {/* Phones use the bottom tab bar instead. */}
+          <div className="hidden md:block">
+            <NavLinks
+              links={[
+                { href: "/properties", label: t.nav.properties },
+                { href: "/clients", label: t.nav.clients },
+                { href: "/team", label: t.nav.team },
+              ]}
+            />
+          </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ThemeToggle initialTheme={theme} />
@@ -61,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
             </Link>
 
-            <form action={signOut}>
+            <form action={signOut} className="hidden md:block">
               <button
                 type="submit"
                 title={t.common.signOut}
@@ -75,10 +79,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">
         <PasskeyPrompt />
         {children}
       </main>
+
+      <BottomNav />
     </div>
   );
 }

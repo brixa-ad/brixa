@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// Sign-in pages plus the app icons and manifest (phones fetch these before anyone signs in).
+const PUBLIC_PATHS = ["/login", "/auth", "/icon", "/apple-icon", "/manifest.webmanifest"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

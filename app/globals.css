@@ -91,6 +91,19 @@ body {
   background-color: var(--canvas);
 }
 
+/* Feel like a native app on phones: no pinch / double-tap zoom, no sideways drift,
+   no rubber-band bounce, no grey flash on tap. */
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+body {
+  overflow-x: clip;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 ::selection {
   background: rgb(16 185 129 / 0.4);
 }
