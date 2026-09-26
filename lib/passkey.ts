@@ -17,7 +17,8 @@ import { createClient } from "./supabase/client";
 /** Challenges are valid for 5 minutes; refresh a little before that. */
 export const PREPARE_REFRESH_MS = 4 * 60 * 1000;
 
-export type Prepared<T> = { challengeId: string; publicKey: T };
+/** A fetched challenge, plus the site address (RP ID) passkeys are set up for. */
+export type Prepared<T> = { challengeId: string; publicKey: T; rpId: string | null };
 export type PreparedRegistration = Prepared<PublicKeyCredentialCreationOptions>;
 export type PreparedSignIn = Prepared<PublicKeyCredentialRequestOptions>;
 
@@ -90,10 +91,8 @@ export async function prepareRegistration(): Promise<PreparedRegistration | null
     console.error("Preparing passkey registration failed:", error);
     return null;
   }
-  return {
-    challengeId: data.challenge_id,
-    publicKey: deserializeCredentialCreationOptions(data.options) as unknown as PublicKeyCredentialCreationOptions,
-  };
+  const publicKey = deserializeCredentialCreationOptions(data.options) as unknown as PublicKeyCredentialCreationOptions;
+  return { challengeId: data.challenge_id, publicKey, rpId: publicKey.rp?.id ?? null };
 }
 
 /** Call directly from the tap handler — the prompt must open before any other await. */
@@ -126,10 +125,8 @@ export async function prepareSignIn(): Promise<PreparedSignIn | null> {
     console.error("Preparing passkey sign-in failed:", error);
     return null;
   }
-  return {
-    challengeId: data.challenge_id,
-    publicKey: deserializeCredentialRequestOptions(data.options) as unknown as PublicKeyCredentialRequestOptions,
-  };
+  const publicKey = deserializeCredentialRequestOptions(data.options) as unknown as PublicKeyCredentialRequestOptions;
+  return { challengeId: data.challenge_id, publicKey, rpId: publicKey.rpId ?? null };
 }
 
 /** Call directly from the tap handler. On success the session is saved (cookies). */
@@ -147,4 +144,11 @@ export async function completeSignIn(prepared: PreparedSignIn): Promise<Outcome>
     credential: serializeCredentialRequestResponse(credential as never),
   });
   return error ?? "ok";
+}
+
+/** Passkeys only work on the site address they were set up for (the RP ID) or its subdomains. */
+export function worksHere(rpId: string | null | undefined) {
+  if (!rpId) return true;
+  const host = location.hostname;
+  return host === rpId || host.endsWith(`.${rpId}`);
 }

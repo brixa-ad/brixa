@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { completeSignIn, passkeyProblem, passkeySupported, prepareSignIn } from "@/lib/passkey";
+import { completeSignIn, passkeyProblem, passkeySupported, prepareSignIn, worksHere } from "@/lib/passkey";
 import { passkeyMessage } from "./messages";
 import { usePrepared } from "./usePrepared";
 
@@ -16,13 +16,14 @@ export function PasskeyLoginButton() {
   const [supported, setSupported] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { ready, take, refresh } = usePrepared(prepareSignIn, supported);
+  const { ready, take, refresh, rpId } = usePrepared(prepareSignIn, supported);
 
   useEffect(() => {
     passkeySupported().then(setSupported);
   }, []);
 
-  if (!supported) return null;
+  // Hidden where it can't work (other devices, or a site address passkeys aren't set up for).
+  if (!supported || !worksHere(rpId)) return null;
 
   async function signIn() {
     const prepared = take();

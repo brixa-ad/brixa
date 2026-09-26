@@ -10,20 +10,6 @@ export type AuthState = {
   checkEmail?: boolean;
 };
 
-export async function signIn(_: AuthState, formData: FormData): Promise<AuthState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return { error: error.status === 400 ? "invalidCredentials" : "genericError" };
-  }
-
-  redirect("/properties");
-}
-
 export async function signUp(_: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");

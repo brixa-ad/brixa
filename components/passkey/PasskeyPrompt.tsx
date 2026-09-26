@@ -5,7 +5,7 @@ import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { completeRegistration, passkeySupported, prepareRegistration } from "@/lib/passkey";
+import { completeRegistration, passkeySupported, prepareRegistration, worksHere } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
 import { passkeyMessage } from "./messages";
 import { usePrepared } from "./usePrepared";
@@ -37,7 +37,7 @@ export function PasskeyPrompt() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { ready, take, refresh } = usePrepared(prepareRegistration, visible);
+  const { ready, take, refresh, rpId } = usePrepared(prepareRegistration, visible);
 
   useEffect(() => {
     if (readDismissed()) return;
@@ -55,7 +55,7 @@ export function PasskeyPrompt() {
     };
   }, []);
 
-  if (!visible) return null;
+  if (!visible || !worksHere(rpId)) return null;
 
   function later() {
     writeDismissed();

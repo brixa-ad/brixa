@@ -25,7 +25,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 pb-16">
-        <LoginForm callbackFailed={error === "callback"} emailConfirmed={notice === "confirmed"} />
+        <LoginForm
+          signInError={error === "invalidCredentials" || error === "genericError" ? error : null}
+          callbackFailed={error === "callback"}
+          emailConfirmed={notice === "confirmed"}
+        />
       </div>
     </main>
   );

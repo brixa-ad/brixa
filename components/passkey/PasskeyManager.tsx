@@ -6,7 +6,7 @@ import { useI18n } from "@/components/I18nProvider";
 import { Card, buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { completeRegistration, passkeySupported, prepareRegistration } from "@/lib/passkey";
+import { completeRegistration, passkeySupported, prepareRegistration, worksHere } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
 import { passkeyMessage } from "./messages";
 import { usePrepared } from "./usePrepared";
@@ -26,7 +26,7 @@ export function PasskeyManager() {
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const { ready, take, refresh } = usePrepared(prepareRegistration, supported === true);
+  const { ready, take, refresh, rpId } = usePrepared(prepareRegistration, supported === true);
 
   useEffect(() => {
     let ignore = false;
@@ -114,6 +114,13 @@ export function PasskeyManager() {
 
         {supported === false ? (
           <p className="text-sm text-muted">{t.passkey.notSupported}</p>
+        ) : !worksHere(rpId) ? (
+          <p className="text-sm text-muted">
+            {fmt(t.passkey.onlyOn, { host: rpId! })}{" "}
+            <a href={`https://${rpId}/profile`} className="font-semibold text-accent-fg hover:underline">
+              {t.passkey.openThere}
+            </a>
+          </p>
         ) : (
           <button type="button" onClick={add} disabled={busy || !ready} className={buttonClass.primary}>
             {busy || !ready ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
