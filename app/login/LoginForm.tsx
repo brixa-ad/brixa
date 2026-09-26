@@ -77,7 +77,9 @@ export function LoginForm({
         <h1 className="text-2xl font-bold tracking-tight">
           {isSignUp ? t.auth.signUpTitle : t.auth.signInTitle}
         </h1>
-        <p className="mt-1 text-sm text-muted">{t.auth.tagline}</p>
+        <p className="mt-2 text-sm font-medium tracking-wide text-fg-2">
+          {t.auth.sloganA} <span className="text-accent-fg">{t.auth.sloganB}</span>
+        </p>
       </div>
 
       <form

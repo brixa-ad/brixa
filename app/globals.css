@@ -8,57 +8,66 @@
 :root {
   color-scheme: dark;
 
-  --canvas: #000000; /* page background */
-  --surface: #0b0b0c; /* cards */
-  --raised: #151517; /* inputs, chips, hover rows */
-  --overlay: #1e1e21; /* hover on raised elements */
-  --line-soft: #19191b;
-  --line: #232326;
-  --line-strong: #333337;
+  /* BRIXA brand, taken from the logo: deep navy, electric blue, cyan. */
+  --canvas: #040915; /* page background */
+  --surface: #0a1122; /* cards */
+  --raised: #111a2f; /* inputs, chips, hover rows */
+  --overlay: #19233b; /* hover on raised elements */
+  --line-soft: #111a2d;
+  --line: #1b2641;
+  --line-strong: #2a3859;
 
-  --fg: #f5f5f5; /* headings, primary text */
-  --fg-2: #d0d0d4; /* body text */
-  --muted: #9f9fa7; /* secondary text */
-  --subtle: #7e7e87; /* labels, hints */
-  --faint: #47474d; /* placeholder icons */
+  --fg: #f2f5ff; /* headings, primary text */
+  --fg-2: #c6cfe6; /* body text */
+  --muted: #8f9bbb; /* secondary text */
+  --subtle: #77839f; /* labels, hints */
+  --faint: #3a4668; /* placeholder icons */
 
-  --accent: #10b981; /* buttons, selected states */
-  --accent-hover: #34d399;
-  --accent-fg: #34d399; /* accent-colored text */
-  --accent-soft: rgb(16 185 129 / 0.14);
-  --on-accent: #03140d; /* text on accent backgrounds */
+  --accent: #2563ff; /* electric blue: buttons, selected states */
+  --accent-hover: #3d78ff;
+  --accent-fg: #38c8ff; /* cyan: accent-colored text */
+  --accent-soft: rgb(37 99 255 / 0.16);
+  --on-accent: #ffffff; /* text on accent backgrounds */
+  --brand-cyan: #1fd6ff;
 
   --danger: #f87171;
   --success: #34d399;
   --warning: #fcd34d;
+
+  /* the blue glow in the logo's corners */
+  --glow: radial-gradient(900px 520px at -10% -12%, rgb(29 78 216 / 0.3), transparent 62%),
+    radial-gradient(900px 520px at 110% 112%, rgb(29 78 216 / 0.24), transparent 62%);
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --canvas: #f5f5f4;
+  --canvas: #f3f6fc;
   --surface: #ffffff;
-  --raised: #f3f3f4;
-  --overlay: #e7e7e9;
-  --line-soft: #efeff0;
-  --line: #e4e4e7;
-  --line-strong: #d1d1d6;
+  --raised: #eef2f9;
+  --overlay: #e2e8f3;
+  --line-soft: #eaeef6;
+  --line: #dde3ee;
+  --line-strong: #c9d2e3;
 
-  --fg: #0a0a0a;
-  --fg-2: #3f3f46;
-  --muted: #6b6b74;
-  --subtle: #71717a;
-  --faint: #c4c4cb;
+  --fg: #0a1330;
+  --fg-2: #334063;
+  --muted: #5d6a8a;
+  --subtle: #66728f;
+  --faint: #b9c3d8;
 
-  --accent: #047857;
-  --accent-hover: #065f46;
-  --accent-fg: #047857;
-  --accent-soft: rgb(16 185 129 / 0.12);
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-fg: #1d4ed8;
+  --accent-soft: rgb(37 99 235 / 0.1);
   --on-accent: #ffffff;
+  --brand-cyan: #0ea5e9;
 
   --danger: #dc2626;
   --success: #047857;
   --warning: #b45309;
+
+  --glow: none;
 }
 
 @theme inline {
@@ -81,6 +90,7 @@
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-brand-cyan: var(--brand-cyan);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -89,6 +99,9 @@
 body {
   color: var(--fg);
   background-color: var(--canvas);
+  background-image: var(--glow);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 /* Feel like a native app on phones: no pinch / double-tap zoom, no sideways drift,
@@ -105,7 +118,7 @@ body {
 }
 
 ::selection {
-  background: rgb(16 185 129 / 0.4);
+  background: rgb(37 99 255 / 0.45);
 }
 
 * {

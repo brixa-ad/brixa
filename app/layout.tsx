@@ -28,7 +28,7 @@ export async function generateViewport(): Promise<Viewport> {
     maximumScale: 1,
     userScalable: false,
     viewportFit: "cover",
-    themeColor: theme === "light" ? "#f5f5f4" : "#000000",
+    themeColor: theme === "light" ? "#f3f6fc" : "#040915",
   };
 }
 
