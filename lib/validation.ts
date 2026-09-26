@@ -34,6 +34,7 @@ export type PropertyInput = {
   price: number | null;
   currency: Currency;
   brokerId: string | null;
+  ownerClientId: string | null;
   exclusiveContract: boolean;
   description: string;
   featureIds: string[];

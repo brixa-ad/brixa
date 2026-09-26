@@ -213,6 +213,24 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
                   )}
                 </dd>
               </div>
+              {property.owner && (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="shrink-0 text-muted">{t.clients.owner}</dt>
+                  <dd className="text-right">
+                    <Link href={`/clients/${property.owner.id}`} className="font-medium text-fg hover:text-accent-fg">
+                      {property.owner.full_name}
+                    </Link>
+                    {property.owner.phone && (
+                      <a
+                        href={`tel:${property.owner.phone.replace(/[^\d+]/g, "")}`}
+                        className="block text-xs text-muted hover:text-fg"
+                      >
+                        {property.owner.phone}
+                      </a>
+                    )}
+                  </dd>
+                </div>
+              )}
               <Row name={t.detail.location} value={locationParts.join(", ") || null} />
               {property.address && <Row name={t.location.address} value={property.address} />}
               <Row name={t.detail.created} value={formatDate(property.created_at, lang)} />

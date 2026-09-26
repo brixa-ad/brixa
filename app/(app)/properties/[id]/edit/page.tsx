@@ -39,6 +39,7 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     price: str(property.current_price),
     currency: isOneOf(CURRENCIES, property.currency) ? property.currency : "EUR",
     brokerId: property.responsible_broker_id ?? "",
+    ownerClientId: property.owner_client_id,
     exclusiveContract: property.exclusive_contract,
     description: property.description ?? "",
     featureIds: property.features.map((feature) => feature.id),

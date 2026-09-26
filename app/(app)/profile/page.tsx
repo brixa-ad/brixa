@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { PasskeyManager } from "@/components/passkey/PasskeyManager";
 import { Card, buttonClass } from "@/components/ui/form";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -42,9 +43,12 @@ export default async function ProfilePage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <Card title={t.profile.photo}>
-          <AvatarUploader userId={session.userId} avatarPath={profile?.avatar_path ?? null} name={name} />
-        </Card>
+        <div className="space-y-6">
+          <Card title={t.profile.photo}>
+            <AvatarUploader userId={session.userId} avatarPath={profile?.avatar_path ?? null} name={name} />
+          </Card>
+          <PasskeyManager />
+        </div>
 
         <Card>
           <ProfileForm

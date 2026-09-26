@@ -64,3 +64,40 @@ export type Heating = (typeof HEATINGS)[number];
 export function isOneOf<T extends string>(list: readonly T[], value: unknown): value is T {
   return typeof value === "string" && (list as readonly string[]).includes(value);
 }
+
+// ---- Clients ----
+export const CLIENT_TYPES = ["buyer", "seller", "tenant", "landlord", "investor"] as const;
+export const CLIENT_CLASSES = ["A", "B", "C"] as const;
+export const CLIENT_SOURCES = [
+  "personal",
+  "referral",
+  "email",
+  "google",
+  "facebook",
+  "instagram",
+  "realistimo",
+  "yavlena",
+  "billboard",
+  "signs",
+] as const;
+export const CLIENT_STAGES = [
+  "new_contact",
+  "called",
+  "presentation",
+  "viewing",
+  "negotiation",
+  "deposit",
+  "deal",
+  "lost",
+  "correspondence",
+] as const;
+
+export type ClientType = (typeof CLIENT_TYPES)[number];
+export type ClientClass = (typeof CLIENT_CLASSES)[number];
+export type ClientSource = (typeof CLIENT_SOURCES)[number];
+export type ClientStage = (typeof CLIENT_STAGES)[number];
+
+/** Client types that look for a property (and so get a search + matches). */
+export const SEEKING_TYPES: readonly ClientType[] = ["buyer", "tenant", "investor"];
+/** Client types that can own a listed property. */
+export const OWNER_TYPES: readonly ClientType[] = ["seller", "landlord"];

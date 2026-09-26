@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { MailCheck } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
+import { PasskeyLoginButton } from "@/components/passkey/PasskeyLoginButton";
 import { Field, buttonClass, inputClass } from "@/components/ui/form";
 import { signIn, signUp, type AuthState } from "./actions";
 
@@ -53,6 +54,8 @@ export function LoginForm({
         action={isSignUp ? signUpAction : signInAction}
         className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
       >
+        {!isSignUp && <PasskeyLoginButton />}
+
         {emailConfirmed && !isSignUp && !state.error && (
           <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
             {t.auth.emailConfirmed}

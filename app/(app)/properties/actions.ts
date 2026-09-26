@@ -22,13 +22,13 @@ const PHOTO_BUCKET = "property-photos";
 const NO_ID = "00000000-0000-0000-0000-000000000000";
 
 /** Validate against the rules + database, and build the row to write. */
-async function prepare(input: PropertyInput) {
+async function prepare(input: PropertyInput, propertyId: string | null = null) {
   const session = await getSession();
   if (!session) return { ok: false as const, message: "noOrg" as const };
 
   const supabase = await createClient();
 
-  const [subtypeRes, settlementRes, neighborhoodRes, allowedFeaturesRes, brokerRes] =
+  const [subtypeRes, settlementRes, neighborhoodRes, allowedFeaturesRes, brokerRes, ownerRes, currentRes] =
     await Promise.all([
       supabase
         .from("property_subtypes")
@@ -59,6 +59,18 @@ async function prepare(input: PropertyInput) {
             .eq("profile_id", input.brokerId)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      // RLS: only clients this user can see come back.
+      input.ownerClientId
+        ? supabase
+            .from("clients")
+            .select("id")
+            .eq("organization_id", session.organizationId)
+            .eq("id", input.ownerClientId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      propertyId
+        ? supabase.from("properties").select("owner_client_id").eq("id", propertyId).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
   const subtype = subtypeRes.data;
@@ -77,6 +89,9 @@ async function prepare(input: PropertyInput) {
     errors.neighborhoodId = "invalid";
   }
   if (input.brokerId && !brokerRes.data) errors.brokerId = "invalid";
+  // An owner the user can't see (e.g. set by a manager) may stay as it is, but can't be newly picked.
+  const ownerUnchanged = input.ownerClientId !== null && currentRes.data?.owner_client_id === input.ownerClientId;
+  if (input.ownerClientId && !ownerRes.data && !ownerUnchanged) errors.ownerClientId = "invalid";
   // Brokers can only keep properties on their own name; managers assign freely.
   if (!session.isManager && input.brokerId && input.brokerId !== session.userId) {
     errors.brokerId = "invalid";
@@ -110,6 +125,7 @@ async function prepare(input: PropertyInput) {
     current_price: input.price,
     currency: input.currency,
     responsible_broker_id: session.isManager ? (input.brokerId ?? session.userId) : session.userId,
+    owner_client_id: input.ownerClientId,
     exclusive_contract: input.exclusiveContract,
     description: input.description.trim() || null,
   };
@@ -152,7 +168,7 @@ export async function createProperty(input: PropertyInput): Promise<SaveResult> 
 }
 
 export async function updateProperty(id: string, input: PropertyInput): Promise<SaveResult> {
-  const prepared = await prepare(input);
+  const prepared = await prepare(input, id);
   if (!prepared.ok) return prepared;
 
   const { supabase, row, featureIds } = prepared;

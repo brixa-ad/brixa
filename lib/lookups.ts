@@ -6,7 +6,7 @@ import type { Feature, FormLookups, Member, Role, Settlement } from "./types";
 const PAGE_SIZE = 1000;
 
 /** Supabase caps responses at 1000 rows — page through larger tables (e.g. a full EKATTE import). */
-async function fetchAllSettlements(supabase: SupabaseClient) {
+export async function fetchAllSettlements(supabase: SupabaseClient) {
   const rows: Settlement[] = [];
 
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -55,7 +55,7 @@ export async function getMembers(supabase: SupabaseClient, organizationId: strin
 export async function getFormLookups(organizationId: string): Promise<FormLookups> {
   const supabase = await createClient();
 
-  const [categories, subtypes, subtypeFeatures, regions, settlements, members] = await Promise.all([
+  const [categories, subtypes, subtypeFeatures, regions, settlements, members, ownerClients] = await Promise.all([
     supabase.from("property_categories").select("id, code, name, name_en").order("sort_order"),
     supabase
       .from("property_subtypes")
@@ -67,6 +67,12 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     supabase.from("geo_regions").select("id, code, name").order("name"),
     fetchAllSettlements(supabase),
     getMembers(supabase, organizationId),
+    supabase
+      .from("clients")
+      .select("id, full_name, phone")
+      .eq("organization_id", organizationId)
+      .overlaps("types", ["seller", "landlord"])
+      .order("full_name"),
   ]);
 
   for (const result of [categories, subtypes, subtypeFeatures, regions]) {
@@ -90,5 +96,6 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     regions: (regions.data ?? []).sort((a, b) => a.name.localeCompare(b.name, "bg")),
     settlements,
     members,
+    ownerClients: ownerClients.data ?? [],
   };
 }

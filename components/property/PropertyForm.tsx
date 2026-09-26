@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AlertCircle, Check, ImageIcon, Loader2 } from "lucide-react";
 import { createProperty, updateProperty } from "@/app/(app)/properties/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { formatNumber, formatPrice, settlementLabel } from "@/lib/format";
 import { localName } from "@/lib/i18n/dictionaries";
@@ -477,6 +478,23 @@ export function PropertyForm({
                   </span>
                 </label>
               </div>
+
+              <Field label={t.clients.owner} error={errorText("ownerClientId")} hint={t.clients.ownerHint}>
+                {(props) => (
+                  <Combobox
+                    {...props}
+                    options={lookups.ownerClients.map((c) => ({
+                      value: c.id,
+                      label: c.full_name,
+                      hint: c.phone ?? undefined,
+                    }))}
+                    value={values.ownerClientId}
+                    onChange={(id) => set("ownerClientId", id)}
+                    placeholder={t.clients.ownerSearch}
+                    emptyText={t.location.noMatches}
+                  />
+                )}
+              </Field>
 
               <Field
                 label={t.form.description}

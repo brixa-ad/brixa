@@ -4,6 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
+import { PasskeyPrompt } from "@/components/passkey/PasskeyPrompt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -37,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <NavLinks
             links={[
               { href: "/properties", label: t.nav.properties },
+              { href: "/clients", label: t.nav.clients },
               { href: "/team", label: t.nav.team },
             ]}
           />
@@ -73,7 +75,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        <PasskeyPrompt />
+        {children}
+      </main>
     </div>
   );
 }
