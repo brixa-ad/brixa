@@ -33,7 +33,7 @@ export function PasskeyLoginButton() {
     // Opens Face ID right away — no network wait before it (Safari requirement).
     const result = await completeSignIn(prepared);
     if (result === "ok") {
-      router.replace("/properties");
+      router.replace("/");
       router.refresh();
       return;
     }

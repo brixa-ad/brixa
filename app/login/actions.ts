@@ -40,7 +40,7 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
   }
 
   // Email confirmation turned off in Supabase → we already have a session.
-  if (data.session) redirect("/properties");
+  if (data.session) redirect("/");
 
   return { checkEmail: true };
 }

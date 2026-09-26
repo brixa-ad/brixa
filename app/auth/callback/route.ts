@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
   // Token-hash links (custom email template) work in any browser.
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-    return NextResponse.redirect(`${origin}${error ? "/login?error=callback" : "/properties"}`);
+    return NextResponse.redirect(`${origin}${error ? "/login?error=callback" : "/"}`);
   }
 
   // Default PKCE links only sign in from the browser that signed up.
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}/properties`);
+    if (!error) return NextResponse.redirect(`${origin}/`);
 
     // Supabase only issues a code after confirming the email, so the account is
     // confirmed — the link was just opened in another browser. Ask them to sign in.

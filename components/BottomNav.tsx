@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, UserRound, Users, UsersRound } from "lucide-react";
+import { Building2, House, ListChecks, UserRound, Users } from "lucide-react";
 import { useI18n } from "./I18nProvider";
 
 /**
@@ -16,17 +16,18 @@ export function BottomNav() {
   if (/\/(new|edit)$/.test(pathname)) return null;
 
   const tabs = [
+    { href: "/", label: t.nav.home, icon: House },
+    { href: "/tasks", label: t.nav.tasks, icon: ListChecks },
     { href: "/properties", label: t.nav.properties, icon: Building2 },
     { href: "/clients", label: t.nav.clients, icon: Users },
-    { href: "/team", label: t.nav.team, icon: UsersRound },
     { href: "/profile", label: t.nav.profile, icon: UserRound },
   ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={href}>
               <Link

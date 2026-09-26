@@ -101,3 +101,10 @@ export type ClientStage = (typeof CLIENT_STAGES)[number];
 export const SEEKING_TYPES: readonly ClientType[] = ["buyer", "tenant", "investor"];
 /** Client types that can own a listed property. */
 export const OWNER_TYPES: readonly ClientType[] = ["seller", "landlord"];
+
+// ---- Tasks & activity log ----
+export const TASK_TYPES = ["call", "email", "message", "meeting", "viewing", "other"] as const;
+export const ACTIVITY_TYPES = ["call", "email", "message", "meeting", "viewing", "note", "task"] as const;
+
+export type TaskType = (typeof TASK_TYPES)[number];
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];

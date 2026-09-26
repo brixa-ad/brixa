@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, ImageIcon, Mail, MapPin, Pencil, Phone, SearchX, Sparkles } from "lucide-react";
+import { Building2, History, ImageIcon, Mail, MapPin, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
 import { DeleteClientButton } from "@/components/client/DeleteClientButton";
+import { QuickLog } from "@/components/client/QuickLog";
+import { TaskItem } from "@/components/task/TaskItem";
+import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { Card, buttonClass } from "@/components/ui/form";
@@ -18,6 +21,8 @@ import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { sofiaToday } from "@/lib/dates";
+import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const client = await getClient((await params).id);
@@ -76,7 +81,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
   const supabase = await createClient();
   const seeking = isSeeking(client.types) && client.search;
 
-  const [matches, searchLines, { data: owned }] = await Promise.all([
+  const [matches, searchLines, { data: owned }, { data: activityRows }, { data: taskRows }] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
     supabase
@@ -84,7 +89,27 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
       .select("id, title, status, current_price, currency")
       .eq("owner_client_id", id)
       .order("updated_at", { ascending: false }),
+    // My log for this client (managers see the whole team's)
+    supabase
+      .from("activities")
+      .select("id, type, note, occurred_at, profile_id, person:profiles(full_name, email)")
+      .eq("client_id", id)
+      .order("occurred_at", { ascending: false })
+      .limit(50),
+    supabase.from("tasks").select(TASK_SELECT).eq("client_id", id).eq("status", "open"),
   ]);
+
+  const activities = (activityRows ?? []) as unknown as {
+    id: string;
+    type: string;
+    note: string | null;
+    occurred_at: string;
+    profile_id: string;
+    person: { full_name: string | null; email: string } | null;
+  }[];
+  const openTasks = ((taskRows ?? []) as unknown as TaskRow[]).sort(byDue);
+  const today = sofiaToday();
+  const lastContact = activities[0]?.occurred_at ?? null;
 
   const covers = await signPhotoUrls(
     supabase,
@@ -103,7 +128,17 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
             {client.full_name}
           </span>
         }
-        subtitle={client.types.map((type) => t.options.clientType[type]).join(" · ")}
+        subtitle={
+          <span className="flex flex-wrap gap-x-3 gap-y-1">
+            <span>{client.types.map((type) => t.options.clientType[type]).join(" · ")}</span>
+            <span className="inline-flex items-center gap-1">
+              <History className="size-3.5" />
+              {lastContact
+                ? fmt(t.activity.lastContact, { when: formatDate(lastContact, lang, true) })
+                : t.activity.neverContacted}
+            </span>
+          </span>
+        }
         actions={
           <>
             <ClientStageSelect clientId={client.id} stage={client.stage} />
@@ -200,6 +235,61 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
         </div>
 
         <div className="space-y-6">
+          {/* ---- tasks + what happened ---- */}
+          <Card
+            title={
+              <span className="flex items-center justify-between gap-3">
+                {t.activity.tasksTitle}
+                <Link
+                  href={`/tasks/new?client=${client.id}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                >
+                  <Plus className="size-3.5" />
+                  {t.activity.addTask}
+                </Link>
+              </span>
+            }
+          >
+            {openTasks.length === 0 ? (
+              <p className="text-sm text-muted">{t.tasks.empty}</p>
+            ) : (
+              <ul className="-mx-3">
+                {openTasks.map((task) => (
+                  <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} showAssignee={session.isManager} />
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title={t.activity.title}>
+            <QuickLog clientId={client.id} />
+            {activities.length === 0 ? (
+              <p className="mt-5 text-sm text-muted">{t.activity.empty}</p>
+            ) : (
+              <ol className="relative mt-6 space-y-4 border-l border-line pl-5">
+                {activities.map((a) => (
+                  <li key={a.id} className="relative">
+                    <span className="absolute -left-[31px] top-0 grid size-5 place-items-center rounded-full border border-line bg-surface text-accent-fg">
+                      <TypeIcon type={a.type} className="size-3" />
+                    </span>
+                    <p className="text-sm">
+                      <span className="font-medium">
+                        {t.options.activityType[a.type as keyof typeof t.options.activityType] ?? a.type}
+                      </span>
+                      <span className="text-subtle">
+                        {" · "}
+                        {a.profile_id === session.userId ? t.activity.byYou : personName(a.person)}
+                        {" · "}
+                        {formatDate(a.occurred_at, lang, true)}
+                      </span>
+                    </p>
+                    {a.note && <p className="mt-0.5 whitespace-pre-line text-sm text-fg-2">{a.note}</p>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+
           {isSeeking(client.types) && (
             <Card title={t.clients.sectionSearch}>
               {searchLines.length > 0 ? (

@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isSignedIn && pathname === "/login") {
-    return redirectKeepingCookies(request, response, "/properties");
+    return redirectKeepingCookies(request, response, "/");
   }
 
   return response;

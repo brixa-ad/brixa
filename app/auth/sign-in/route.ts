@@ -21,5 +21,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${reason}`, 303);
   }
 
-  return NextResponse.redirect(`${origin}/properties`, 303);
+  return NextResponse.redirect(`${origin}/`, 303);
 }

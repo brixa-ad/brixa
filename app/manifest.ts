@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "BRIXA",
     description: "Повече сделки. По-малко работа.",
     lang: "bg",
-    start_url: "/properties",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
