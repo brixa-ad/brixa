@@ -6,8 +6,10 @@ import { useI18n } from "@/components/I18nProvider";
 import { Card, buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { enrollThisDevice, passkeyProblem, passkeySupported } from "@/lib/passkey";
+import { completeRegistration, passkeySupported, prepareRegistration } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
+import { passkeyMessage } from "./messages";
+import { usePrepared } from "./usePrepared";
 
 type PasskeyRow = { id: string; friendly_name?: string; created_at: string; last_used_at?: string };
 
@@ -24,6 +26,7 @@ export function PasskeyManager() {
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const { ready, take, refresh } = usePrepared(prepareRegistration, supported === true);
 
   useEffect(() => {
     let ignore = false;
@@ -37,24 +40,23 @@ export function PasskeyManager() {
   const reload = async () => setPasskeys(await fetchPasskeys());
 
   async function add() {
+    const prepared = take();
+    if (!prepared) return;
     setBusy(true);
     setMessage(null);
-    const result = await enrollThisDevice();
-    if (result === "ok") setMessage({ kind: "ok", text: t.passkey.added });
-    else if (result !== "cancelled") {
-      console.error("Passkey registration failed:", result);
-      const problem = passkeyProblem(result);
+
+    // Opens Face ID right away — no network wait before it (Safari requirement).
+    const result = await completeRegistration(prepared);
+    if (result === "ok") {
+      setMessage({ kind: "ok", text: t.passkey.added });
+    } else {
+      if (result !== "cancelled") console.error("Passkey registration failed:", result);
       setMessage({
         kind: "error",
-        text:
-          problem === "wrongDomain"
-            ? fmt(t.passkey.wrongDomain, { host: location.host })
-            : problem === "disabled"
-              ? t.passkey.notEnabled
-              : fmt(t.passkey.failedDetail, { detail: result.message }),
+        text: passkeyMessage(result, t, fmt(t.passkey.failedDetail, { detail: result === "cancelled" ? "" : result.message })),
       });
     }
-    await reload();
+    await Promise.all([reload(), refresh()]);
     setBusy(false);
   }
 
@@ -113,8 +115,8 @@ export function PasskeyManager() {
         {supported === false ? (
           <p className="text-sm text-muted">{t.passkey.notSupported}</p>
         ) : (
-          <button type="button" onClick={add} disabled={busy || supported === null} className={buttonClass.primary}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+          <button type="button" onClick={add} disabled={busy || !ready} className={buttonClass.primary}>
+            {busy || !ready ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             {busy ? t.passkey.adding : t.passkey.addDevice}
           </button>
         )}

@@ -5,8 +5,10 @@ import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { enrollThisDevice, passkeyProblem, passkeySupported } from "@/lib/passkey";
+import { completeRegistration, passkeySupported, prepareRegistration } from "@/lib/passkey";
 import { createClient } from "@/lib/supabase/client";
+import { passkeyMessage } from "./messages";
+import { usePrepared } from "./usePrepared";
 
 const DISMISSED_KEY = "brixa.passkeyPrompt.dismissed";
 
@@ -35,6 +37,7 @@ export function PasskeyPrompt() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ready, take, refresh } = usePrepared(prepareRegistration, visible);
 
   useEffect(() => {
     if (readDismissed()) return;
@@ -60,18 +63,22 @@ export function PasskeyPrompt() {
   }
 
   async function enable() {
+    const prepared = take();
+    if (!prepared) return;
     setBusy(true);
     setError(null);
-    const result = await enrollThisDevice();
+
+    // Opens Face ID right away — no network wait before it (Safari requirement).
+    const result = await completeRegistration(prepared);
     setBusy(false);
-    if (result === "ok") later();
-    else if (result !== "cancelled") {
-      setError(
-        passkeyProblem(result) === "wrongDomain"
-          ? fmt(t.passkey.wrongDomain, { host: location.host })
-          : fmt(t.passkey.failedDetail, { detail: result.message })
-      );
+    if (result === "ok") {
+      later();
+      return;
     }
+    void refresh();
+    setError(
+      passkeyMessage(result, t, fmt(t.passkey.failedDetail, { detail: result === "cancelled" ? "" : result.message }))
+    );
   }
 
   return (
@@ -84,8 +91,8 @@ export function PasskeyPrompt() {
         <p className="text-sm text-fg-2">{error ?? t.passkey.promptText}</p>
       </div>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={enable} disabled={busy} className={buttonClass.primary}>
-          {busy && <Loader2 className="size-4 animate-spin" />}
+        <button type="button" onClick={enable} disabled={busy || !ready} className={buttonClass.primary}>
+          {(busy || !ready) && <Loader2 className="size-4 animate-spin" />}
           {busy ? t.passkey.adding : t.passkey.promptEnable}
         </button>
         <button type="button" onClick={later} className={buttonClass.ghost}>

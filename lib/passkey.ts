@@ -1,5 +1,25 @@
-/** Browser helpers for passkeys (Face ID, Touch ID, Windows Hello, fingerprint). */
+/**
+ * Browser helpers for passkeys (Face ID, Touch ID, Windows Hello, fingerprint).
+ *
+ * Safari only shows the Face ID prompt when it opens straight from a tap. Supabase's
+ * one-call helpers fetch a challenge first, and that network wait makes iPhones refuse.
+ * So we fetch the challenge ahead of time ("prepare") and, on tap, open the prompt
+ * immediately ("complete").
+ */
+import {
+  deserializeCredentialCreationOptions,
+  deserializeCredentialRequestOptions,
+  serializeCredentialCreationResponse,
+  serializeCredentialRequestResponse,
+} from "@supabase/auth-js/dist/module/lib/webauthn";
 import { createClient } from "./supabase/client";
+
+/** Challenges are valid for 5 minutes; refresh a little before that. */
+export const PREPARE_REFRESH_MS = 4 * 60 * 1000;
+
+export type Prepared<T> = { challengeId: string; publicKey: T };
+export type PreparedRegistration = Prepared<PublicKeyCredentialCreationOptions>;
+export type PreparedSignIn = Prepared<PublicKeyCredentialRequestOptions>;
 
 /** True when this device can create a passkey unlocked by face / fingerprint / PIN. */
 export async function passkeySupported(): Promise<boolean> {
@@ -11,7 +31,7 @@ export async function passkeySupported(): Promise<boolean> {
   }
 }
 
-/** The user closed the Face ID / Windows Hello prompt — not an error worth showing. */
+/** The Face ID / Windows Hello prompt was closed or not confirmed. */
 export function isCancelled(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const e = error as { name?: string; code?: string; cause?: { name?: string } };
@@ -36,20 +56,6 @@ export function deviceName() {
   return "Browser";
 }
 
-/**
- * Register a passkey for the signed-in user on this device and name it after the device.
- * Returns "ok", "cancelled" or the error.
- */
-export async function enrollThisDevice(): Promise<"ok" | "cancelled" | Error> {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.registerPasskey();
-  if (error) return isCancelled(error) ? "cancelled" : error;
-  if (data?.id) {
-    await supabase.auth.passkey.update({ passkeyId: data.id, friendlyName: deviceName() });
-  }
-  return "ok";
-}
-
 export type PasskeyProblem = "cancelled" | "disabled" | "wrongDomain" | "other";
 
 /** Sort a passkey failure into something we can explain to the user. */
@@ -68,4 +74,77 @@ export function passkeyProblem(error: unknown): PasskeyProblem {
   }
   if (/disabled|not enabled/i.test(text)) return "disabled";
   return "other";
+}
+
+type Outcome = "ok" | "cancelled" | Error;
+
+const asError = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
+
+// ---------------------------------------------------------------------------
+// Adding a device (user is signed in)
+// ---------------------------------------------------------------------------
+
+export async function prepareRegistration(): Promise<PreparedRegistration | null> {
+  const { data, error } = await createClient().auth.passkey.startRegistration();
+  if (error || !data) {
+    console.error("Preparing passkey registration failed:", error);
+    return null;
+  }
+  return {
+    challengeId: data.challenge_id,
+    publicKey: deserializeCredentialCreationOptions(data.options) as unknown as PublicKeyCredentialCreationOptions,
+  };
+}
+
+/** Call directly from the tap handler — the prompt must open before any other await. */
+export async function completeRegistration(prepared: PreparedRegistration): Promise<Outcome> {
+  let credential: PublicKeyCredential | null;
+  try {
+    credential = (await navigator.credentials.create({ publicKey: prepared.publicKey })) as PublicKeyCredential | null;
+  } catch (e) {
+    return isCancelled(e) ? "cancelled" : asError(e);
+  }
+  if (!credential) return "cancelled";
+
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.passkey.verifyRegistration({
+    challengeId: prepared.challengeId,
+    credential: serializeCredentialCreationResponse(credential as never),
+  });
+  if (error) return error;
+  if (data?.id) await supabase.auth.passkey.update({ passkeyId: data.id, friendlyName: deviceName() });
+  return "ok";
+}
+
+// ---------------------------------------------------------------------------
+// Signing in
+// ---------------------------------------------------------------------------
+
+export async function prepareSignIn(): Promise<PreparedSignIn | null> {
+  const { data, error } = await createClient().auth.passkey.startAuthentication();
+  if (error || !data) {
+    console.error("Preparing passkey sign-in failed:", error);
+    return null;
+  }
+  return {
+    challengeId: data.challenge_id,
+    publicKey: deserializeCredentialRequestOptions(data.options) as unknown as PublicKeyCredentialRequestOptions,
+  };
+}
+
+/** Call directly from the tap handler. On success the session is saved (cookies). */
+export async function completeSignIn(prepared: PreparedSignIn): Promise<Outcome> {
+  let credential: PublicKeyCredential | null;
+  try {
+    credential = (await navigator.credentials.get({ publicKey: prepared.publicKey })) as PublicKeyCredential | null;
+  } catch (e) {
+    return isCancelled(e) ? "cancelled" : asError(e);
+  }
+  if (!credential) return "cancelled";
+
+  const { error } = await createClient().auth.passkey.verifyAuthentication({
+    challengeId: prepared.challengeId,
+    credential: serializeCredentialRequestResponse(credential as never),
+  });
+  return error ?? "ok";
 }

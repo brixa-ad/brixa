@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { fmt } from "@/lib/i18n/dictionaries";
-import { passkeyProblem, passkeySupported } from "@/lib/passkey";
-import { createClient } from "@/lib/supabase/client";
+import { completeSignIn, passkeyProblem, passkeySupported, prepareSignIn } from "@/lib/passkey";
+import { passkeyMessage } from "./messages";
+import { usePrepared } from "./usePrepared";
 
 /** "Sign in with Face ID" — shown only on devices that support passkeys. */
 export function PasskeyLoginButton() {
@@ -16,6 +16,7 @@ export function PasskeyLoginButton() {
   const [supported, setSupported] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ready, take, refresh } = usePrepared(prepareSignIn, supported);
 
   useEffect(() => {
     passkeySupported().then(setSupported);
@@ -24,31 +25,34 @@ export function PasskeyLoginButton() {
   if (!supported) return null;
 
   async function signIn() {
+    const prepared = take();
+    if (!prepared) return;
     setBusy(true);
     setError(null);
-    const { error: signInError } = await createClient().auth.signInWithPasskey();
-    if (!signInError) {
+
+    // Opens Face ID right away — no network wait before it (Safari requirement).
+    const result = await completeSignIn(prepared);
+    if (result === "ok") {
       router.replace("/properties");
       router.refresh();
       return;
     }
+
     setBusy(false);
-    const problem = passkeyProblem(signInError);
-    if (problem === "cancelled") return;
-    console.error("Passkey sign-in failed:", signInError);
-    setError(
-      problem === "wrongDomain"
-        ? fmt(t.passkey.wrongDomain, { host: location.host })
-        : problem === "disabled"
-          ? t.passkey.notEnabled
-          : t.passkey.failed
-    );
+    void refresh();
+    if (passkeyProblem(result) !== "cancelled") console.error("Passkey sign-in failed:", result);
+    setError(passkeyMessage(result, t, t.passkey.failed));
   }
 
   return (
     <div className="mb-4 space-y-3">
-      <button type="button" onClick={signIn} disabled={busy} className={`${buttonClass.primary} w-full py-3`}>
-        {busy ? <Loader2 className="size-5 animate-spin" /> : <ScanFace className="size-5" />}
+      <button
+        type="button"
+        onClick={signIn}
+        disabled={busy || !ready}
+        className={`${buttonClass.primary} w-full py-3`}
+      >
+        {busy || !ready ? <Loader2 className="size-5 animate-spin" /> : <ScanFace className="size-5" />}
         <span className="text-left leading-tight">
           <span className="block">{t.passkey.signIn}</span>
           <span className="block text-xs font-normal opacity-80">{t.passkey.signInHint}</span>
