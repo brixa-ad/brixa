@@ -1,5 +1,7 @@
 import "server-only";
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CommissionDefaults } from "./commission";
 import { createClient } from "./supabase/server";
 import type { Feature, FormLookups, Member, Role, Settlement } from "./types";
 
@@ -52,10 +54,24 @@ export async function getMembers(supabase: SupabaseClient, organizationId: strin
   });
 }
 
+/** The agency's standard commission: % for sales, months of rent for leases. */
+export const getCommissionDefaults = cache(async (organizationId: string): Promise<CommissionDefaults> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("organizations")
+    .select("commission_sale_percent, commission_rent_months")
+    .eq("id", organizationId)
+    .maybeSingle();
+  return {
+    salePercent: Number(data?.commission_sale_percent ?? 3),
+    rentMonths: Number(data?.commission_rent_months ?? 1),
+  };
+});
+
 export async function getFormLookups(organizationId: string): Promise<FormLookups> {
   const supabase = await createClient();
 
-  const [categories, subtypes, subtypeFeatures, regions, settlements, members, ownerClients] = await Promise.all([
+  const [categories, subtypes, subtypeFeatures, regions, settlements, members, ownerClients, commissionDefaults] = await Promise.all([
     supabase.from("property_categories").select("id, code, name, name_en").order("sort_order"),
     supabase
       .from("property_subtypes")
@@ -73,6 +89,7 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
       .eq("organization_id", organizationId)
       .overlaps("types", ["seller", "landlord"])
       .order("full_name"),
+    getCommissionDefaults(organizationId),
   ]);
 
   for (const result of [categories, subtypes, subtypeFeatures, regions]) {
@@ -97,5 +114,6 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     settlements,
     members,
     ownerClients: ownerClients.data ?? [],
+    commissionDefaults,
   };
 }

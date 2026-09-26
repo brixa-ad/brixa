@@ -5,15 +5,18 @@ import { useTransition } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
 
-/** Managers: whose tasks to look at — mine, one colleague, or everyone. */
+/** Managers: whose tasks / deals to look at — mine, one colleague, or everyone. */
 export function BrokerPicker({
   value,
   members,
   selfId,
+  allByDefault = false,
 }: {
   value: string;
   members: { id: string; name: string }[];
   selfId: string;
+  /** the page shows everyone when there is no ?broker= */
+  allByDefault?: boolean;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -28,7 +31,7 @@ export function BrokerPicker({
       disabled={pending}
       onChange={(event) => {
         const next = new URLSearchParams(searchParams.toString());
-        if (event.target.value === selfId) next.delete("broker");
+        if (event.target.value === (allByDefault ? "all" : selfId)) next.delete("broker");
         else next.set("broker", event.target.value);
         const qs = next.toString();
         startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname));

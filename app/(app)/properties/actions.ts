@@ -124,6 +124,7 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     heating: building ? input.heating : null,
     current_price: input.price,
     currency: input.currency,
+    commission_rate: input.operationType === "sale" || input.operationType === "rent" ? input.commissionRate : null,
     responsible_broker_id: session.isManager ? (input.brokerId ?? session.userId) : session.userId,
     owner_client_id: input.ownerClientId,
     exclusive_contract: input.exclusiveContract,

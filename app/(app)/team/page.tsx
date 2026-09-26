@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, Phone, ShieldCheck } from "lucide-react";
+import { Mail, Phone, ShieldCheck, Target } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
-import { Card } from "@/components/ui/form";
+import { Card, buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
@@ -49,6 +49,14 @@ export default async function TeamPage() {
       <PageHeader
         title={t.team.title}
         subtitle={fmt(t.team.subtitle, { agency: session.organizationName })}
+        actions={
+          session.isManager ? (
+            <Link href="/team/goals" className={buttonClass.secondary}>
+              <Target className="size-4" />
+              {t.goals.link}
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

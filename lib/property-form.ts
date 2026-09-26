@@ -22,6 +22,8 @@ export type PropertyFormValues = {
   heating: string;
   price: string;
   currency: Currency;
+  /** sale: %, rent: months; empty = agency default */
+  commissionRate: string;
   brokerId: string;
   ownerClientId: string | null;
   exclusiveContract: boolean;
@@ -50,6 +52,7 @@ export function emptyFormValues(userId: string): PropertyFormValues {
     heating: "",
     price: "",
     currency: "EUR",
+    commissionRate: "",
     brokerId: userId,
     ownerClientId: null,
     exclusiveContract: false,
@@ -72,6 +75,7 @@ export function toInput(values: PropertyFormValues): PropertyInput {
     floor: parseNumber(values.floor),
     totalFloors: parseNumber(values.totalFloors),
     price: parseNumber(values.price),
+    commissionRate: parseNumber(values.commissionRate),
     condition: values.condition || null,
     constructionType: values.constructionType || null,
     exposure: values.exposure || null,

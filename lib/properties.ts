@@ -33,6 +33,8 @@ export type PropertyDetail = {
   asking_price: number | null;
   current_price: number | null;
   currency: string;
+  /** sale: %, rent: months; null = agency default */
+  commission_rate: number | null;
   exclusive_contract: boolean;
   description: string | null;
   responsible_broker_id: string | null;
@@ -105,6 +107,7 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
     area: toNumber(rest.area),
     asking_price: toNumber(rest.asking_price),
     current_price: toNumber(rest.current_price),
+    commission_rate: toNumber(rest.commission_rate),
     features: ((feature_values ?? []) as { feature: Feature | null }[])
       .map((row) => row.feature)
       .filter((feature): feature is Feature => Boolean(feature)),

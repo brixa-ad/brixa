@@ -108,3 +108,17 @@ export const ACTIVITY_TYPES = ["call", "email", "message", "meeting", "viewing",
 
 export type TaskType = (typeof TASK_TYPES)[number];
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+
+// ---- Deals ----
+export const DEAL_KINDS = ["sale", "rent"] as const;
+export const DEAL_STAGES = ["viewing", "offer", "deposit", "preliminary", "notary"] as const;
+export const DEAL_STATUSES = ["open", "won", "lost"] as const;
+
+export type DealKind = (typeof DEAL_KINDS)[number];
+export type DealStage = (typeof DEAL_STAGES)[number];
+export type DealStatus = (typeof DEAL_STATUSES)[number];
+
+/** A lease has no preliminary contract. */
+export function dealStages(kind: DealKind): readonly DealStage[] {
+  return kind === "rent" ? DEAL_STAGES.filter((stage) => stage !== "preliminary") : DEAL_STAGES;
+}

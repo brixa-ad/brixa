@@ -114,3 +114,57 @@ export async function renameOrganization(_: TeamState, formData: FormData): Prom
   revalidatePath("/", "layout");
   return { success: true };
 }
+
+export type GoalRow = {
+  profileId: string;
+  dailyCalls: number;
+  dailyViewings: number;
+  dailyListings: number;
+  monthlyTarget: number;
+  yearlyTarget: number;
+};
+
+const whole = (value: number, max: number) => Number.isInteger(value) && value >= 0 && value <= max;
+
+/** Managers set each colleague's daily goals and commission targets. */
+export async function saveGoals(rows: GoalRow[]): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  const valid = rows.every(
+    (r) =>
+      typeof r.profileId === "string" &&
+      whole(r.dailyCalls, 500) &&
+      whole(r.dailyViewings, 100) &&
+      whole(r.dailyListings, 100) &&
+      Number.isFinite(r.monthlyTarget) &&
+      r.monthlyTarget >= 0 &&
+      r.monthlyTarget <= 100_000_000 &&
+      Number.isFinite(r.yearlyTarget) &&
+      r.yearlyTarget >= 0 &&
+      r.yearlyTarget <= 100_000_000
+  );
+  if (!valid || rows.length === 0) return { ok: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("broker_goals").upsert(
+    rows.map((r) => ({
+      organization_id: session.organizationId,
+      profile_id: r.profileId,
+      daily_calls: r.dailyCalls,
+      daily_viewings: r.dailyViewings,
+      daily_listings: r.dailyListings,
+      monthly_target: r.monthlyTarget,
+      yearly_target: r.yearlyTarget,
+      updated_by: session.userId,
+      updated_at: new Date().toISOString(),
+    })),
+    { onConflict: "organization_id,profile_id" }
+  );
+  if (error) {
+    console.error("Saving goals failed:", error.message);
+    return { ok: false };
+  }
+  revalidatePath("/");
+  revalidatePath("/team/goals");
+  return { ok: true };
+}

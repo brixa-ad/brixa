@@ -25,6 +25,7 @@ export async function updateProfile(
       job_title: input.jobTitle.trim() || null,
       bio: input.bio.trim() || null,
       areas,
+      weekly_hours: input.weeklyHours,
     })
     .eq("id", session.userId);
 

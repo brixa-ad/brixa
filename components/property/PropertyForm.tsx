@@ -8,8 +8,9 @@ import { createProperty, updateProperty } from "@/app/(app)/properties/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
+import { commissionRate, expectedCommission, rateLabel } from "@/lib/commission";
 import { formatNumber, formatPrice, settlementLabel } from "@/lib/format";
-import { localName } from "@/lib/i18n/dictionaries";
+import { fmt, localName } from "@/lib/i18n/dictionaries";
 import {
   CONDITIONS,
   CONSTRUCTION_TYPES,
@@ -191,6 +192,12 @@ export function PropertyForm({
   const previewImage = queued[0]?.url ?? coverUrl ?? null;
   const pricePerSqm =
     input.price && input.area && input.area > 0 ? Math.round(input.price / input.area) : null;
+  const listing = values.operationType === "sale" || values.operationType === "rent";
+  const dealKind = values.operationType === "rent" ? "rent" : "sale";
+  const defaultRate = commissionRate(dealKind, null, lookups.commissionDefaults);
+  const commission = listing
+    ? expectedCommission(dealKind, input.price, values.currency, commissionRate(dealKind, input.commissionRate, lookups.commissionDefaults))
+    : null;
 
   const busy = phase !== "idle";
   const hasErrors = Object.keys(errors).length > 0;
@@ -435,6 +442,23 @@ export function PropertyForm({
                   </select>
                 )}
               </Field>
+              {listing && (
+                <div className="sm:col-span-2">
+                  <NumberField
+                    label={dealKind === "rent" ? t.form.commissionRent : t.form.commissionSale}
+                    value={values.commissionRate}
+                    onChange={(v) => set("commissionRate", v)}
+                    error={errorText("commissionRate")}
+                    decimal
+                    hint={[
+                      fmt(t.form.commissionDefault, { value: rateLabel(dealKind, defaultRate, t.units.months) }),
+                      commission !== null ? `${t.form.expectedCommission}: ${formatPrice(commission, "EUR", lang)}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  />
+                </div>
+              )}
             </div>
           </Card>
 

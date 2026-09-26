@@ -1,3 +1,5 @@
+import type { CommissionDefaults } from "./commission";
+
 export type Category = { id: string; code: string; name: string; name_en: string | null };
 
 export type Subtype = {
@@ -44,6 +46,7 @@ export type FormLookups = {
   members: Member[];
   /** sellers / landlords this user can see (own clients, or all for managers) */
   ownerClients: { id: string; full_name: string; phone: string | null }[];
+  commissionDefaults: CommissionDefaults;
 };
 
 export type Photo = { id: string; storage_path: string; position: number; url: string | null };

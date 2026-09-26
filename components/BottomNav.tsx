@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, House, ListChecks, UserRound, Users } from "lucide-react";
+import { Building2, Handshake, House, ListChecks, Users } from "lucide-react";
 import { useI18n } from "./I18nProvider";
 
 /**
  * App-style tab bar on phones. Hidden on create/edit screens, which have their own
- * fixed save bar at the bottom.
+ * fixed save bar at the bottom. The profile is the avatar in the top bar.
  */
 export function BottomNav() {
   const { t } = useI18n();
@@ -18,9 +18,9 @@ export function BottomNav() {
   const tabs = [
     { href: "/", label: t.nav.home, icon: House },
     { href: "/tasks", label: t.nav.tasks, icon: ListChecks },
+    { href: "/deals", label: t.nav.deals, icon: Handshake },
     { href: "/properties", label: t.nav.properties, icon: Building2 },
     { href: "/clients", label: t.nav.clients, icon: Users },
-    { href: "/profile", label: t.nav.profile, icon: UserRound },
   ];
 
   return (

@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Eye, MapPin, Pencil, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Eye, MapPin, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { DealCard } from "@/components/deal/DealCard";
 import { PageHeader } from "@/components/PageHeader";
 import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
 import { PhotoGallery } from "@/components/property/PhotoGallery";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { StatusSelect } from "@/components/property/StatusSelect";
 import { Card, buttonClass } from "@/components/ui/form";
+import { commissionRate, expectedCommission, rateLabel } from "@/lib/commission";
+import { DEAL_SELECT, toDeals } from "@/lib/deals";
 import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { getCommissionDefaults } from "@/lib/lookups";
 import { getProperty } from "@/lib/properties";
 import { getSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/properties/[id]">): Promise<Metadata> {
   const property = await getProperty((await params).id);
@@ -26,6 +31,18 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const [{ t, lang }, property, session] = await Promise.all([getI18n(), getProperty(id), getSession()]);
 
   if (!property) notFound();
+
+  // Deals on this listing that this user may see (their own; managers: all).
+  const listing = property.operation_type === "sale" || property.operation_type === "rent";
+  const kind = property.operation_type === "rent" ? "rent" : "sale";
+  const supabase = await createClient();
+  const [defaults, { data: dealRows }] = await Promise.all([
+    getCommissionDefaults(property.organization_id),
+    supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
+  ]);
+  const deals = toDeals(dealRows);
+  const rate = commissionRate(kind, property.commission_rate, defaults);
+  const commission = listing ? expectedCommission(kind, property.current_price, property.currency, rate) : null;
 
   // Everyone in the agency can view; only the responsible broker and managers can change it.
   const canEdit = Boolean(session?.isManager || property.responsible_broker_id === session?.userId);
@@ -189,6 +206,14 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               </p>
             )}
 
+            {commission !== null && (
+              <p className="mt-2 text-sm text-muted">
+                {t.form.expectedCommission}:{" "}
+                <span className="font-semibold text-accent-fg">{formatPrice(commission, "EUR", lang)}</span>{" "}
+                ({rateLabel(kind, rate, t.units.months)})
+              </p>
+            )}
+
             {property.exclusive_contract && (
               <p className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-fg">
                 <ShieldCheck className="size-3.5" />
@@ -237,6 +262,33 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               <Row name={t.detail.updated} value={formatDate(property.updated_at, lang, true)} />
             </dl>
           </Card>
+
+          {listing && (
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  {t.deals.forProperty}
+                  <Link
+                    href={`/deals/new?property=${property.id}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                  >
+                    <Plus className="size-3.5" />
+                    {t.deals.newDeal}
+                  </Link>
+                </span>
+              }
+            >
+              {deals.length === 0 ? (
+                <p className="text-sm text-muted">{t.deals.none}</p>
+              ) : (
+                <div className="space-y-2">
+                  {deals.map((deal) => (
+                    <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker />
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
 
           <Card title={t.detail.priceHistory}>
             {property.priceHistory.length === 0 ? (

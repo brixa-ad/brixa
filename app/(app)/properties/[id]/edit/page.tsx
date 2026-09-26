@@ -37,6 +37,7 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     furnishing: property.furnishing ?? "",
     heating: property.heating ?? "",
     price: str(property.current_price),
+    commissionRate: str(property.commission_rate),
     currency: isOneOf(CURRENCIES, property.currency) ? property.currency : "EUR",
     brokerId: property.responsible_broker_id ?? "",
     ownerClientId: property.owner_client_id,

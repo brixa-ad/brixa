@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Eye, LogOut } from "lucide-react";
+import { ChevronRight, Eye, LogOut, Users } from "lucide-react";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { PasskeyManager } from "@/components/passkey/PasskeyManager";
 import { Card, buttonClass } from "@/components/ui/form";
@@ -23,7 +24,7 @@ export default async function ProfilePage() {
     getI18n(),
     supabase
       .from("profiles")
-      .select("full_name, phone, job_title, bio, areas, avatar_path")
+      .select("full_name, phone, job_title, bio, areas, avatar_path, weekly_hours")
       .eq("id", session.userId)
       .single(),
   ]);
@@ -49,12 +50,26 @@ export default async function ProfilePage() {
             <AvatarUploader userId={session.userId} avatarPath={profile?.avatar_path ?? null} name={name} />
           </Card>
           <PasskeyManager />
-          <form action={signOut} className="md:hidden">
-            <button type="submit" className={`${buttonClass.secondary} w-full`}>
-              <LogOut className="size-4" />
-              {t.common.signOut}
-            </button>
-          </form>
+          {/* On the phone the top bar has no room for these */}
+          <div className="space-y-3 md:hidden">
+            <div className="divide-y divide-line-soft overflow-hidden rounded-2xl border border-line bg-surface">
+              <Link href="/team" className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium">
+                <Users className="size-4 text-muted" />
+                <span className="flex-1">{t.nav.team}</span>
+                <ChevronRight className="size-4 text-faint" />
+              </Link>
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-sm font-medium">{t.profile.language}</span>
+                <LanguageToggle />
+              </div>
+            </div>
+            <form action={signOut}>
+              <button type="submit" className={`${buttonClass.secondary} w-full`}>
+                <LogOut className="size-4" />
+                {t.common.signOut}
+              </button>
+            </form>
+          </div>
         </div>
 
         <Card>
@@ -65,6 +80,7 @@ export default async function ProfilePage() {
               jobTitle: profile?.job_title ?? "",
               bio: profile?.bio ?? "",
               areas: profile?.areas ?? [],
+              weeklyHours: Number(profile?.weekly_hours ?? 40),
             }}
           />
         </Card>

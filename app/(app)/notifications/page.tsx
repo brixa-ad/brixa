@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BellOff, CheckCircle2, ClipboardList } from "lucide-react";
+import { AlarmClock, BadgeCheck, BellOff, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
-import { formatDate } from "@/lib/format";
-import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
+import { formatDate, formatPrice } from "@/lib/format";
+import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -17,15 +17,20 @@ export async function generateMetadata(): Promise<Metadata> {
 type Row = {
   id: string;
   type: string;
-  data: { title?: string; actor?: string; days?: number };
+  data: { title?: string; actor?: string; days?: number; amount?: number };
   link: string | null;
   read_at: string | null;
   created_at: string;
 };
 
 /** Notifications are stored as type + data; the text is written in the reader's language. */
-function text(n: Row, t: Dictionary) {
-  const vars = { title: n.data.title ?? "", actor: n.data.actor ?? "", days: n.data.days ?? 0 };
+function text(n: Row, t: Dictionary, lang: Lang) {
+  const vars = {
+    title: n.data.title ?? "",
+    actor: n.data.actor ?? "",
+    days: n.data.days ?? 0,
+    amount: formatPrice(Number(n.data.amount ?? 0), "EUR", lang) ?? "",
+  };
   const late = (n.data.days ?? 0) > 0;
   switch (n.type) {
     case "task_assigned":
@@ -36,6 +41,16 @@ function text(n: Row, t: Dictionary) {
       return fmt(late ? t.notifications.task_overdue_days : t.notifications.task_overdue, vars);
     case "task_overdue_team":
       return fmt(late ? t.notifications.task_overdue_team_days : t.notifications.task_overdue_team, vars);
+    case "deal_to_confirm":
+      return fmt(t.notifications.deal_to_confirm, vars);
+    case "deal_confirmed":
+      return fmt(t.notifications.deal_confirmed, vars);
+    case "deal_returned":
+      return fmt(t.notifications.deal_returned, vars);
+    case "commission_logged":
+      return fmt(t.notifications.commission_logged, vars);
+    case "overtaken":
+      return fmt(t.notifications.overtaken, vars);
     default:
       return vars.title;
   }
@@ -46,6 +61,11 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   task_done: { icon: CheckCircle2, tone: "bg-success/10 text-success" },
   task_overdue: { icon: AlarmClock, tone: "bg-warning/10 text-warning" },
   task_overdue_team: { icon: AlarmClock, tone: "bg-danger/10 text-danger" },
+  deal_to_confirm: { icon: Handshake, tone: "bg-warning/10 text-warning" },
+  deal_confirmed: { icon: BadgeCheck, tone: "bg-success/10 text-success" },
+  deal_returned: { icon: Undo2, tone: "bg-warning/10 text-warning" },
+  commission_logged: { icon: Trophy, tone: "bg-accent-soft text-accent-fg" },
+  overtaken: { icon: TrendingUp, tone: "bg-danger/10 text-danger" },
 };
 
 export default async function NotificationsPage() {
@@ -82,7 +102,7 @@ export default async function NotificationsPage() {
                   <Icon className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm leading-snug ${n.read_at ? "text-fg-2" : "font-semibold text-fg"}`}>{text(n, t)}</p>
+                  <p className={`text-sm leading-snug ${n.read_at ? "text-fg-2" : "font-semibold text-fg"}`}>{text(n, t, lang)}</p>
                   <p className="mt-0.5 text-xs text-subtle">{formatDate(n.created_at, lang, true)}</p>
                 </div>
                 {!n.read_at && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-fg" aria-hidden />}

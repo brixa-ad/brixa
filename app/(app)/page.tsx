@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Plus, Quote } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Clock, Plus, Quote, Target } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { Leaderboard } from "@/components/Leaderboard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
 import { daysBetween, sofiaToday, TIME_ZONE } from "@/lib/dates";
+import { formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
+import { getLeaderboards, getMyNumbers } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
 
@@ -24,12 +27,53 @@ export default async function HomePage() {
   const today = sofiaToday();
   const supabase = await createClient();
 
-  const [{ t, lang }, day, team, members] = await Promise.all([
+  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }] = await Promise.all([
     getI18n(),
     getMyDay(session.userId, today),
     session.isManager ? getTeamDay(session.organizationId, today) : Promise.resolve(null),
     session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    getMyNumbers(session, today),
+    getLeaderboards(session.organizationId),
+    session.isManager
+      ? supabase
+          .from("deals")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", session.organizationId)
+          .eq("status", "won")
+          .is("confirmed_at", null)
+      : Promise.resolve({ count: 0 }),
   ]);
+  const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
+  const { goals } = numbers;
+  const dailyGoals = [
+    {
+      label: t.home.goalCalls,
+      done: numbers.today.calls,
+      goal: goals.dailyCalls,
+    },
+    {
+      label: t.home.goalViewings,
+      done: numbers.today.viewings,
+      goal: goals.dailyViewings,
+    },
+    {
+      label: t.home.goalListings,
+      done: numbers.today.listings,
+      goal: goals.dailyListings,
+    },
+  ];
+  const targets = [
+    {
+      label: t.home.targetMonth,
+      done: numbers.monthCommission,
+      target: goals.monthlyTarget,
+    },
+    {
+      label: t.home.targetYear,
+      done: numbers.ytdCommission,
+      target: goals.yearlyTarget,
+    },
+  ];
 
   const firstName = (session.fullName || session.email).split(/[\s@]+/)[0];
   const quote = quoteOfTheDay(lang);
@@ -64,53 +108,114 @@ export default async function HomePage() {
         </figure>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* ---- today's tasks ---- */}
-        <Card className="p-0! sm:p-0!">
-          <header className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
-            <h2 className="text-base font-semibold">{t.home.todayTasks}</h2>
-            <Link href="/tasks/new" className={`${buttonClass.primary} px-3! py-1.5!`}>
-              <Plus className="size-4" />
-              {t.home.addTask}
+      {/* ---- managers: closings waiting for a yes ---- */}
+      {(toConfirm ?? 0) > 0 && (
+        <Link
+          href="/deals?tab=confirm"
+          className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-sm font-semibold text-warning transition hover:bg-warning/15"
+        >
+          <BadgeCheck className="size-5 shrink-0" />
+          <span className="flex-1">{fmt(t.home.toConfirm, { count: toConfirm ?? 0 })}</span>
+          <ArrowRight className="size-4" />
+        </Link>
+      )}
+
+      {/* ---- my year in numbers ---- */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-muted">{fmt(t.home.statsTitle, { year: today.slice(0, 4) })}</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            {
+              label: t.home.statDeals,
+              value: String(numbers.ytdDeals),
+              href: "/deals?tab=won",
+            },
+            {
+              label: t.home.statCommission,
+              value: euro(numbers.ytdCommission),
+              href: "/deals?tab=won",
+              extra:
+                numbers.pendingCommission > 0
+                  ? fmt(t.home.pendingAmount, {
+                      amount: euro(numbers.pendingCommission),
+                    })
+                  : null,
+            },
+            {
+              label: t.home.statListings,
+              value: String(numbers.activeListings),
+              href: "/properties",
+            },
+            {
+              label: t.home.statBuyers,
+              value: String(numbers.activeBuyers),
+              href: "/clients",
+            },
+          ].map((stat) => (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="rounded-2xl border border-line bg-surface p-4 shadow-xs transition hover:border-accent/50"
+            >
+              <p className="text-xs font-medium text-muted">{stat.label}</p>
+              <p className="mt-1 truncate text-2xl font-bold tracking-tight">{stat.value}</p>
+              {stat.extra && <p className="mt-0.5 truncate text-[11px] font-medium text-warning">{stat.extra}</p>}
             </Link>
-          </header>
+          ))}
+        </div>
+      </section>
 
-          <div className="px-2 pb-3 pt-2 sm:px-3">
-            {day.open.length === 0 ? (
-              <p className="flex items-center gap-2 px-3 py-6 text-sm text-muted">
-                <CheckCircle2 className="size-5 text-success" />
-                {total > 0 ? t.home.allDone : t.home.noTasks}
-              </p>
-            ) : (
-              <ul>
-                {day.open.map((task) => (
-                  <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} />
-                ))}
-              </ul>
-            )}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          {/* ---- today's tasks ---- */}
+          <Card className="p-0! sm:p-0!">
+            <header className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
+              <h2 className="text-base font-semibold">{t.home.todayTasks}</h2>
+              <Link href="/tasks/new" className={`${buttonClass.primary} px-3! py-1.5!`}>
+                <Plus className="size-4" />
+                {t.home.addTask}
+              </Link>
+            </header>
 
-            {day.doneToday.length > 0 && (
-              <>
-                <p className="mt-2 px-3 text-xs font-semibold uppercase tracking-wide text-subtle">
-                  {t.home.doneToday}
+            <div className="px-2 pb-3 pt-2 sm:px-3">
+              {day.open.length === 0 ? (
+                <p className="flex items-center gap-2 px-3 py-6 text-sm text-muted">
+                  <CheckCircle2 className="size-5 text-success" />
+                  {total > 0 ? t.home.allDone : t.home.noTasks}
                 </p>
+              ) : (
                 <ul>
-                  {day.doneToday.map((task) => (
+                  {day.open.map((task) => (
                     <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} />
                   ))}
                 </ul>
-              </>
-            )}
-          </div>
+              )}
 
-          <footer className="flex items-center justify-between border-t border-line-soft px-5 py-3 text-sm sm:px-6">
-            <span className="text-muted">{fmt(t.home.upcoming, { count: day.upcomingCount })}</span>
-            <Link href="/tasks" className="inline-flex items-center gap-1 font-medium text-accent-fg hover:underline">
-              {t.home.viewAll}
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </footer>
-        </Card>
+              {day.doneToday.length > 0 && (
+                <>
+                  <p className="mt-2 px-3 text-xs font-semibold uppercase tracking-wide text-subtle">
+                    {t.home.doneToday}
+                  </p>
+                  <ul>
+                    {day.doneToday.map((task) => (
+                      <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} />
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            <footer className="flex items-center justify-between border-t border-line-soft px-5 py-3 text-sm sm:px-6">
+              <span className="text-muted">{fmt(t.home.upcoming, { count: day.upcomingCount })}</span>
+              <Link href="/tasks" className="inline-flex items-center gap-1 font-medium text-accent-fg hover:underline">
+                {t.home.viewAll}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </footer>
+          </Card>
+
+          <Leaderboard month={boards.month} year={boards.year} viewerId={session.userId} />
+        </div>
 
         <div className="space-y-6">
           {/* ---- how far through the day ---- */}
@@ -127,6 +232,106 @@ export default async function HomePage() {
                 {total > 0 && done === total && <p className="text-sm text-success">{t.home.allDone}</p>}
               </div>
             </div>
+
+            <div className="mt-5 space-y-3 border-t border-line-soft pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-subtle">{t.home.goalsTitle}</p>
+              {dailyGoals.map((g) => (
+                <div key={g.label}>
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="text-fg-2">{g.label}</span>
+                    <span
+                      className={`font-semibold tabular-nums ${g.goal > 0 && g.done >= g.goal ? "text-success" : ""}`}
+                    >
+                      {g.goal > 0 ? `${g.done} / ${g.goal}` : g.done}
+                    </span>
+                  </div>
+                  {g.goal > 0 && (
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
+                        style={{
+                          width: `${Math.min(100, (g.done / g.goal) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* ---- commission targets ---- */}
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <Target className="size-4 text-brand-cyan" />
+                {t.home.targetsTitle}
+              </span>
+            }
+          >
+            <div className="space-y-4">
+              {targets.map((row) => {
+                const percent = row.target > 0 ? Math.round((row.done / row.target) * 100) : null;
+                return (
+                  <div key={row.label}>
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="text-fg-2">{row.label}</span>
+                      {percent !== null && <span className="text-xs font-bold text-accent-fg">{percent}%</span>}
+                    </div>
+                    <p className="mt-0.5 text-lg font-bold tracking-tight">
+                      {euro(row.done)}
+                      {row.target > 0 && (
+                        <span className="ml-1.5 text-xs font-medium text-muted">
+                          {fmt(t.home.targetOf, { target: euro(row.target) })}
+                        </span>
+                      )}
+                    </p>
+                    {percent !== null && (
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-raised">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
+                          style={{ width: `${Math.min(100, percent)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {goals.monthlyTarget === 0 && goals.yearlyTarget === 0 && (
+                <p className="text-xs text-muted">{t.home.noTarget}</p>
+              )}
+            </div>
+          </Card>
+
+          {/* ---- what an hour is worth ---- */}
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <Clock className="size-4 text-brand-cyan" />
+                {t.home.hourTitle}
+              </span>
+            }
+          >
+            {numbers.hourValue === null ? (
+              <p className="text-sm text-muted">{t.home.hourNoData}</p>
+            ) : (
+              <>
+                <p className="text-3xl font-bold tracking-tight text-accent-fg">
+                  {fmt(t.home.hourValue, { amount: euro(numbers.hourValue) })}
+                </p>
+                <p className="mt-1 text-xs text-muted">{t.home.hourValueHint}</p>
+                <p className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+                  {fmt(t.home.hourLoss, { amount: euro(numbers.hourValue) })}
+                </p>
+              </>
+            )}
+            {numbers.needPerHour !== null && (
+              <p className="mt-3 text-sm text-fg-2">
+                {numbers.needPerHour === 0
+                  ? t.home.hourTargetDone
+                  : fmt(t.home.hourNeed, { amount: euro(numbers.needPerHour) })}
+              </p>
+            )}
           </Card>
 
           {/* ---- managers: everyone's day ---- */}
@@ -134,7 +339,11 @@ export default async function HomePage() {
             <Card title={t.home.teamToday}>
               <ul className="space-y-4">
                 {members.map((member) => {
-                  const stats = team.get(member.profile_id) ?? { open: 0, done: 0, overdue: 0 };
+                  const stats = team.get(member.profile_id) ?? {
+                    open: 0,
+                    done: 0,
+                    overdue: 0,
+                  };
                   const memberTotal = stats.open + stats.done;
                   const memberPercent = memberTotal === 0 ? 0 : Math.round((stats.done / memberTotal) * 100);
                   const name = member.full_name || member.email;
@@ -157,7 +366,9 @@ export default async function HomePage() {
                           </div>
                           {stats.overdue > 0 && (
                             <p className="mt-1 text-[11px] font-semibold text-danger">
-                              {fmt(t.home.teamOverdue, { count: stats.overdue })}
+                              {fmt(t.home.teamOverdue, {
+                                count: stats.overdue,
+                              })}
                             </p>
                           )}
                         </div>

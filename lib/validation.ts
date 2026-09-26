@@ -33,6 +33,7 @@ export type PropertyInput = {
   heating: string | null;
   price: number | null;
   currency: Currency;
+  commissionRate: number | null;
   brokerId: string | null;
   ownerClientId: string | null;
   exclusiveContract: boolean;
@@ -109,6 +110,7 @@ export function validateProperty(input: PropertyInput, categoryCode?: string): F
     checkNumber(errors, "price", input.price, { positive: true, max: 1_000_000_000 });
   }
   if (!isOneOf(CURRENCIES, input.currency)) errors.currency = "invalid";
+  checkNumber(errors, "commissionRate", input.commissionRate, { min: 0, max: input.operationType === "rent" ? 24 : 100 });
 
   if (input.description.length > DESCRIPTION_MAX) errors.description = "tooLong";
 

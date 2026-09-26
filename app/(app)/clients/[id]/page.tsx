@@ -7,6 +7,7 @@ import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
 import { DeleteClientButton } from "@/components/client/DeleteClientButton";
 import { QuickLog } from "@/components/client/QuickLog";
+import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
 import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
@@ -23,6 +24,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { sofiaToday } from "@/lib/dates";
 import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
+import { DEAL_SELECT, toDeals } from "@/lib/deals";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const client = await getClient((await params).id);
@@ -81,7 +83,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
   const supabase = await createClient();
   const seeking = isSeeking(client.types) && client.search;
 
-  const [matches, searchLines, { data: owned }, { data: activityRows }, { data: taskRows }] = await Promise.all([
+  const [matches, searchLines, { data: owned }, { data: activityRows }, { data: taskRows }, { data: dealRows }] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
     supabase
@@ -97,7 +99,9 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
       .order("occurred_at", { ascending: false })
       .limit(50),
     supabase.from("tasks").select(TASK_SELECT).eq("client_id", id).eq("status", "open"),
+    supabase.from("deals").select(DEAL_SELECT).eq("client_id", id).order("updated_at", { ascending: false }),
   ]);
+  const deals = toDeals(dealRows);
 
   const activities = (activityRows ?? []) as unknown as {
     id: string;
@@ -258,6 +262,31 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                   <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} showAssignee={session.isManager} />
                 ))}
               </ul>
+            )}
+          </Card>
+
+          <Card
+            title={
+              <span className="flex items-center justify-between gap-3">
+                {t.deals.forClient}
+                <Link
+                  href={`/deals/new?client=${client.id}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                >
+                  <Plus className="size-3.5" />
+                  {t.deals.newDeal}
+                </Link>
+              </span>
+            }
+          >
+            {deals.length === 0 ? (
+              <p className="text-sm text-muted">{t.deals.none}</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {deals.map((deal) => (
+                  <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={session.isManager} />
+                ))}
+              </div>
             )}
           </Card>
 
