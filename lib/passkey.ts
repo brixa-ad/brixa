@@ -32,6 +32,14 @@ export async function passkeySupported(): Promise<boolean> {
   }
 }
 
+/**
+ * True when the browser can sign in with a passkey at all — including from a phone
+ * nearby (Chrome/Edge show a QR code to scan with the iPhone and confirm with Face ID).
+ */
+export function passkeySignInAvailable() {
+  return typeof window !== "undefined" && Boolean(window.PublicKeyCredential);
+}
+
 /** The Face ID / Windows Hello prompt was closed or not confirmed. */
 export function isCancelled(error: unknown) {
   if (!error || typeof error !== "object") return false;
@@ -57,12 +65,20 @@ export function deviceName() {
   return "Browser";
 }
 
-export type PasskeyProblem = "cancelled" | "disabled" | "wrongDomain" | "other";
+export type PasskeyProblem = "cancelled" | "alreadyRegistered" | "disabled" | "wrongDomain" | "other";
 
 /** Sort a passkey failure into something we can explain to the user. */
 export function passkeyProblem(error: unknown): PasskeyProblem {
   if (isCancelled(error)) return "cancelled";
   const e = (error ?? {}) as { name?: string; code?: string; message?: string; cause?: { name?: string; message?: string } };
+  // This device (or one syncing with it, e.g. iPhone + Mac on the same Apple ID) already has a passkey.
+  if (
+    e.name === "InvalidStateError" ||
+    e.cause?.name === "InvalidStateError" ||
+    e.code === "ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED"
+  ) {
+    return "alreadyRegistered";
+  }
   const text = `${e.message ?? ""} ${e.cause?.message ?? ""}`;
   if (
     e.code === "ERROR_INVALID_RP_ID" ||

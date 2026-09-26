@@ -6,6 +6,8 @@ export function passkeyMessage(error: unknown, t: Dictionary, fallback: string) 
   switch (passkeyProblem(error)) {
     case "cancelled":
       return t.passkey.notConfirmed;
+    case "alreadyRegistered":
+      return t.passkey.alreadyRegistered;
     case "wrongDomain":
       return fmt(t.passkey.wrongDomain, { host: location.host });
     case "disabled":

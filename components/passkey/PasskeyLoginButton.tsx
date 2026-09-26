@@ -1,26 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Loader2, ScanFace } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { completeSignIn, passkeyProblem, passkeySupported, prepareSignIn, worksHere } from "@/lib/passkey";
+import { completeSignIn, passkeyProblem, passkeySignInAvailable, prepareSignIn, worksHere } from "@/lib/passkey";
 import { passkeyMessage } from "./messages";
 import { usePrepared } from "./usePrepared";
+
+const noSubscription = () => () => {};
 
 /** "Sign in with Face ID" — shown only on devices that support passkeys. */
 export function PasskeyLoginButton() {
   const { t } = useI18n();
   const router = useRouter();
-  const [supported, setSupported] = useState(false);
+  // Browser-only check; false during the server render.
+  const supported = useSyncExternalStore(noSubscription, passkeySignInAvailable, () => false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { ready, take, refresh, rpId } = usePrepared(prepareSignIn, supported);
-
-  useEffect(() => {
-    passkeySupported().then(setSupported);
-  }, []);
 
   // Hidden where it can't work (other devices, or a site address passkeys aren't set up for).
   if (!supported || !worksHere(rpId)) return null;

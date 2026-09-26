@@ -81,6 +81,8 @@ export function PasskeyManager() {
       description={t.passkey.sectionHint}
     >
       <div className="space-y-4">
+        <p className="text-xs text-subtle">{t.passkey.perDevice}</p>
+
         {passkeys === null ? (
           <Loader2 className="size-5 animate-spin text-subtle" />
         ) : passkeys.length === 0 ? (
