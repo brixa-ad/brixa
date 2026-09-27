@@ -317,7 +317,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                         >
                           {row.discount === null
                             ? "—"
-                            : `${row.discount > 0 ? "−" : "+"}${formatNumber(Math.abs(row.discount) * 100, lang, 1)}%`}
+                            : `${row.discount > 0 ? "−" : row.discount < 0 ? "+" : ""}${formatNumber(Math.abs(row.discount) * 100, lang, 1)}%`}
                         </td>
                       </tr>
                     ))}

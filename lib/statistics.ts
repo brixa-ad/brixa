@@ -107,7 +107,10 @@ export async function getStatistics(session: SessionContext, period: Period, bro
     commission: commissionTotal,
     avgCommission: won.length ? commissionTotal / won.length : null,
     winRate: won.length + lost.length ? won.length / (won.length + lost.length) : null,
-    avgCycleDays: average(won.map((d) => Math.max(0, daysBetween(sofiaDay(d.created_at), d.closed_on!)))),
+    // deals entered after the fact (closed before they were created) say nothing about the cycle
+    avgCycleDays: average(
+      won.filter((d) => d.closed_on! >= sofiaDay(d.created_at)).map((d) => daysBetween(sofiaDay(d.created_at), d.closed_on!))
+    ),
     openCount: open.length,
     openExpected: sum(open.map((d) => d.commission ?? 0)),
   };
