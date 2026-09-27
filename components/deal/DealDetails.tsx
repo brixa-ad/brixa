@@ -91,7 +91,7 @@ export function DealSchedule({
   const when = (key: DealStage) => {
     const { day: d, time: tm } = steps[key];
     if (!d) return null;
-    return tm ? `${formatDayMonth(d, lang)}, ${tm.slice(0, 5)}` : formatDate(d, lang);
+    return tm ? `${formatDayMonth(d, lang)}, ${tm.slice(0, 5)}` : formatDayMonth(d, lang);
   };
 
   return (
