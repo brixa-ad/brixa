@@ -134,7 +134,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ---- other agencies ---- */}
         <Card title={<CardTitle icon={Building}>{t.stats.partnersTitle}</CardTitle>}>
           <div className="mb-5 grid grid-cols-3 gap-2">
