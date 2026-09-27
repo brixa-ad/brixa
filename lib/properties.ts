@@ -34,6 +34,8 @@ export type PropertyDetail = {
   construction_type: string | null;
   condition: string | null;
   exposure: string | null;
+  /** the directions it faces (several) */
+  exposures: string[];
   furnishing: string | null;
   heating: string | null;
   asking_price: number | null;

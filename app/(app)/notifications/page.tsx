@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, BellOff, BellRing, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, BellOff, BellRing, ListX, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDate } from "@/lib/format";
@@ -39,6 +40,8 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   deal_date_soon: { icon: AlarmClock, tone: "bg-danger/10 text-danger" },
   push_test: { icon: BellRing, tone: "bg-success/10 text-success" },
   task_reminder: { icon: AlarmClock, tone: "bg-warning/10 text-warning" },
+  tasks_missed: { icon: ListX, tone: "bg-danger/10 text-danger" },
+  tasks_missed_team: { icon: ListX, tone: "bg-danger/10 text-danger" },
 };
 
 export default async function NotificationsPage() {
@@ -54,6 +57,17 @@ export default async function NotificationsPage() {
       .limit(100),
   ]);
   const rows = (data ?? []) as Row[];
+
+  // Task notifications get call / Viber / e-mail buttons for the task's client.
+  const TASK_LINK = /^\/tasks\/([0-9a-f-]{36})$/;
+  const taskIds = [...new Set(rows.map((n) => n.link?.match(TASK_LINK)?.[1]).filter((id): id is string => Boolean(id)))];
+  const contacts = new Map<string, { id: string; phone: string | null; email: string | null }>();
+  if (taskIds.length > 0) {
+    const { data: tasks } = await supabase.from("tasks").select("id, client:clients(id, phone, email)").in("id", taskIds);
+    for (const task of (tasks ?? []) as unknown as { id: string; client: { id: string; phone: string | null; email: string | null } | null }[]) {
+      if (task.client && (task.client.phone || task.client.email)) contacts.set(task.id, task.client);
+    }
+  }
 
   return (
     <>
@@ -81,14 +95,20 @@ export default async function NotificationsPage() {
                 {!n.read_at && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-fg" aria-hidden />}
               </div>
             );
+            const contact = contacts.get(n.link?.match(TASK_LINK)?.[1] ?? "");
             return (
-              <li key={n.id}>
+              <li key={n.id} className="flex items-center">
                 {n.link ? (
-                  <Link href={n.link} className="block transition hover:bg-raised">
+                  <Link href={n.link} className="block min-w-0 flex-1 transition hover:bg-raised">
                     {body}
                   </Link>
                 ) : (
-                  body
+                  <div className="min-w-0 flex-1">{body}</div>
+                )}
+                {contact && (
+                  <div className="shrink-0 pr-3 sm:pr-4">
+                    <ContactButtons phone={contact.phone} email={contact.email} clientId={contact.id} compact />
+                  </div>
                 )}
               </li>
             );

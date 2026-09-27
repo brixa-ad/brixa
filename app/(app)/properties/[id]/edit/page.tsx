@@ -41,7 +41,7 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     totalFloors: str(property.total_floors),
     condition: property.condition ?? "",
     constructionType: property.construction_type ?? "",
-    exposure: property.exposure ?? "",
+    exposures: property.exposures ?? [],
     furnishing: property.furnishing ?? "",
     heating: property.heating ?? "",
     price: str(property.current_price),

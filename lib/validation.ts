@@ -3,7 +3,7 @@ import {
   CONDITIONS,
   CONSTRUCTION_TYPES,
   CURRENCIES,
-  EXPOSURES,
+  EXPOSURE_DIRECTIONS,
   FURNISHINGS,
   HEATINGS,
   OPERATION_TYPES,
@@ -34,7 +34,7 @@ export type PropertyInput = {
   totalFloors: number | null;
   condition: string | null;
   constructionType: string | null;
-  exposure: string | null;
+  exposures: string[];
   furnishing: string | null;
   heating: string | null;
   price: number | null;
@@ -106,7 +106,9 @@ export function validateProperty(input: PropertyInput, categoryCode?: string): F
 
   checkOption(errors, "condition", input.condition, CONDITIONS);
   checkOption(errors, "constructionType", input.constructionType, CONSTRUCTION_TYPES);
-  checkOption(errors, "exposure", input.exposure, EXPOSURES);
+  if (!input.exposures.every((code) => (EXPOSURE_DIRECTIONS as readonly string[]).includes(code))) {
+    errors.exposures = "invalid";
+  }
   checkOption(errors, "furnishing", input.furnishing, FURNISHINGS);
   checkOption(errors, "heating", input.heating, HEATINGS);
 

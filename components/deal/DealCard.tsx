@@ -11,11 +11,14 @@ export function DealCard({
   t,
   lang,
   showBroker,
+  from,
 }: {
   deal: DealRow;
   t: Dictionary;
   lang: Lang;
   showBroker?: boolean;
+  /** opened from a colleague's profile — the deal page leads back there */
+  from?: string;
 }) {
   const title = dealTitle(deal, t);
   const stageLabels = deal.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
@@ -23,7 +26,7 @@ export function DealCard({
 
   return (
     <Link
-      href={`/deals/${deal.id}`}
+      href={`/deals/${deal.id}${from ? `?from=${from}` : ""}`}
       className="block rounded-xl border border-line bg-surface p-3.5 shadow-xs transition hover:border-accent/50 hover:bg-raised/40"
     >
       <div className="flex items-start justify-between gap-2">

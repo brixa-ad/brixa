@@ -9,6 +9,7 @@ export type NotificationData = {
   stage?: string;
   kind?: string;
   time?: string | null;
+  count?: number;
 };
 
 /**
@@ -26,6 +27,7 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
         (data.stage ?? "viewing") as keyof typeof t.options.dealStage
       ] ?? "",
     time: data.time ?? "",
+    count: data.count ?? 0,
   };
   const late = (data.days ?? 0) > 0;
   switch (type) {
@@ -55,6 +57,10 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(data.time ? t.notifications.deal_date_team_at : t.notifications.deal_date_team, vars);
     case "deal_date_soon":
       return fmt(t.notifications.deal_date_soon, vars);
+    case "tasks_missed":
+      return fmt(t.notifications.tasks_missed, vars);
+    case "tasks_missed_team":
+      return fmt(t.notifications.tasks_missed_team, vars);
     case "task_reminder":
       return fmt(t.notifications.task_reminder, vars);
     case "push_test":

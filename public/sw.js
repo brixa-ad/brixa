@@ -16,14 +16,19 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icon/192",
       tag: data.tag,
-      data: { url: data.url || "/" },
+      // "Call" / "Viber" / "E-mail" buttons where the phone supports them (not on iPhone)
+      actions: (data.actions || []).slice(0, (self.Notification && self.Notification.maxActions) || 0),
+      data: { url: data.url || "/", links: data.links || {} },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  const data = event.notification.data || {};
+  // A button opens the task with ?contact=call|viber|email — the page starts that right away.
+  const target = (event.action && data.links && data.links[event.action]) || data.url || "/";
+  const url = new URL(target, self.location.origin).href;
 
   event.waitUntil(
     (async () => {

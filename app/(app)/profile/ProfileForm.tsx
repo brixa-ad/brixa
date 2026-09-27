@@ -88,20 +88,6 @@ export function ProfileForm({ initial }: { initial: ProfileInput }) {
             />
           )}
         </Field>
-        <Field label={t.profile.weeklyHours} error={errorText("weeklyHours")} hint={t.profile.weeklyHoursHint}>
-          {(props) => (
-            <input
-              {...props}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={100}
-              value={Number.isFinite(values.weeklyHours) ? values.weeklyHours : ""}
-              onChange={(e) => set("weeklyHours", e.target.value === "" ? Number.NaN : Number(e.target.value))}
-              className={inputClass}
-            />
-          )}
-        </Field>
       </div>
 
       <Field label={t.profile.bio} error={errorText("bio")} hint={`${values.bio.length}/${PROFILE_LIMITS.bio}`}>

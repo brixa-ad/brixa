@@ -11,6 +11,7 @@ import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { DEAL_STAGES } from "@/lib/options";
+import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,6 +39,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
       : "all"
     : session.userId;
   const showBroker = broker === "all";
+  const back = session.isManager ? await memberBack(broker, session.organizationId) : null;
 
   let query = supabase.from("deals").select(DEAL_SELECT).eq("organization_id", session.organizationId);
   if (broker !== "all") query = query.eq("broker_id", broker);
@@ -82,6 +84,8 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
   return (
     <>
       <PageHeader
+        backHref={back?.href}
+        backLabel={back?.label}
         title={t.deals.title}
         subtitle={session.isManager ? t.deals.subtitleManager : t.deals.subtitle}
         actions={
@@ -144,7 +148,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
                   <span className="rounded-full bg-raised px-2 py-0.5 text-[11px]">{list.length}</span>
                 </h2>
                 {list.map((deal) => (
-                  <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={showBroker} />
+                  <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={showBroker} from={back?.id} />
                 ))}
               </section>
             );
@@ -153,7 +157,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={showBroker} />
+            <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={showBroker} from={back?.id} />
           ))}
         </div>
       )}

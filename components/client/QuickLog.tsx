@@ -9,8 +9,8 @@ import { buttonClass, inputClass } from "@/components/ui/form";
 
 const QUICK_TYPES = ["call", "email", "message", "meeting", "viewing", "note"] as const;
 
-/** Log what just happened with a client in two taps. */
-export function QuickLog({ clientId }: { clientId: string }) {
+/** Log what just happened with a client (or around a property) in two taps. */
+export function QuickLog({ clientId = null, propertyId = null }: { clientId?: string | null; propertyId?: string | null }) {
   const { t } = useI18n();
   const [type, setType] = useState<(typeof QUICK_TYPES)[number]>("call");
   const [note, setNote] = useState("");
@@ -20,7 +20,7 @@ export function QuickLog({ clientId }: { clientId: string }) {
   function save() {
     setStatus("idle");
     startTransition(async () => {
-      const result = await logActivity({ type, clientId, propertyId: null, note });
+      const result = await logActivity({ type, clientId, propertyId, note });
       if (result.ok) {
         setNote("");
         setStatus("saved");

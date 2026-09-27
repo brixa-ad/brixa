@@ -7,6 +7,7 @@ import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
 import { DeleteClientButton } from "@/components/client/DeleteClientButton";
 import { QuickLog } from "@/components/client/QuickLog";
+import { ContactButtons } from "@/components/ContactButtons";
 import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
 import { TypeIcon } from "@/components/task/TypeIcon";
@@ -20,6 +21,7 @@ import { fmt, localName, type Dictionary, type Lang } from "@/lib/i18n/dictionar
 import { getI18n } from "@/lib/i18n/server";
 import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
+import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { sofiaToday } from "@/lib/dates";
@@ -75,8 +77,9 @@ async function describeSearch(search: SearchInput, t: Dictionary, lang: Lang) {
   ] as [string, string][];
 }
 
-export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
+export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
   const { id } = await params;
+  const { from } = await searchParams;
   const [{ t, lang }, client, session] = await Promise.all([getI18n(), getClient(id), getSession()]);
   if (!client || !session) notFound();
 
@@ -120,12 +123,13 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
     matches.map((m) => m.coverPath).filter((p): p is string => Boolean(p))
   );
   const brokerName = client.broker?.full_name || client.broker?.email || "—";
+  const back = await memberBack(from, client.organization_id);
 
   return (
     <>
       <PageHeader
-        backHref="/clients"
-        backLabel={t.clients.title}
+        backHref={back?.href ?? "/clients"}
+        backLabel={back?.label ?? t.clients.title}
         title={
           <span className="flex items-center gap-3">
             <ClassBadge value={client.client_class} title={t.options.clientClass[client.client_class]} />
@@ -178,6 +182,11 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                 </a>
               )}
             </div>
+            {(client.phone || client.email) && (
+              <div className="mt-3">
+                <ContactButtons phone={client.phone} email={client.email} clientId={client.id} />
+              </div>
+            )}
 
             <dl className="mt-4 space-y-3 border-t border-line-soft pt-4 text-sm">
               <div className="flex items-center justify-between gap-4">

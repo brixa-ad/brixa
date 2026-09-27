@@ -20,7 +20,7 @@ export type TaskRow = {
   assigned_to: string;
   created_by: string | null;
   /** null when not linked, or when the client isn't visible to this user */
-  client: { id: string; full_name: string; phone: string | null } | null;
+  client: { id: string; full_name: string; phone: string | null; email: string | null } | null;
   property: { id: string; title: string } | null;
   assignee: Person | null;
   creator: Person | null;
@@ -29,7 +29,7 @@ export type TaskRow = {
 
 export const TASK_SELECT = `id, title, type, status, due_date, due_time, description, completed_at, completion_note,
   assigned_to, created_by,
-  client:clients(id, full_name, phone),
+  client:clients(id, full_name, phone, email),
   property:properties(id, title),
   assignee:profiles!tasks_assigned_to_fkey(full_name, email, avatar_path),
   creator:profiles!tasks_created_by_fkey(full_name, email, avatar_path),

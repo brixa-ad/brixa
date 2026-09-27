@@ -6,8 +6,6 @@ export type ProfileInput = {
   jobTitle: string;
   bio: string;
   areas: string[];
-  /** hours worked in a week — for "what your hour is worth" */
-  weeklyHours: number;
 };
 
 export type ProfileErrors = Partial<Record<keyof ProfileInput, ErrorCode>>;
@@ -33,10 +31,6 @@ export function validateProfile(input: ProfileInput): ProfileErrors {
     input.areas.some((area) => area.length > PROFILE_LIMITS.area)
   ) {
     errors.areas = "tooLong";
-  }
-
-  if (!Number.isFinite(input.weeklyHours) || input.weeklyHours < 1 || input.weeklyHours > 100) {
-    errors.weeklyHours = "range";
   }
 
   return errors;

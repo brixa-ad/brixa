@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarDays, CheckCircle2, Clock, Pencil, Phone, User } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Clock, Pencil, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { ContactButtons } from "@/components/ContactButtons";
 import { PageHeader } from "@/components/PageHeader";
 import { CompleteTaskPanel, DeleteTaskButton } from "@/components/task/CompleteTaskPanel";
 import { TypeIcon } from "@/components/task/TypeIcon";
@@ -11,6 +12,7 @@ import { daysBetween, sofiaToday } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { getTask, personName } from "@/lib/tasks";
 
@@ -19,8 +21,11 @@ export async function generateMetadata({ params }: PageProps<"/tasks/[id]">): Pr
   return { title: task?.title ?? "Task" };
 }
 
-export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
+const CONTACT_KINDS = ["call", "viber", "email"] as const;
+
+export default async function TaskPage({ params, searchParams }: PageProps<"/tasks/[id]">) {
   const { id } = await params;
+  const { contact } = await searchParams;
   const [{ t, lang }, task, session] = await Promise.all([getI18n(), getTask(id), getSession()]);
   if (!task || !session) notFound();
 
@@ -123,15 +128,15 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                     <User className="size-4 text-accent-fg" />
                     {task.client.full_name}
                   </Link>
-                  {task.client.phone && (
-                    <a
-                      href={`tel:${task.client.phone.replace(/[^\d+]/g, "")}`}
-                      className={`${buttonClass.primary} mt-4 w-full`}
-                    >
-                      <Phone className="size-4" />
-                      {t.tasks.call} · {task.client.phone}
-                    </a>
-                  )}
+                  {task.client.phone && <p className="mt-1 text-sm text-muted">{task.client.phone}</p>}
+                  <div className="mt-4">
+                    <ContactButtons
+                      phone={task.client.phone}
+                      email={task.client.email}
+                      clientId={task.client.id}
+                      open={isOneOf(CONTACT_KINDS, contact) ? contact : null}
+                    />
+                  </div>
                 </Card>
               )}
               {task.property && (

@@ -12,6 +12,7 @@ import { dealTitle, getDeal } from "@/lib/deals";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { personName } from "@/lib/tasks";
@@ -21,8 +22,9 @@ export async function generateMetadata({ params }: PageProps<"/deals/[id]">): Pr
   return { title: deal ? dealTitle(deal, t) : t.deals.title };
 }
 
-export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
+export default async function DealPage({ params, searchParams }: PageProps<"/deals/[id]">) {
   const { id } = await params;
+  const { from } = await searchParams;
   const [{ t, lang }, deal, session] = await Promise.all([getI18n(), getDeal(id), getSession()]);
   if (!deal || !session) notFound();
 
@@ -35,6 +37,7 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
     .order("created_at", { ascending: false });
   const offers = ((offerRows ?? []) as OfferRow[]).map((o) => ({ ...o, amount: Number(o.amount) }));
   const today = sofiaToday();
+  const back = await memberBack(from, session.organizationId);
 
   const mine = deal.broker_id === session.userId;
   const confirmed = Boolean(deal.confirmed_at);
@@ -52,8 +55,8 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
   return (
     <>
       <PageHeader
-        backHref="/deals"
-        backLabel={t.deals.title}
+        backHref={back?.href ?? "/deals"}
+        backLabel={back?.label ?? t.deals.title}
         title={dealTitle(deal, t)}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">

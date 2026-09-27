@@ -1,9 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Eye, MapPin, Pencil, Plus, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Check,
+  Eye,
+  FileText,
+  Flag,
+  Handshake,
+  MapPin,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+} from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
+import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
+import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
 import { PhotoGallery } from "@/components/property/PhotoGallery";
@@ -17,7 +35,10 @@ import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getCommissionDefaults } from "@/lib/lookups";
 import { getProperty } from "@/lib/properties";
+import { memberBack } from "@/lib/member-back";
+import { DOCUMENT_BUCKET } from "@/lib/documents";
 import { getSession } from "@/lib/session";
+import { personName } from "@/lib/tasks";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/properties/[id]">): Promise<Metadata> {
@@ -27,20 +48,160 @@ export async function generateMetadata({ params }: PageProps<"/properties/[id]">
 
 export default async function PropertyPage({ params, searchParams }: PageProps<"/properties/[id]">) {
   const { id } = await params;
-  const { photos: photosParam } = await searchParams;
+  const { photos: photosParam, from } = await searchParams;
   const [{ t, lang }, property, session] = await Promise.all([getI18n(), getProperty(id), getSession()]);
 
   if (!property) notFound();
+  const back = await memberBack(from, property.organization_id);
 
   // Deals on this listing that this user may see (their own; managers: all).
   const listing = property.operation_type === "sale" || property.operation_type === "rent";
   const kind = property.operation_type === "rent" ? "rent" : "sale";
   const supabase = await createClient();
-  const [defaults, { data: dealRows }] = await Promise.all([
-    getCommissionDefaults(property.organization_id),
-    supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
-  ]);
+  const [defaults, { data: dealRows }, { data: statusRows }, { data: activityRows }, { data: documentRows }] =
+    await Promise.all([
+      getCommissionDefaults(property.organization_id),
+      supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
+      supabase
+        .from("property_status_log")
+        .select("id, status, changed_at, person:profiles(full_name, email)")
+        .eq("property_id", id),
+      // viewings, calls… logged on this property (own; managers: everyone's)
+      supabase
+        .from("activities")
+        .select("id, type, note, occurred_at, person:profiles(full_name, email)")
+        .eq("property_id", id)
+        .order("occurred_at", { ascending: false })
+        .limit(50),
+      // only the responsible broker and managers get any back
+      supabase
+        .from("property_documents")
+        .select("id, name, size_bytes, storage_path, created_at, uploader:profiles(full_name, email)")
+        .eq("property_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
   const deals = toDeals(dealRows);
+
+  type Person = { full_name: string | null; email: string } | null;
+  const documents: PropertyDocument[] = await Promise.all(
+    (
+      (documentRows ?? []) as unknown as {
+        id: string;
+        name: string;
+        size_bytes: number | null;
+        storage_path: string;
+        created_at: string;
+        uploader: Person;
+      }[]
+    ).map(async (doc) => {
+      const { data } = await supabase.storage
+        .from(DOCUMENT_BUCKET)
+        .createSignedUrl(doc.storage_path, 3600, { download: doc.name });
+      return {
+        id: doc.id,
+        name: doc.name,
+        size_bytes: doc.size_bytes === null ? null : Number(doc.size_bytes),
+        created_at: doc.created_at,
+        url: data?.signedUrl ?? null,
+        uploader: doc.uploader ? personName(doc.uploader) : null,
+      };
+    }),
+  );
+
+  // ---- everything that happened to the listing, newest first
+  type HistoryEntry = {
+    key: string;
+    at: string;
+    icon: "created" | "price" | "status" | "deal" | "document" | string;
+    text: string;
+    who?: string | null;
+    note?: string | null;
+    change?: number | null;
+  };
+  const history: HistoryEntry[] = [
+    {
+      key: "created",
+      at: property.created_at,
+      icon: "created",
+      text: t.detail.historyCreated,
+      who: property.broker ? personName(property.broker) : null,
+    },
+    ...property.priceHistory.map((entry) => ({
+      key: `price-${entry.id}`,
+      at: entry.changed_at,
+      icon: "price",
+      text: fmt(entry.old_price === null ? t.detail.historyListed : t.detail.historyPrice, {
+        price: formatPrice(entry.new_price, entry.currency, lang) ?? t.common.notSet,
+      }),
+      who: entry.changed_by ? personName(entry.changed_by) : null,
+      change:
+        entry.old_price && entry.new_price !== null
+          ? ((entry.new_price - entry.old_price) / entry.old_price) * 100
+          : null,
+    })),
+    ...((statusRows ?? []) as unknown as { id: number; status: string; changed_at: string; person: Person }[]).map(
+      (row) => ({
+        key: `status-${row.id}`,
+        at: row.changed_at,
+        icon: "status",
+        text: fmt(t.detail.historyStatus, {
+          status: t.options.status[row.status as keyof typeof t.options.status] ?? row.status,
+        }),
+        who: row.person ? personName(row.person) : null,
+      }),
+    ),
+    ...(
+      (activityRows ?? []) as unknown as {
+        id: string;
+        type: string;
+        note: string | null;
+        occurred_at: string;
+        person: Person;
+      }[]
+    ).map((row) => ({
+      key: `activity-${row.id}`,
+      at: row.occurred_at,
+      icon: row.type,
+      text: t.options.activityType[row.type as keyof typeof t.options.activityType] ?? row.type,
+      who: row.person ? personName(row.person) : null,
+      note: row.note,
+    })),
+    ...deals.flatMap((deal) => {
+      const name = deal.client?.full_name ?? t.deals.untitled;
+      const entries: HistoryEntry[] = [
+        {
+          key: `deal-${deal.id}`,
+          at: deal.created_at,
+          icon: "deal",
+          text: fmt(t.detail.historyDealNew, { name }),
+          who: deal.broker ? personName(deal.broker) : null,
+        },
+      ];
+      if (deal.status === "won" && deal.closed_on)
+        entries.push({
+          key: `won-${deal.id}`,
+          at: `${deal.closed_on}T12:00:00Z`,
+          icon: "deal",
+          text: fmt(t.detail.historyDealWon, { name }),
+        });
+      if (deal.status === "lost")
+        entries.push({
+          key: `lost-${deal.id}`,
+          at: deal.updated_at,
+          icon: "deal",
+          text: fmt(t.detail.historyDealLost, { name }),
+          note: deal.lost_reason,
+        });
+      return entries;
+    }),
+    ...documents.map((doc) => ({
+      key: `doc-${doc.id}`,
+      at: doc.created_at,
+      icon: "document",
+      text: fmt(t.detail.historyDocument, { name: doc.name }),
+      who: doc.uploader,
+    })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
   const rate = commissionRate(kind, property.commission_rate, defaults);
   const commission = listing ? expectedCommission(kind, property.current_price, property.currency, rate) : null;
 
@@ -51,8 +212,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
     code ? ((t.options[group] as Record<string, string>)[code] ?? code) : null;
 
-  const pricePerSqm =
-    property.current_price && property.area ? property.current_price / property.area : null;
+  const pricePerSqm = property.current_price && property.area ? property.current_price / property.area : null;
 
   const locationParts = [
     property.settlement && settlementLabel(property.settlement),
@@ -74,7 +234,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     ],
     [t.form.condition, label("condition", property.condition)],
     [t.form.construction, label("construction", property.construction_type)],
-    [t.form.exposure, label("exposure", property.exposure)],
+    [
+      t.form.exposure,
+      property.exposures?.length
+        ? property.exposures.map((code) => label("exposure", code)).join(", ")
+        : label("exposure", property.exposure),
+    ],
     [t.form.furnishing, label("furnishing", property.furnishing)],
     [t.form.heating, label("heating", property.heating)],
   ];
@@ -83,8 +248,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   return (
     <>
       <PageHeader
-        backHref="/properties"
-        backLabel={t.nav.properties}
+        backHref={back?.href ?? "/properties"}
+        backLabel={back?.label ?? t.nav.properties}
         title={property.title}
         subtitle={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -178,12 +343,55 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
 
           <Card title={t.detail.description}>
             {property.description ? (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">
-                {property.description}
-              </p>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{property.description}</p>
             ) : (
               <p className="text-sm text-muted">{t.detail.noDescription}</p>
             )}
+          </Card>
+
+          <Card title={t.detail.historyTitle}>
+            <QuickLog propertyId={property.id} />
+            <ol className="relative mt-6 space-y-4 border-l border-line pl-5">
+              {history.map((entry) => (
+                <li key={entry.key} className="relative">
+                  <span className="absolute -left-[31px] top-0 grid size-5 place-items-center rounded-full border border-line bg-surface text-accent-fg">
+                    {entry.icon === "created" ? (
+                      <Sparkles className="size-3" />
+                    ) : entry.icon === "price" ? (
+                      <Tag className="size-3" />
+                    ) : entry.icon === "status" ? (
+                      <Flag className="size-3" />
+                    ) : entry.icon === "deal" ? (
+                      <Handshake className="size-3" />
+                    ) : entry.icon === "document" ? (
+                      <FileText className="size-3" />
+                    ) : (
+                      <TypeIcon type={entry.icon} className="size-3" />
+                    )}
+                  </span>
+                  <p className="flex flex-wrap items-center gap-x-2 text-sm">
+                    <span className="font-medium">{entry.text}</span>
+                    {entry.change != null && entry.change !== 0 && (
+                      <span
+                        className={`inline-flex items-center text-xs font-semibold ${entry.change < 0 ? "text-success" : "text-danger"}`}
+                      >
+                        {entry.change < 0 ? (
+                          <ArrowDownRight className="size-3.5" />
+                        ) : (
+                          <ArrowUpRight className="size-3.5" />
+                        )}
+                        {formatNumber(Math.abs(entry.change), lang, 1)}%
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-subtle">
+                    {formatDate(entry.at, lang, true)}
+                    {entry.who ? ` · ${entry.who}` : ""}
+                  </p>
+                  {entry.note && <p className="mt-0.5 whitespace-pre-line text-sm text-fg-2">{entry.note}</p>}
+                </li>
+              ))}
+            </ol>
           </Card>
         </div>
 
@@ -200,17 +408,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             {property.asking_price !== null && property.asking_price !== property.current_price && (
               <p className="mt-1 text-sm text-muted">
                 {t.detail.initialPrice}:{" "}
-                <span className="line-through">
-                  {formatPrice(property.asking_price, property.currency, lang)}
-                </span>
+                <span className="line-through">{formatPrice(property.asking_price, property.currency, lang)}</span>
               </p>
             )}
 
             {commission !== null && (
               <p className="mt-2 text-sm text-muted">
                 {t.form.expectedCommission}:{" "}
-                <span className="font-semibold text-accent-fg">{formatPrice(commission, "EUR", lang)}</span>{" "}
-                ({rateLabel(kind, rate, t.units.months)})
+                <span className="font-semibold text-accent-fg">{formatPrice(commission, "EUR", lang)}</span> (
+                {rateLabel(kind, rate, t.units.months)})
               </p>
             )}
 
@@ -291,47 +497,16 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             </Card>
           )}
 
-          <Card title={t.detail.priceHistory}>
-            {property.priceHistory.length === 0 ? (
-              <p className="text-sm text-muted">{t.common.notSet}</p>
-            ) : (
-              <ol className="relative space-y-5 border-l border-line pl-5">
-                {property.priceHistory.map((entry) => {
-                  const change =
-                    entry.old_price && entry.new_price !== null
-                      ? ((entry.new_price - entry.old_price) / entry.old_price) * 100
-                      : null;
-                  return (
-                    <li key={entry.id} className="relative">
-                      <span className="absolute -left-[25px] top-1.5 size-2.5 rounded-full border-2 border-surface bg-accent ring-1 ring-accent/30" />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-fg">
-                          {formatPrice(entry.new_price, entry.currency, lang) ?? t.common.notSet}
-                        </span>
-                        {change !== null && change !== 0 && (
-                          <span
-                            className={`inline-flex items-center text-xs font-semibold ${
-                              change < 0 ? "text-success" : "text-danger"
-                            }`}
-                          >
-                            {change < 0 ? <ArrowDownRight className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}
-                            {formatNumber(Math.abs(change), lang, 1)}%
-                          </span>
-                        )}
-                        {entry.old_price === null && (
-                          <span className="text-xs font-medium text-subtle">{t.detail.listed}</span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {formatDate(entry.changed_at, lang, true)}
-                        {entry.changed_by && ` · ${entry.changed_by.full_name || entry.changed_by.email}`}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </Card>
+          {canEdit && session && (
+            <Card title={t.documents.title}>
+              <PropertyDocuments
+                propertyId={property.id}
+                organizationId={property.organization_id}
+                userId={session.userId}
+                documents={documents}
+              />
+            </Card>
+          )}
         </aside>
       </div>
     </>

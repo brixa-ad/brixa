@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { CLIENT_CLASSES, CLIENT_STAGES, CLIENT_TYPES, isOneOf, type ClientStage, type ClientType } from "@/lib/options";
+import { fromQuery, memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,6 +52,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   const session = (await getSession())!;
   const supabase = await createClient();
   const { t, lang } = await getI18n();
+  const back = session.isManager ? await memberBack(broker, session.organizationId) : null;
 
   // RLS: brokers only get their own clients back; managers get everyone's.
   let query = supabase
@@ -94,6 +96,8 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   return (
     <>
       <PageHeader
+        backHref={back?.href}
+        backLabel={back?.label}
         title={t.clients.title}
         subtitle={session.isManager ? t.clients.subtitleManager : t.clients.subtitleBroker}
         actions={
@@ -141,7 +145,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
           {rows.map((c) => (
             <li key={c.id}>
               <Link
-                href={`/clients/${c.id}`}
+                href={`/clients/${c.id}${fromQuery(back)}`}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition hover:bg-raised sm:flex-nowrap sm:px-5"
               >
                 <ClassBadge value={c.client_class} />

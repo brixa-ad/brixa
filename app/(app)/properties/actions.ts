@@ -130,7 +130,7 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     total_floors: building ? input.totalFloors : null,
     condition: building ? input.condition : null,
     construction_type: building ? input.constructionType : null,
-    exposure: building ? input.exposure : null,
+    exposures: building ? [...new Set(input.exposures)] : [],
     furnishing: building ? input.furnishing : null,
     heating: building ? input.heating : null,
     current_price: input.price,

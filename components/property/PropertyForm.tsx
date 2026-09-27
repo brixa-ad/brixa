@@ -15,7 +15,7 @@ import {
   CONDITIONS,
   CONSTRUCTION_TYPES,
   CURRENCIES,
-  EXPOSURES,
+  EXPOSURE_DIRECTIONS,
   FURNISHINGS,
   HEATINGS,
   OPERATION_TYPES,
@@ -358,12 +358,40 @@ export function PropertyForm({
                   <NumberField label={t.form.totalFloors} value={values.totalFloors} onChange={(v) => set("totalFloors", v)} error={errorText("totalFloors")} />
                   <OptionSelect label={t.form.condition} value={values.condition} onChange={(v) => set("condition", v)} codes={CONDITIONS} labels={t.options.condition} error={errorText("condition")} />
                   <OptionSelect label={t.form.construction} value={values.constructionType} onChange={(v) => set("constructionType", v)} codes={CONSTRUCTION_TYPES} labels={t.options.construction} error={errorText("constructionType")} />
-                  <OptionSelect label={t.form.exposure} value={values.exposure} onChange={(v) => set("exposure", v)} codes={EXPOSURES} labels={t.options.exposure} error={errorText("exposure")} />
                   <OptionSelect label={t.form.furnishing} value={values.furnishing} onChange={(v) => set("furnishing", v)} codes={FURNISHINGS} labels={t.options.furnishing} error={errorText("furnishing")} />
                   <OptionSelect label={t.form.heating} value={values.heating} onChange={(v) => set("heating", v)} codes={HEATINGS} labels={t.options.heating} error={errorText("heating")} />
                 </>
               )}
             </div>
+            {showBuilding && (
+              <div className="mt-5">
+                <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.form.exposure}</span>
+                <div className="flex flex-wrap gap-2">
+                  {EXPOSURE_DIRECTIONS.map((code) => {
+                    const checked = values.exposures.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        onClick={() =>
+                          set("exposures", checked ? values.exposures.filter((c) => c !== code) : [...values.exposures, code])
+                        }
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
+                          checked
+                            ? "border-accent bg-accent text-on-accent"
+                            : "border-line bg-surface text-fg-2 hover:border-line-strong"
+                        }`}
+                      >
+                        {checked && <Check className="size-3.5" />}
+                        {t.options.exposure[code]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* ---------------- Features ---------------- */}

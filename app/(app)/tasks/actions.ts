@@ -126,6 +126,7 @@ export async function logActivity(input: {
     return { ok: false };
   }
   if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  if (input.propertyId) revalidatePath(`/properties/${input.propertyId}`);
   revalidatePath("/");
   return { ok: true };
 }

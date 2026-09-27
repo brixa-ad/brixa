@@ -9,6 +9,7 @@ import { sofiaToday } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
+import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { TASK_SELECT, byDue, type TaskRow } from "@/lib/tasks";
@@ -32,6 +33,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   // Managers can look at a colleague's (or everyone's) list; brokers see their own.
   const broker = session.isManager && typeof params.broker === "string" ? params.broker : session.userId;
   const showAssignee = broker === "all";
+  const back = session.isManager && broker !== session.userId ? await memberBack(broker, session.organizationId) : null;
 
   let query = supabase.from("tasks").select(TASK_SELECT).eq("organization_id", session.organizationId);
   if (tab === "given") {
@@ -76,6 +78,8 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   return (
     <>
       <PageHeader
+        backHref={back?.href}
+        backLabel={back?.label}
         title={t.tasks.title}
         subtitle={session.isManager ? t.tasks.subtitleManager : t.tasks.subtitle}
         actions={

@@ -11,6 +11,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { OPERATION_TYPES, STATUSES, isOneOf } from "@/lib/options";
 import { signPhotoUrls } from "@/lib/photos-server";
+import { fromQuery, memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,6 +52,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   const { t, lang } = await getI18n();
   // "me" is the quick "only mine" filter
   const broker = brokerParam === "me" ? session.userId : brokerParam;
+  // Opened from a colleague's profile → a way back there, and their listings remember it.
+  const back = brokerParam === "me" ? null : await memberBack(broker, session.organizationId);
 
   let query = supabase
     .from("properties")
@@ -102,6 +105,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   return (
     <>
       <PageHeader
+        backHref={back?.href}
+        backLabel={back?.label}
         title={t.list.title}
         subtitle={t.list.subtitle}
         actions={
@@ -164,7 +169,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
             return (
               <li key={row.id}>
                 <Link
-                  href={`/properties/${row.id}`}
+                  href={`/properties/${row.id}${fromQuery(back)}`}
                   className="group block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg hover:shadow-black/40"
                 >
                   <div className="relative grid aspect-[16/10] place-items-center bg-raised">

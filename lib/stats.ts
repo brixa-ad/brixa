@@ -1,6 +1,7 @@
 import "server-only";
 import { toEuro } from "./commission";
-import { addDays, daysBetween, sofiaDay } from "./dates";
+import { addDays, sofiaDay } from "./dates";
+import { HOURS_PER_DAY, workingDays } from "./workdays";
 import type { DealKind } from "./options";
 import type { SessionContext } from "./session";
 import { createClient } from "./supabase/server";
@@ -35,7 +36,7 @@ export async function getMyNumbers(session: SessionContext, today: string) {
   const yearAgo = addDays(today, -365);
   const since = new Date(Date.now() - 36 * 3_600_000).toISOString();
 
-  const [won, listings, buyers, goals, profile, membership, acts, listedLately] = await Promise.all([
+  const [won, listings, buyers, goals, acts, listedLately] = await Promise.all([
     supabase
       .from("deals")
       .select("commission, closed_on, confirmed_at, price, currency")
@@ -57,8 +58,6 @@ export async function getMyNumbers(session: SessionContext, today: string) {
       .overlaps("types", ["buyer", "tenant", "investor"])
       .not("stage", "in", "(deal,lost)"),
     supabase.from("broker_goals").select("*").eq("organization_id", org).eq("profile_id", me).maybeSingle(),
-    supabase.from("profiles").select("weekly_hours").eq("id", me).maybeSingle(),
-    supabase.from("organization_members").select("created_at").eq("organization_id", org).eq("profile_id", me).maybeSingle(),
     supabase.from("activities").select("type, occurred_at").eq("profile_id", me).gte("occurred_at", since),
     supabase
       .from("properties")
@@ -91,17 +90,16 @@ export async function getMyNumbers(session: SessionContext, today: string) {
     yearlyBonus: g?.yearly_bonus ?? null,
   };
 
-  // What an hour is worth: the last 12 months (or since joining) over the hours worked.
-  const weeklyHours = Number(profile.data?.weekly_hours ?? 40);
-  const joined = membership.data?.created_at ? sofiaDay(membership.data.created_at) : yearAgo;
-  const weeksWorked = Math.min(52, Math.max(1, daysBetween(joined, today) / 7));
+  // What an hour is worth, on a yearly basis: commission over the last 12 months
+  // ÷ every working day in those 12 months × 8 hours.
+  const yearHours = workingDays(addDays(yearAgo, 1), today) * HOURS_PER_DAY;
   const last12 = sum(confirmed.filter((d) => d.day > yearAgo));
-  const hourValue = last12 > 0 ? last12 / (weeklyHours * weeksWorked) : null;
+  const hourValue = last12 > 0 && yearHours > 0 ? last12 / yearHours : null;
 
+  // …and what each working hour left this year has to bring in for the yearly target.
   const ytd = sum(thisYear);
-  const weeksLeft = Math.max(1 / 7, (daysBetween(today, yearEnd) + 1) / 7);
-  const needPerHour =
-    target.yearlyTarget > 0 ? Math.max(0, target.yearlyTarget - ytd) / (weeklyHours * weeksLeft) : null;
+  const hoursLeft = Math.max(HOURS_PER_DAY, workingDays(today, yearEnd) * HOURS_PER_DAY);
+  const needPerHour = target.yearlyTarget > 0 ? Math.max(0, target.yearlyTarget - ytd) / hoursLeft : null;
 
   const todays = (acts.data ?? []).filter((a) => sofiaDay(a.occurred_at) === today);
 
@@ -116,6 +114,7 @@ export async function getMyNumbers(session: SessionContext, today: string) {
     activeBuyers: buyers.count ?? 0,
     goals: target,
     hourValue,
+    yearHours,
     needPerHour,
     today: {
       calls: todays.filter((a) => a.type === "call").length,

@@ -15,6 +15,9 @@ type Claimed = {
   p256dh: string;
   auth_key: string;
   lang: string;
+  /** the task's client, when the recipient may see them */
+  phone: string | null;
+  email: string | null;
 };
 
 /**
@@ -54,11 +57,20 @@ export async function POST(request: Request) {
   await Promise.all(
     rows.map(async (row) => {
       const lang = isLang(row.lang) ? row.lang : "bg";
+      const t = dictionaries[lang];
+      const url = row.link ?? "/";
+      // Buttons under the notification (Android / computers): call or Viber the client, or e-mail them.
+      const actions = [
+        ...(row.phone ? [{ action: "call", title: t.contact.call }, { action: "viber", title: t.contact.viber }] : []),
+        ...(row.email ? [{ action: "email", title: t.contact.email }] : []),
+      ];
       const payload = JSON.stringify({
         title: "BRIXA",
-        body: notificationText(row.type, row.data ?? {}, dictionaries[lang], lang),
-        url: row.link ?? "/",
+        body: notificationText(row.type, row.data ?? {}, t, lang),
+        url,
         tag: id,
+        actions,
+        links: Object.fromEntries(actions.map((a) => [a.action, `${url}?contact=${a.action}`])),
       });
       try {
         await webpush.sendNotification(

@@ -58,6 +58,9 @@ export type Currency = (typeof CURRENCIES)[number];
 export type Condition = (typeof CONDITIONS)[number];
 export type ConstructionType = (typeof CONSTRUCTION_TYPES)[number];
 export type Exposure = (typeof EXPOSURES)[number];
+/** Directions a property can face — several can be picked. */
+export const EXPOSURE_DIRECTIONS = ["south", "north", "east", "west", "south_east", "south_west", "north_east", "north_west"] as const;
+export type ExposureDirection = (typeof EXPOSURE_DIRECTIONS)[number];
 export type Furnishing = (typeof FURNISHINGS)[number];
 export type Heating = (typeof HEATINGS)[number];
 

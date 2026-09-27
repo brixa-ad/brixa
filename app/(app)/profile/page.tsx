@@ -24,7 +24,7 @@ export default async function ProfilePage() {
     getI18n(),
     supabase
       .from("profiles")
-      .select("full_name, phone, job_title, bio, areas, avatar_path, weekly_hours")
+      .select("full_name, phone, job_title, bio, areas, avatar_path")
       .eq("id", session.userId)
       .single(),
   ]);
@@ -80,7 +80,6 @@ export default async function ProfilePage() {
               jobTitle: profile?.job_title ?? "",
               bio: profile?.bio ?? "",
               areas: profile?.areas ?? [],
-              weeklyHours: Number(profile?.weekly_hours ?? 40),
             }}
           />
         </Card>

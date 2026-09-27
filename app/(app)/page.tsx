@@ -322,7 +322,9 @@ export default async function HomePage() {
                 <p className="text-3xl font-bold tracking-tight text-accent-fg">
                   {fmt(t.home.hourValue, { amount: euro(numbers.hourValue) })}
                 </p>
-                <p className="mt-1 text-xs text-muted">{t.home.hourValueHint}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {fmt(t.home.hourValueHint, { hours: numbers.yearHours, days: numbers.yearHours / 8 })}
+                </p>
                 <p className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
                   {fmt(t.home.hourLoss, { amount: euro(numbers.hourValue) })}
                 </p>
@@ -358,7 +360,18 @@ export default async function HomePage() {
                           <div className="flex items-baseline justify-between gap-2 text-sm">
                             <span className="truncate font-medium group-hover:text-accent-fg">{name}</span>
                             <span className="shrink-0 text-xs text-muted">
-                              {memberTotal === 0 ? "—" : `${stats.done}/${memberTotal}`}
+                              {memberTotal === 0 ? (
+                                "—"
+                              ) : (
+                                <>
+                                  {stats.done}/{memberTotal}{" "}
+                                  <span
+                                    className={`font-bold ${memberPercent === 100 ? "text-success" : memberPercent < 50 ? "text-warning" : "text-fg-2"}`}
+                                  >
+                                    {memberPercent}%
+                                  </span>
+                                </>
+                              )}
                             </span>
                           </div>
                           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-raised">

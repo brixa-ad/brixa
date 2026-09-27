@@ -22,7 +22,7 @@ export type PropertyFormValues = {
   totalFloors: string;
   condition: string;
   constructionType: string;
-  exposure: string;
+  exposures: string[];
   furnishing: string;
   heating: string;
   price: string;
@@ -57,7 +57,7 @@ export function emptyFormValues(userId: string): PropertyFormValues {
     totalFloors: "",
     condition: "",
     constructionType: "",
-    exposure: "",
+    exposures: [],
     furnishing: "",
     heating: "",
     price: "",
@@ -88,7 +88,6 @@ export function toInput(values: PropertyFormValues): PropertyInput {
     commissionRate: parseNumber(values.commissionRate),
     condition: values.condition || null,
     constructionType: values.constructionType || null,
-    exposure: values.exposure || null,
     furnishing: values.furnishing || null,
     heating: values.heating || null,
     brokerId: values.brokerId || null,
