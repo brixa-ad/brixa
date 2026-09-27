@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Eye, HandCoins, MapPin, MessageSquareQuote, PhoneIncoming, Send, Tag } from "lucide-react";
+import { MarketDiffChip } from "@/components/market/MarketCard";
 import { AgencyFooter, BrokerCard, PublicHeader } from "@/components/PublicContact";
 import { ViewBeacon } from "@/components/PublicPageTools";
 import { daysBetween, sofiaDay, sofiaToday } from "@/lib/dates";
@@ -41,6 +42,8 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
   const rent = p.operation === "rent";
   const money = (amount: number | null, currency = p.currency) => formatPrice(amount, currency, lang) ?? "—";
   const startPrice = data.prices[0]?.new ?? p.asking_price;
+  const marketSqm = (value: number | null) =>
+    value === null ? "—" : `${formatNumber(value, lang)} ${rent ? t.market.perSqmMonth : t.market.perSqm}`;
 
   const tiles = [
     { icon: Eye, label: t.report.viewings, value: totals.viewings, sub: null },
@@ -126,6 +129,40 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
           </div>
         ))}
       </section>
+
+      {data.market?.own_sqm != null && data.market.benchmark && (
+        <Section title={t.market.reportTitle}>
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted">{t.market.reportOwn}</dt>
+              <dd className="text-lg font-bold tabular-nums">{marketSqm(data.market.own_sqm)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted">{t.market.reportMarket}</dt>
+              <dd className="text-lg font-bold tabular-nums">{marketSqm(data.market.benchmark.sqm)}</dd>
+              {data.market.benchmark.basis === "reference" && data.market.reference?.source && (
+                <p className="text-[11px] text-subtle">
+                  {fmt(t.market.sourceLine, {
+                    source: data.market.reference.source,
+                    date: formatDate(data.market.reference.as_of, lang),
+                  })}
+                </p>
+              )}
+            </div>
+            {data.market.sold.count >= 3 && (
+              <div>
+                <dt className="text-xs text-muted">{t.market.reportSold}</dt>
+                <dd className="text-lg font-bold tabular-nums">{marketSqm(data.market.sold.median_sqm)}</dd>
+              </div>
+            )}
+          </dl>
+          {data.market.diff !== null && (
+            <div className="mt-3">
+              <MarketDiffChip diff={data.market.diff} t={t} lang={lang} />
+            </div>
+          )}
+        </Section>
+      )}
 
       {report.comment && (
         <section className="mt-4 rounded-2xl border border-accent/30 bg-accent-soft/40 p-5">

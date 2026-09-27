@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { logoUrl } from "./agency";
+import { toMarketFacts, type MarketFacts } from "./market";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
 import { UUID, anonymous } from "./share";
@@ -27,6 +28,8 @@ export type OwnerReport = {
   offers: { amount: number; currency: string; on: string; status: "open" | "accepted" | "rejected" }[];
   in_progress: { stage: string; kind: string; count: number }[];
   prices: { at: string; old: number | null; new: number | null; currency: string }[];
+  /** the price against the market (aggregates only) */
+  market: MarketFacts | null;
   broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null } | null;
 };
@@ -74,6 +77,7 @@ export const getOwnerReport = cache(async (token: string): Promise<OwnerReport |
     offers: raw.offers.map((o) => ({ ...o, amount: Number(o.amount) })),
     in_progress: raw.in_progress.map((s) => ({ ...s, count: Number(s.count) })),
     prices: raw.prices.map((p) => ({ ...p, old: num(p.old), new: num(p.new) })),
+    market: toMarketFacts(raw.market),
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
     agency: raw.agency ? { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) } : null,
   };

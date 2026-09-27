@@ -21,6 +21,7 @@ import { Avatar } from "@/components/Avatar";
 import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
+import { MarketCard } from "@/components/market/MarketCard";
 import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
@@ -37,6 +38,7 @@ import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/fo
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getCommissionDefaults } from "@/lib/lookups";
+import { getMarketSnapshot } from "@/lib/market";
 import { getProperty } from "@/lib/properties";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
@@ -71,6 +73,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: shareRows },
     { data: clientRows },
     { data: reportRows },
+    market,
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -114,6 +117,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         .eq("property_id", id)
         .order("created_at", { ascending: false })
         .limit(50),
+      // its price against the market (listings only)
+      listing ? getMarketSnapshot(id) : Promise.resolve(null),
     ]);
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
@@ -556,6 +561,16 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               <Row name={t.detail.updated} value={formatDate(property.updated_at, lang, true)} />
             </dl>
           </Card>
+
+          {market && (
+            <MarketCard
+              facts={market}
+              place={property.neighborhood?.name ?? null}
+              town={property.settlement ? settlementLabel(property.settlement) : null}
+              t={t}
+              lang={lang}
+            />
+          )}
 
           {listing && (
             <Card
