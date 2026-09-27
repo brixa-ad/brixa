@@ -13,6 +13,7 @@ import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
 import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
+import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { Card, buttonClass } from "@/components/ui/form";
 import { isSeeking, type SearchInput } from "@/lib/client-validation";
@@ -88,7 +89,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   const supabase = await createClient();
   const seeking = isSeeking(client.types) && client.search;
 
-  const [matches, searchLines, { data: owned }, { data: activityRows }, { data: taskRows }, { data: dealRows }] = await Promise.all([
+  const [
+    matches,
+    searchLines,
+    { data: owned },
+    { data: activityRows },
+    { data: taskRows },
+    { data: dealRows },
+    { data: shareRows },
+  ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
     supabase
@@ -105,8 +114,38 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .limit(50),
     supabase.from("tasks").select(TASK_SELECT).eq("client_id", id).eq("status", "open"),
     supabase.from("deals").select(DEAL_SELECT).eq("client_id", id).order("updated_at", { ascending: false }),
+    // listings sent to this client by link
+    supabase
+      .from("property_shares")
+      .select("id, token, views, last_viewed_at, revoked_at, created_at, created_by, property:properties(id, title), creator:profiles(full_name, email)")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false })
+      .limit(50),
   ]);
   const deals = toDeals(dealRows);
+  const sent: ShareRow[] = (
+    (shareRows ?? []) as unknown as {
+      id: string;
+      token: string;
+      views: number;
+      last_viewed_at: string | null;
+      revoked_at: string | null;
+      created_at: string;
+      created_by: string | null;
+      property: { id: string; title: string } | null;
+      creator: { full_name: string | null; email: string } | null;
+    }[]
+  ).map((row) => ({
+    id: row.id,
+    token: row.token,
+    name: row.property?.title ?? null,
+    href: row.property ? `/properties/${row.property.id}` : null,
+    sharedBy: row.creator && row.created_by !== session.userId ? personName(row.creator) : null,
+    views: row.views,
+    lastViewedAt: row.last_viewed_at,
+    revoked: row.revoked_at !== null,
+    createdAt: row.created_at,
+  }));
 
   const activities = (activityRows ?? []) as unknown as {
     id: string;
@@ -381,6 +420,12 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   </Link>
                 </div>
               )}
+            </Card>
+          )}
+
+          {(sent.length > 0 || seeking) && (
+            <Card title={t.share.sentTitle}>
+              <ShareList rows={sent} empty={t.share.noneSent} />
             </Card>
           )}
 

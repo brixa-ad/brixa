@@ -12,5 +12,8 @@ export const telHref = (phone: string) => `tel:${internationalPhone(phone)}`;
 /** Opens a Viber chat with the number (phone or computer app). */
 export const viberHref = (phone: string) => `viber://chat?number=${encodeURIComponent(internationalPhone(phone))}`;
 export const mailHref = (email: string) => `mailto:${email}`;
+/** A WhatsApp chat (with the number, or pick one), optionally with the message typed in. */
+export const whatsappHref = (phone: string | null, text?: string) =>
+  `https://wa.me/${phone ? internationalPhone(phone).replace(/\D/g, "") : ""}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 
 export type ContactKind = "call" | "viber" | "email";

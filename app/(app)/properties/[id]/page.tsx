@@ -21,6 +21,8 @@ import { Avatar } from "@/components/Avatar";
 import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
+import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
+import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
@@ -58,8 +60,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const listing = property.operation_type === "sale" || property.operation_type === "rent";
   const kind = property.operation_type === "rent" ? "rent" : "sale";
   const supabase = await createClient();
-  const [defaults, { data: dealRows }, { data: statusRows }, { data: activityRows }, { data: documentRows }] =
-    await Promise.all([
+  const [
+    defaults,
+    { data: dealRows },
+    { data: statusRows },
+    { data: activityRows },
+    { data: documentRows },
+    { data: shareRows },
+    { data: clientRows },
+  ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
       supabase
@@ -79,8 +88,48 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         .select("id, name, size_bytes, storage_path, created_at, uploader:profiles(full_name, email)")
         .eq("property_id", id)
         .order("created_at", { ascending: false }),
+      // links sent to clients (own; managers: everyone's)
+      supabase
+        .from("property_shares")
+        .select("id, token, views, last_viewed_at, revoked_at, created_at, created_by, client:clients(id, full_name), creator:profiles(full_name, email)")
+        .eq("property_id", id)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      // who the listing can be sent to: own clients (managers: all)
+      listing && session
+        ? (session.isManager
+            ? supabase.from("clients").select("id, full_name, phone, email").eq("organization_id", property.organization_id).not("responsible_broker_id", "is", null)
+            : supabase.from("clients").select("id, full_name, phone, email").eq("responsible_broker_id", session.userId)
+          )
+            .order("full_name")
+            .limit(1000)
+        : Promise.resolve({ data: [] as ShareClient[] }),
     ]);
   const deals = toDeals(dealRows);
+  const shares: ShareRow[] = (
+    (shareRows ?? []) as unknown as {
+      id: string;
+      token: string;
+      views: number;
+      last_viewed_at: string | null;
+      revoked_at: string | null;
+      created_at: string;
+      created_by: string | null;
+      client: { id: string; full_name: string } | null;
+      creator: { full_name: string | null; email: string } | null;
+    }[]
+  ).map((row) => ({
+    id: row.id,
+    token: row.token,
+    name: row.client?.full_name ?? null,
+    href: row.client ? `/clients/${row.client.id}` : null,
+    sharedBy: row.creator && row.created_by !== session?.userId ? personName(row.creator) : null,
+    views: row.views,
+    lastViewedAt: row.last_viewed_at,
+    revoked: row.revoked_at !== null,
+    createdAt: row.created_at,
+  }));
+  const shareClients = (clientRows ?? []) as ShareClient[];
 
   type Person = { full_name: string | null; email: string } | null;
   const documents: PropertyDocument[] = await Promise.all(
@@ -269,6 +318,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         actions={
           canEdit ? (
             <>
+              {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
               <StatusSelect propertyId={property.id} status={property.status} />
               <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
                 <Pencil className="size-4" />
@@ -277,10 +327,13 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
             </>
           ) : (
-            <StatusBadge
-              status={property.status}
-              label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status}
-            />
+            <>
+              {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
+              <StatusBadge
+                status={property.status}
+                label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status}
+              />
+            </>
           )
         }
       />
@@ -494,6 +547,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
                   ))}
                 </div>
               )}
+            </Card>
+          )}
+
+          {listing && shares.length > 0 && (
+            <Card title={t.share.linksTitle}>
+              <ShareList rows={shares} empty={t.share.noLinks} />
             </Card>
           )}
 

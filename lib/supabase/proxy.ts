@@ -13,6 +13,9 @@ const PUBLIC_PATHS = [
   "/sw.js",
   "/api/push",
   "/api/calendar",
+  // shared listings: anyone with the link
+  "/p",
+  "/api/share",
 ];
 
 export async function updateSession(request: NextRequest) {

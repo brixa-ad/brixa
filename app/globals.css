@@ -143,3 +143,49 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* A shared listing saved as a PDF: white paper, photos in a grid, no buttons. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  /* paper is always the light theme */
+  :root:has(.shared-page) {
+    color-scheme: light;
+    --canvas: #ffffff;
+    --surface: #ffffff;
+    --raised: #eef2f9;
+    --line-soft: #eaeef6;
+    --line: #dde3ee;
+    --line-strong: #c9d2e3;
+    --fg: #0a1330;
+    --fg-2: #334063;
+    --muted: #5d6a8a;
+    --subtle: #66728f;
+    --accent: #1d4ed8;
+    --accent-fg: #1d4ed8;
+    --accent-soft: rgb(37 99 235 / 0.1);
+    --success: #047857;
+  }
+  .shared-page {
+    max-width: none;
+    padding: 0;
+  }
+  body:has(.shared-page) {
+    background: #ffffff !important;
+  }
+  .shared-photos {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible !important;
+    margin: 0 0 1rem !important;
+    padding: 0 !important;
+  }
+  .shared-photos img {
+    width: 100% !important;
+    break-inside: avoid;
+  }
+  .shared-page section {
+    break-inside: avoid;
+  }
+}
