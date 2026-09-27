@@ -139,6 +139,7 @@ export async function getMarketTowns(organizationId: string): Promise<MarketTown
 
   type Town = { id: string; name: string; settlement_type: string } | null;
   const towns = new Map<string, MarketTown>();
+  const listings = new Map<string, number>();
   const add = (town: Town) => {
     if (town && !towns.has(town.id)) towns.set(town.id, { id: town.id, name: `${town.settlement_type} ${town.name}`, neighborhoods: [] });
     return town ? towns.get(town.id)! : null;
@@ -146,9 +147,18 @@ export async function getMarketTowns(organizationId: string): Promise<MarketTown
   for (const row of (hoods ?? []) as unknown as { id: string; name: string; settlement: Town }[]) {
     add(row.settlement)?.neighborhoods.push({ id: row.id, name: row.name });
   }
-  for (const row of (listed ?? []) as unknown as { settlement: Town }[]) add(row.settlement);
+  for (const row of (listed ?? []) as unknown as { settlement: Town }[]) {
+    const town = add(row.settlement);
+    if (town) listings.set(town.id, (listings.get(town.id) ?? 0) + 1);
+  }
   for (const town of towns.values()) town.neighborhoods.sort((a, b) => a.name.localeCompare(b.name, "bg"));
-  return [...towns.values()].sort((a, b) => b.neighborhoods.length - a.neighborhoods.length || a.name.localeCompare(b.name, "bg"));
+  // where the agency works most comes first
+  return [...towns.values()].sort(
+    (a, b) =>
+      (listings.get(b.id) ?? 0) - (listings.get(a.id) ?? 0) ||
+      b.neighborhoods.length - a.neighborhoods.length ||
+      a.name.localeCompare(b.name, "bg")
+  );
 }
 
 /** The reference prices the agency keeps, by town. */
