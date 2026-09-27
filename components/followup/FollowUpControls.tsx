@@ -92,7 +92,7 @@ export function ContactedButton({ clientId }: { clientId: string }) {
           if (ok) setDone(true);
         })
       }
-      className={`${buttonClass.secondary} px-3! py-1.5! text-xs!`}
+      className={`${buttonClass.secondary} whitespace-nowrap px-3! py-1.5! text-xs!`}
     >
       {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
       {t.followUp.done}

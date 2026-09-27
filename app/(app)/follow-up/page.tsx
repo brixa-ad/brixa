@@ -123,7 +123,8 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
                   {broker === "all" && r.broker && (
                     <Avatar path={r.broker.avatar_path} name={personName(r.broker)} size="sm" />
                   )}
-                  <div className="flex items-center gap-1.5">
+                  {/* on the phone the buttons get their own line under the name */}
+                  <div className="flex w-full items-center justify-end gap-1.5 sm:w-auto">
                     <ContactButtons phone={r.phone} email={r.email} clientId={r.id} compact />
                     <ContactedButton clientId={r.id} />
                     {session.isManager && (
