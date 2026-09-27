@@ -36,7 +36,7 @@ export type PropertyFormValues = {
   featureIds: string[];
 };
 
-export function emptyFormValues(userId: string): PropertyFormValues {
+export function emptyFormValues(userId: string, currency: Currency = "EUR"): PropertyFormValues {
   return {
     categoryId: "",
     subtypeId: "",
@@ -61,7 +61,7 @@ export function emptyFormValues(userId: string): PropertyFormValues {
     furnishing: "",
     heating: "",
     price: "",
-    currency: "EUR",
+    currency,
     commissionRate: "",
     brokerId: userId,
     ownerClientId: null,

@@ -39,6 +39,22 @@ create table public.organizations (
   follow_up_days_b int not null default 7 check (follow_up_days_b between 1 and 365),
   follow_up_days_c int not null default 30 check (follow_up_days_c between 1 and 365),
   release_after_days int not null default 7 check (release_after_days between 0 and 365),
+  -- contact details and logo (agency-logos/<organization_id>/<file>) for shared listings and reports
+  phone text check (phone is null or char_length(phone) <= 40),
+  email text check (email is null or char_length(email) <= 200),
+  website text check (website is null or char_length(website) <= 200),
+  address text check (address is null or char_length(address) <= 300),
+  logo_path text check (logo_path is null or logo_path like id::text || '/%'),
+  default_currency text not null default 'EUR' check (default_currency in ('EUR', 'BGN', 'USD')),
+  -- the ranking's point values
+  points_deal_double int not null default 50 check (points_deal_double between 0 and 1000),
+  points_deal int not null default 30 check (points_deal between 0 and 1000),
+  points_listing int not null default 10 check (points_listing between 0 and 1000),
+  points_exclusive int not null default 10 check (points_exclusive between 0 and 1000),
+  points_viewing int not null default 5 check (points_viewing between 0 and 1000),
+  points_meeting int not null default 3 check (points_meeting between 0 and 1000),
+  points_client int not null default 2 check (points_client between 0 and 1000),
+  points_call int not null default 1 check (points_call between 0 and 1000),
   created_at timestamptz not null default now()
 );
 
@@ -564,6 +580,10 @@ create policy "organizations: members read" on public.organizations
 create policy "organizations: owners update" on public.organizations
   for update to authenticated
   using (public.is_org_owner(id)) with check (public.is_org_owner(id));
+
+create policy "organizations: managers update" on public.organizations
+  for update to authenticated
+  using (public.is_org_manager(id)) with check (public.is_org_manager(id));
 
 -- organization_members
 create policy "members: members read" on public.organization_members
@@ -1821,8 +1841,8 @@ revoke execute on function public.notify_deal_dates(timestamptz) from public, an
 
 -- ---------------------------------------------------------------------
 -- The ranking: commission (confirmed deals) and activity points
---   double deal 50 · deal 30 · new listing 10 (+10 exclusive) · viewing 5
---   meeting 3 · new client 2 · call 1
+--   with the agency's point values (by default: double deal 50 · deal 30 ·
+--   new listing 10 (+10 exclusive) · viewing 5 · meeting 3 · new client 2 · call 1)
 -- ---------------------------------------------------------------------
 create or replace function public.leaderboard(target_org uuid, period text default 'month', ref_day date default null)
 returns table (
@@ -1863,9 +1883,9 @@ as $$
   ),
   won as (
     select d.broker_id as pid, sum(d.commission) as total, count(*)::int as n,
-      sum(case when d.double_sided then 50 else 30 end)::int as dp
-    from public.deals d, bounds b
-    where d.organization_id = target_org and d.status = 'won' and d.confirmed_at is not null
+      sum(case when d.double_sided then o.points_deal_double else o.points_deal end)::int as dp
+    from public.deals d, bounds b, public.organizations o
+    where d.organization_id = target_org and o.id = target_org and d.status = 'won' and d.confirmed_at is not null
       and d.closed_on >= b.from_day and d.closed_on < b.to_day
     group by d.broker_id
   ),
@@ -1914,9 +1934,10 @@ as $$
   )
   select r.profile_id, r.full_name, r.email, r.avatar_path, r.commission, r.deals, r.listings,
     r.exclusives, r.viewings, r.meetings, r.calls, r.new_clients,
-    (r.deal_points + r.listings * 10 + r.exclusives * 10 + r.viewings * 5
-      + r.meetings * 3 + r.new_clients * 2 + r.calls)::int as points
+    (r.deal_points + r.listings * o.points_listing + r.exclusives * o.points_exclusive + r.viewings * o.points_viewing
+      + r.meetings * o.points_meeting + r.new_clients * o.points_client + r.calls * o.points_call)::int as points
   from ranked r
+  join public.organizations o on o.id = target_org
   order by r.commission desc, points desc, r.full_name;
 $$;
 
@@ -3081,3 +3102,32 @@ begin
   end if;
 end;
 $$;
+
+
+-- =====================================================================
+-- Agency logo
+-- =====================================================================
+
+-- The agency a storage path belongs to (null when the first folder isn't an id).
+create or replace function public.org_from_path(object_name text)
+returns uuid
+language sql
+immutable
+as $$
+  select case when split_part(object_name, '/', 1) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then split_part(object_name, '/', 1)::uuid end;
+$$;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('agency-logos', 'agency-logos', true, 2097152, array['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
+on conflict (id) do nothing;
+
+create policy "agency logos: upload" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'agency-logos' and public.is_org_manager(public.org_from_path(name)));
+create policy "agency logos: delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'agency-logos' and public.is_org_manager(public.org_from_path(name)));
+create policy "agency logos: read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'agency-logos' and public.is_org_member(public.org_from_path(name)));

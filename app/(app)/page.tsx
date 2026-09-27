@@ -15,6 +15,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
+import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
 import { getLeaderboards, getMyNumbers, getUpcomingSteps } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
@@ -54,6 +55,7 @@ export default async function HomePage() {
     .not("follow_up_at", "is", null)
     .lt("follow_up_at", addDays(today, 2)); // a little past today; narrowed below
   const nowIso = new Date().toISOString();
+  const agency = await getAgency(session.organizationId);
   // Brix's plan (written on the first visit of the day, when the AI key is set)
   const brixReady = Boolean(process.env.ANTHROPIC_API_KEY);
   const { data: brief } = brixReady
@@ -238,7 +240,13 @@ export default async function HomePage() {
             </footer>
           </Card>
 
-          <Leaderboard month={boards.month} year={boards.year} viewerId={session.userId} missions={missions} />
+          <Leaderboard
+            month={boards.month}
+            year={boards.year}
+            viewerId={session.userId}
+            missions={missions}
+            points={agency?.points ?? DEFAULT_POINTS}
+          />
         </div>
 
         <div className="space-y-6">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/PageHeader";
 import { DealForm } from "@/components/deal/DealForm";
 import { commissionRate, expectedCommission } from "@/lib/commission";
+import { getAgency } from "@/lib/agency";
 import { getDealFormLookups } from "@/lib/deals";
 import { getI18n } from "@/lib/i18n/server";
 import { CURRENCIES, isOneOf, type DealKind } from "@/lib/options";
@@ -21,7 +22,8 @@ export default async function NewDealPage({ searchParams }: PageProps<"/deals/ne
   const property = lookups.properties.find((p) => p.id === params.property);
   const client = lookups.clients.find((c) => c.id === params.client);
   const kind: DealKind = property?.operation_type === "rent" ? "rent" : "sale";
-  const currency = property && isOneOf(CURRENCIES, property.currency) ? property.currency : "EUR";
+  const agency = await getAgency(session.organizationId);
+  const currency = property && isOneOf(CURRENCIES, property.currency) ? property.currency : (agency?.defaultCurrency ?? "EUR");
   const commission = property
     ? expectedCommission(
         kind,

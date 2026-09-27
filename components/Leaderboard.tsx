@@ -18,11 +18,14 @@ export function Leaderboard({
   year,
   viewerId,
   missions,
+  points,
 }: {
   month: BoardRow[];
   year: BoardRow[];
   viewerId: string;
   missions: Mission[];
+  /** the agency's point values, for the explanation under the activity ranking */
+  points: Record<string, number>;
 }) {
   const { t, lang } = useI18n();
   const [board, setBoard] = useState<"money" | "activity">("money");
@@ -166,7 +169,7 @@ export function Leaderboard({
         </ol>
       )}
 
-      {board === "activity" && <p className="mt-4 text-[11px] leading-relaxed text-subtle">{t.home.pointsHelp}</p>}
+      {board === "activity" && <p className="mt-4 text-[11px] leading-relaxed text-subtle">{fmt(t.home.pointsHelp, points)}</p>}
     </section>
   );
 }

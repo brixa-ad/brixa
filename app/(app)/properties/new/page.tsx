@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyForm } from "@/components/property/PropertyForm";
+import { getAgency } from "@/lib/agency";
 import { emptyFormValues } from "@/lib/property-form";
 import { getI18n } from "@/lib/i18n/server";
 import { getFormLookups } from "@/lib/lookups";
@@ -13,7 +14,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function NewPropertyPage() {
   const session = (await getSession())!;
-  const [{ t }, lookups] = await Promise.all([getI18n(), getFormLookups(session.organizationId)]);
+  const [{ t }, lookups, agency] = await Promise.all([
+    getI18n(),
+    getFormLookups(session.organizationId),
+    getAgency(session.organizationId),
+  ]);
 
   return (
     <>
@@ -26,7 +31,7 @@ export default async function NewPropertyPage() {
       <PropertyForm
         mode="create"
         lookups={lookups}
-        initialValues={emptyFormValues(session.userId)}
+        initialValues={emptyFormValues(session.userId, agency?.defaultCurrency)}
         organizationId={session.organizationId}
         userId={session.userId}
         canAssignBroker={session.isManager}

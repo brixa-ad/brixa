@@ -71,3 +71,74 @@ export async function sendTestPush(): Promise<{ ok: boolean }> {
   revalidatePath("/", "layout");
   return { ok: !error };
 }
+
+export type AgencyInput = {
+  name: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  defaultCurrency: string;
+  commissionSalePercent: number;
+  commissionRentMonths: number;
+  points: Record<"dealDouble" | "deal" | "listing" | "exclusive" | "viewing" | "meeting" | "client" | "call", number>;
+};
+
+/** Managers: the agency's details, defaults and ranking points. */
+export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  const text = (value: string, max: number) => (typeof value === "string" ? value.trim().slice(0, max) || null : null);
+  const name = text(input.name, 120);
+  const whole = (n: number) => Number.isInteger(n) && n >= 0 && n <= 1000;
+  if (
+    !name ||
+    !["EUR", "BGN", "USD"].includes(input.defaultCurrency) ||
+    !(input.commissionSalePercent >= 0 && input.commissionSalePercent <= 100) ||
+    !(input.commissionRentMonths >= 0 && input.commissionRentMonths <= 24) ||
+    !Object.values(input.points).every(whole)
+  ) {
+    return { ok: false };
+  }
+  const website = text(input.website, 200);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("organizations")
+    .update({
+      name,
+      phone: text(input.phone, 40),
+      email: text(input.email, 200),
+      website: website && !/^https?:\/\//.test(website) ? `https://${website}` : website,
+      address: text(input.address, 300),
+      default_currency: input.defaultCurrency,
+      commission_sale_percent: input.commissionSalePercent,
+      commission_rent_months: input.commissionRentMonths,
+      points_deal_double: input.points.dealDouble,
+      points_deal: input.points.deal,
+      points_listing: input.points.listing,
+      points_exclusive: input.points.exclusive,
+      points_viewing: input.points.viewing,
+      points_meeting: input.points.meeting,
+      points_client: input.points.client,
+      points_call: input.points.call,
+    })
+    .eq("id", session.organizationId);
+  if (error) console.error("Saving the agency failed:", error.message);
+  revalidatePath("/", "layout");
+  return { ok: !error };
+}
+
+/** After the browser uploaded a logo (or to remove it: null). */
+export async function setAgencyLogo(path: string | null): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  if (path !== null && !path.startsWith(`${session.organizationId}/`)) return { ok: false };
+  const supabase = await createClient();
+  const { data: before } = await supabase.from("organizations").select("logo_path").eq("id", session.organizationId).maybeSingle();
+  const { error } = await supabase.from("organizations").update({ logo_path: path }).eq("id", session.organizationId);
+  if (!error && before?.logo_path && before.logo_path !== path) {
+    await supabase.storage.from("agency-logos").remove([before.logo_path]);
+  }
+  revalidatePath("/", "layout");
+  return { ok: !error };
+}

@@ -175,6 +175,9 @@ export default async function TeamPage() {
           {isOwner && (
             <Card title={t.team.agencyName}>
               <RenameForm name={session.organizationName} />
+              <Link href="/settings#agency" className="mt-3 inline-block text-sm font-medium text-accent-fg hover:underline">
+                {t.agency.title} →
+              </Link>
             </Card>
           )}
         </div>

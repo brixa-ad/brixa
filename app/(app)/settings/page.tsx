@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { FollowUpRulesForm } from "@/components/followup/FollowUpRulesForm";
+import { AgencySettingsForm } from "@/components/settings/AgencySettingsForm";
 import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card } from "@/components/ui/form";
+import { getAgency } from "@/lib/agency";
 import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, navKeysFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
@@ -20,6 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SettingsPage() {
   const [session, { t }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
   const supabase = await createClient();
+  const agency = session!.isManager ? await getAgency(session!.organizationId) : null;
   const { data: rules } = session!.isManager
     ? await supabase
         .from("organizations")
@@ -44,6 +47,26 @@ export default async function SettingsPage() {
           <Card title={t.push.title} description={t.push.hint} id="push">
             <PushSettings />
           </Card>
+
+          {agency && (
+            <Card title={t.agency.title} description={t.agency.hint} id="agency">
+              <AgencySettingsForm
+                organizationId={agency.id}
+                logoUrl={agency.logoUrl}
+                initial={{
+                  name: agency.name,
+                  phone: agency.phone ?? "",
+                  email: agency.email ?? "",
+                  website: agency.website ?? "",
+                  address: agency.address ?? "",
+                  defaultCurrency: agency.defaultCurrency,
+                  commissionSalePercent: agency.commissionSalePercent,
+                  commissionRentMonths: agency.commissionRentMonths,
+                  points: agency.points,
+                }}
+              />
+            </Card>
+          )}
 
           {rules && (
             <Card title={t.followUp.rulesTitle} id="follow-up">
