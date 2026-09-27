@@ -16,6 +16,8 @@ const PUBLIC_PATHS = [
   // shared listings: anyone with the link
   "/p",
   "/api/share",
+  // the owner's report: the owner has the link
+  "/r",
 ];
 
 export async function updateSession(request: NextRequest) {

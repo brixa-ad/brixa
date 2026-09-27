@@ -21,6 +21,7 @@ import { Avatar } from "@/components/Avatar";
 import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
+import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { TypeIcon } from "@/components/task/TypeIcon";
@@ -39,6 +40,7 @@ import { getCommissionDefaults } from "@/lib/lookups";
 import { getProperty } from "@/lib/properties";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
+import { sofiaDay, sofiaToday } from "@/lib/dates";
 import { getSession } from "@/lib/session";
 import { personName } from "@/lib/tasks";
 import { createClient } from "@/lib/supabase/server";
@@ -68,6 +70,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: documentRows },
     { data: shareRows },
     { data: clientRows },
+    { data: reportRows },
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -104,6 +107,13 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             .order("full_name")
             .limit(1000)
         : Promise.resolve({ data: [] as ShareClient[] }),
+      // reports sent to the owner (the listing's broker and managers only)
+      supabase
+        .from("owner_reports")
+        .select("id, token, period_start, period_end, views, last_viewed_at, revoked_at, created_at, created_by, creator:profiles(full_name, email)")
+        .eq("property_id", id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
@@ -130,6 +140,30 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     createdAt: row.created_at,
   }));
   const shareClients = (clientRows ?? []) as ShareClient[];
+  const reports: ShareRow[] = (
+    (reportRows ?? []) as unknown as {
+      id: string;
+      token: string;
+      period_start: string;
+      period_end: string;
+      views: number;
+      last_viewed_at: string | null;
+      revoked_at: string | null;
+      created_at: string;
+      created_by: string | null;
+      creator: { full_name: string | null; email: string } | null;
+    }[]
+  ).map((row) => ({
+    id: row.id,
+    token: row.token,
+    name: `${formatDate(row.period_start, lang)} – ${formatDate(row.period_end, lang)}`,
+    href: null,
+    sharedBy: row.creator && row.created_by !== session?.userId ? personName(row.creator) : null,
+    views: row.views,
+    lastViewedAt: row.last_viewed_at,
+    revoked: row.revoked_at !== null,
+    createdAt: row.created_at,
+  }));
 
   type Person = { full_name: string | null; email: string } | null;
   const documents: PropertyDocument[] = await Promise.all(
@@ -553,6 +587,24 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           {listing && shares.length > 0 && (
             <Card title={t.share.linksTitle}>
               <ShareList rows={shares} empty={t.share.noLinks} />
+            </Card>
+          )}
+
+          {listing && canEdit && (
+            <Card title={t.report.title} description={t.report.hint}>
+              <OwnerReportDialog
+                propertyId={property.id}
+                title={property.title}
+                listedOn={sofiaDay(property.created_at)}
+                today={sofiaToday()}
+                owner={property.owner}
+              />
+              {reports.length > 0 && (
+                <div className="mt-5 border-t border-line-soft pt-4">
+                  <h3 className="mb-3 text-sm font-semibold text-fg-2">{t.report.linksTitle}</h3>
+                  <ShareList rows={reports} empty={t.report.noLinks} kind="report" />
+                </div>
+              )}
             </Card>
           )}
 

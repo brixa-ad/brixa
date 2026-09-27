@@ -57,3 +57,62 @@ export async function stopShare(shareId: string): Promise<{ ok: boolean }> {
   if (data.client_id) revalidatePath(`/clients/${data.client_id}`);
   return { ok: true };
 }
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The owner's report for a period, as a private link (noted in the owner's history). */
+export async function createOwnerReport(
+  propertyId: string,
+  input: { from: string; to: string; comment: string }
+): Promise<{ ok: true; token: string } | { ok: false }> {
+  const session = await getSession();
+  if (!session) return { ok: false };
+  const comment = input.comment.trim().slice(0, 2000) || null;
+  if (!DAY.test(input.from) || !DAY.test(input.to) || input.from > input.to) return { ok: false };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("owner_reports")
+    .insert({
+      property_id: propertyId,
+      organization_id: session.organizationId,
+      created_by: session.userId,
+      period_start: input.from,
+      period_end: input.to,
+      comment,
+    })
+    .select("token, property:properties(title, owner_client_id)")
+    .single();
+  if (error || !data) {
+    console.error("Creating an owner report failed:", error?.message ?? "no row");
+    return { ok: false };
+  }
+
+  const property = data.property as unknown as { title: string; owner_client_id: string | null } | null;
+  if (property?.owner_client_id) {
+    await supabase.from("activities").insert({
+      organization_id: session.organizationId,
+      profile_id: session.userId,
+      type: "message",
+      client_id: property.owner_client_id,
+      property_id: propertyId,
+      note: `📊 ${property.title}`,
+    });
+    revalidatePath(`/clients/${property.owner_client_id}`);
+  }
+  revalidatePath(`/properties/${propertyId}`);
+  return { ok: true, token: data.token };
+}
+
+export async function stopOwnerReport(reportId: string): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("owner_reports")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .select("property_id")
+    .maybeSingle();
+  if (error || !data) return { ok: false };
+  revalidatePath(`/properties/${data.property_id}`);
+  return { ok: true };
+}

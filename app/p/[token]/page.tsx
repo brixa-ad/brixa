@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Check, Globe, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { Check, MapPin } from "lucide-react";
+import { AgencyFooter, BrokerCard, PublicHeader } from "@/components/PublicContact";
+import { ViewBeacon } from "@/components/PublicPageTools";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { telHref, viberHref, whatsappHref } from "@/lib/phone";
 import { getSharedListing } from "@/lib/share";
-import { PrintButton, ViewBeacon } from "./SharedPageTools";
 
 export async function generateMetadata({ params }: PageProps<"/p/[token]">): Promise<Metadata> {
   const { token } = await params;
@@ -51,22 +50,12 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
   ];
   const shown = facts.filter(([, value]) => value);
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
-  const whatsapp = broker?.phone ? whatsappHref(broker.phone) : null;
 
   return (
     <main className="shared-page mx-auto max-w-3xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
-      <ViewBeacon token={token} />
+      <ViewBeacon token={token} kind="listing" />
 
-      <header className="mb-5 flex items-center justify-between gap-3">
-        {agency?.logoUrl ? (
-          <img src={agency.logoUrl} alt={agency.name} className="h-10 max-w-44 rounded-md bg-white object-contain p-1" />
-        ) : agency ? (
-          <span className="text-lg font-bold">{agency.name}</span>
-        ) : (
-          <Logo />
-        )}
-        <PrintButton />
-      </header>
+      <PublicHeader agency={agency} />
 
       {/* photos: swipe on the phone, a grid on paper */}
       {photos.length > 0 && (
@@ -133,76 +122,9 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
         </section>
       )}
 
-      {/* who to call */}
-      {broker && (
-        <section className="mt-6 rounded-2xl border border-accent/30 bg-accent-soft/40 p-5">
-          <h2 className="mb-3 text-sm font-semibold">{t.share.contactBroker}</h2>
-          <div className="flex items-center gap-3">
-            {broker.avatarUrl ? (
-              <img src={broker.avatarUrl} alt={broker.name} className="size-14 rounded-full object-cover" />
-            ) : (
-              <span className="grid size-14 place-items-center rounded-full bg-accent text-lg font-bold text-on-accent">
-                {broker.name.slice(0, 1)}
-              </span>
-            )}
-            <div className="min-w-0">
-              <p className="font-semibold">{broker.name}</p>
-              {broker.job_title && <p className="text-sm text-muted">{broker.job_title}</p>}
-              {broker.phone && <p className="text-sm text-fg-2">{broker.phone}</p>}
-            </div>
-          </div>
-          <div className="no-print mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {broker.phone && (
-              <a href={telHref(broker.phone)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-on-accent">
-                <Phone className="size-4" />
-                {t.share.call}
-              </a>
-            )}
-            {broker.phone && (
-              <a href={viberHref(broker.phone)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm font-semibold">
-                <MessageCircle className="size-4" />
-                Viber
-              </a>
-            )}
-            {whatsapp && (
-              <a href={whatsapp} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm font-semibold">
-                <MessageCircle className="size-4" />
-                WhatsApp
-              </a>
-            )}
-            <a href={`mailto:${broker.email}?subject=${encodeURIComponent(p.title)}`} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm font-semibold">
-              <Mail className="size-4" />
-              {t.share.email}
-            </a>
-          </div>
-        </section>
-      )}
+      {broker && <BrokerCard broker={broker} subject={p.title} t={t} />}
 
-      {agency && (
-        <footer className="mt-8 space-y-1 border-t border-line pt-5 text-center text-sm text-muted">
-          <p className="font-semibold text-fg-2">{agency.name}</p>
-          <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            {agency.phone && (
-              <a href={telHref(agency.phone)} className="inline-flex items-center gap-1 hover:text-fg">
-                <Phone className="size-3.5" />
-                {agency.phone}
-              </a>
-            )}
-            {agency.email && (
-              <a href={`mailto:${agency.email}`} className="inline-flex items-center gap-1 hover:text-fg">
-                <Mail className="size-3.5" />
-                {agency.email}
-              </a>
-            )}
-            {agency.website && (
-              <a href={agency.website} className="inline-flex items-center gap-1 hover:text-fg" target="_blank" rel="noopener noreferrer">
-                <Globe className="size-3.5" />
-                {agency.website.replace(/^https?:\/\//, "")}
-              </a>
-            )}
-          </p>
-        </footer>
-      )}
+      {agency && <AgencyFooter agency={agency} />}
     </main>
   );
 }

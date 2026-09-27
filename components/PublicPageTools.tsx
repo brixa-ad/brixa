@@ -5,7 +5,7 @@ import { Printer } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 
 /** Counts the opening once the page is really shown (link previews don't run this). */
-export function ViewBeacon({ token }: { token: string }) {
+export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "report" }) {
   useEffect(() => {
     const key = `brixa.viewed.${token}`;
     try {
@@ -15,14 +15,14 @@ export function ViewBeacon({ token }: { token: string }) {
     void fetch("/api/share/view", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, kind }),
       keepalive: true,
     });
-  }, [token]);
+  }, [token, kind]);
   return null;
 }
 
-/** "PDF / Print" — the browser saves the page as a PDF brochure. */
+/** "PDF / Print" — the browser saves the page as a PDF. */
 export function PrintButton() {
   const { t } = useI18n();
   return (

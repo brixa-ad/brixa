@@ -56,7 +56,7 @@ export type PropertyDetail = {
   broker: BrokerRow | null;
   owner_client_id: string | null;
   /** null when the owner isn't visible to this user (colleague's client) */
-  owner: { id: string; full_name: string; phone: string | null } | null;
+  owner: { id: string; full_name: string; phone: string | null; email: string | null } | null;
   features: Feature[];
   priceHistory: {
     id: string;
@@ -85,7 +85,7 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
       broker:profiles!properties_responsible_broker_id_fkey(full_name, email, avatar_path),
-      owner:clients!properties_owner_client_id_fkey(id, full_name, phone),
+      owner:clients!properties_owner_client_id_fkey(id, full_name, phone, email),
       feature_values:property_feature_values(feature:property_features(id, code, name, name_en)),
       price_history:property_price_history(id, old_price, new_price, currency, changed_at, changed_by:profiles(full_name, email)),
       photos:property_photos(id, storage_path, position)`

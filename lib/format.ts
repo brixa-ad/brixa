@@ -19,6 +19,8 @@ export function formatDate(value: string, lang: Lang, withTime = false) {
     day: "numeric",
     month: "short",
     year: "numeric",
+    // always Bulgarian time — the server runs on UTC
+    timeZone: "Europe/Sofia",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   }).format(new Date(value));
 }
@@ -29,5 +31,5 @@ export function settlementLabel(settlement: { name: string; settlement_type: str
 
 /** "27 септ." / "Sep 27" */
 export function formatDayMonth(value: string, lang: Lang) {
-  return new Intl.DateTimeFormat(locale(lang), { day: "numeric", month: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat(locale(lang), { day: "numeric", month: "short", timeZone: "Europe/Sofia" }).format(new Date(value));
 }

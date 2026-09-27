@@ -90,6 +90,8 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     }
     case "share_viewed":
       return fmt(data.actor ? t.notifications.share_viewed : t.notifications.share_viewed_anon, vars);
+    case "report_viewed":
+      return fmt(data.actor ? t.notifications.report_viewed : t.notifications.report_viewed_anon, vars);
     case "task_reminder":
       return fmt(t.notifications.task_reminder, vars);
     case "push_test":

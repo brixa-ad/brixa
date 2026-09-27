@@ -3,11 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Copy, Eye, EyeOff, Link2Off } from "lucide-react";
-import { stopShare } from "@/app/(app)/properties/share-actions";
+import { stopOwnerReport, stopShare } from "@/app/(app)/properties/share-actions";
 import { useI18n } from "@/components/I18nProvider";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { shareUrl } from "./ShareDialog";
+import { linkUrl, type LinkKind } from "./LinkDialog";
 
 export type ShareRow = {
   id: string;
@@ -23,7 +23,7 @@ export type ShareRow = {
 };
 
 /** Links sent so far — who opened them and when; copy again or stop one. */
-export function ShareList({ rows, empty }: { rows: ShareRow[]; empty: string }) {
+export function ShareList({ rows, empty, kind = "listing" }: { rows: ShareRow[]; empty: string; kind?: LinkKind }) {
   const { t, lang } = useI18n();
   if (rows.length === 0) return <p className="text-sm text-muted">{empty}</p>;
   return (
@@ -59,14 +59,14 @@ export function ShareList({ rows, empty }: { rows: ShareRow[]; empty: string }) 
                   : t.share.notViewed}
             </p>
           </div>
-          {!row.revoked && <RowActions id={row.id} token={row.token} />}
+          {!row.revoked && <RowActions id={row.id} token={row.token} kind={kind} />}
         </li>
       ))}
     </ul>
   );
 }
 
-function RowActions({ id, token }: { id: string; token: string }) {
+function RowActions({ id, token, kind }: { id: string; token: string; kind: LinkKind }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -79,7 +79,7 @@ function RowActions({ id, token }: { id: string; token: string }) {
         title={t.share.copy}
         aria-label={t.share.copy}
         onClick={async () => {
-          const url = shareUrl(token);
+          const url = linkUrl(kind, token);
           try {
             await navigator.clipboard.writeText(url);
             setCopied(true);
@@ -100,7 +100,7 @@ function RowActions({ id, token }: { id: string; token: string }) {
         onClick={() => {
           if (!window.confirm(t.share.stopConfirm)) return;
           startTransition(async () => {
-            const result = await stopShare(id);
+            const result = await (kind === "report" ? stopOwnerReport(id) : stopShare(id));
             if (!result.ok) window.alert(t.errors.generic);
           });
         }}
