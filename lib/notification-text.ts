@@ -11,6 +11,9 @@ export type NotificationData = {
   time?: string | null;
   count?: number;
   hours?: number;
+  tasks?: number;
+  followups?: number;
+  steps?: number;
 };
 
 /**
@@ -72,6 +75,19 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "morning_brief": {
+      const parts = [
+        data.tasks ? fmt(t.notifications.morning_tasks, { count: data.tasks }) : "",
+        data.followups
+          ? fmt(data.title ? t.notifications.morning_followups_names : t.notifications.morning_followups, {
+              count: data.followups,
+              names: data.title ?? "",
+            })
+          : "",
+        data.steps ? fmt(t.notifications.morning_steps, { count: data.steps }) : "",
+      ].filter(Boolean);
+      return fmt(t.notifications.morning_brief, { parts: parts.join(", ") });
+    }
     case "task_reminder":
       return fmt(t.notifications.task_reminder, vars);
     case "push_test":

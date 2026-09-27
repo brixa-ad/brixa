@@ -1,6 +1,7 @@
 /** Every section of the app, in menu order. */
 export const NAV_KEYS = [
   "home",
+  "brix",
   "tasks",
   "calendar",
   "deals",
@@ -20,6 +21,7 @@ export type NavKey = (typeof NAV_KEYS)[number];
 
 export const NAV_HREF: Record<NavKey, string> = {
   home: "/",
+  brix: "/brix",
   tasks: "/tasks",
   calendar: "/calendar",
   deals: "/deals",

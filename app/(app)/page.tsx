@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
+import { MorningBrief } from "@/components/brix/MorningBrief";
 import { PushBanner } from "@/components/push/PushBanner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
@@ -53,6 +54,11 @@ export default async function HomePage() {
     .not("follow_up_at", "is", null)
     .lt("follow_up_at", addDays(today, 2)); // a little past today; narrowed below
   const nowIso = new Date().toISOString();
+  // Brix's plan (written on the first visit of the day, when the AI key is set)
+  const brixReady = Boolean(process.env.ANTHROPIC_API_KEY);
+  const { data: brief } = brixReady
+    ? await supabase.from("brix_briefs").select("content").eq("profile_id", session.userId).eq("day", today).maybeSingle()
+    : { data: null };
   const followUpsLate = (dueRows ?? []).filter((r) => r.follow_up_at! <= nowIso).length;
   const followUpsToday = (dueRows ?? []).filter((r) => r.follow_up_at! > nowIso && sofiaDay(r.follow_up_at!) === today).length;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
@@ -121,6 +127,8 @@ export default async function HomePage() {
           </div>
         </figure>
       </section>
+
+      {brixReady && <MorningBrief initial={brief?.content ?? null} />}
 
       <PushBanner />
 

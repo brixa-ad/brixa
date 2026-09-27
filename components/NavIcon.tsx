@@ -9,6 +9,7 @@ import {
   House,
   ListChecks,
   Settings,
+  Sparkles,
   Target,
   UserRound,
   Users,
@@ -19,6 +20,7 @@ import type { NavKey } from "@/lib/nav";
 
 const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   home: House,
+  brix: Sparkles,
   tasks: ListChecks,
   calendar: CalendarDays,
   deals: Handshake,

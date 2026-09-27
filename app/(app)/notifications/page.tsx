@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, UserPlus, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -50,6 +50,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   client_assigned: { icon: UserPlus, tone: "bg-accent-soft text-accent-fg" },
   contact_claimed: { icon: UserPlus, tone: "bg-success/10 text-success" },
   follow_ups_today: { icon: CalendarCheck, tone: "bg-accent-soft text-accent-fg" },
+  morning_brief: { icon: Sparkles, tone: "bg-accent-soft text-accent-fg" },
 };
 
 export default async function NotificationsPage() {
