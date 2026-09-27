@@ -30,6 +30,12 @@ export type DealRow = {
   deposit_on: string | null;
   preliminary_on: string | null;
   notary_on: string | null;
+  /** HH:MM:SS when a step is scheduled at a set time */
+  viewing_time: string | null;
+  offer_time: string | null;
+  deposit_time: string | null;
+  preliminary_time: string | null;
+  notary_time: string | null;
   deposit_amount: number | null;
   preliminary_bank: number | null;
   preliminary_cash: number | null;
@@ -51,6 +57,7 @@ export type DealRow = {
 export const DEAL_SELECT = `id, kind, stage, status, price, currency, commission, closed_on, confirmed_at, lost_reason, notes,
   double_sided, buyer_rate, partner_agency, partner_broker, partner_side,
   viewing_on, offer_on, deposit_on, preliminary_on, notary_on,
+  viewing_time, offer_time, deposit_time, preliminary_time, notary_time,
   deposit_amount, preliminary_bank, preliminary_cash, notary_bank, notary_cash,
   broker_id, created_by, property_id, client_id, created_at, updated_at,
   property:properties(id, title, status),

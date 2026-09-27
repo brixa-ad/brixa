@@ -1,21 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, CheckCircle2, Loader2, Plus, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, CheckCircle2, Loader2, Plus, Trash2, X } from "lucide-react";
 import {
   addOffer,
   deleteOffer,
-  saveDealDates,
+  scheduleDealStep,
   saveDealPayments,
   setOfferStatus,
   type DealActionResult,
-  type StageDates,
 } from "@/app/(app)/deals/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { addDays } from "@/lib/dates";
 import { DEAL_LIMITS, isDay, parseAmount } from "@/lib/deal-validation";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatDate, formatDayMonth, formatPrice } from "@/lib/format";
 import { CURRENCIES, dealStages, type DealKind, type DealStage, type DealStatus } from "@/lib/options";
 
 function useSave() {
@@ -43,21 +42,18 @@ function useSave() {
   return { pending, run, message, reset: () => setStatus("idle") };
 }
 
-const STAGE_COLUMN: Record<DealStage, keyof StageDates> = {
-  viewing: "viewing_on",
-  offer: "offer_on",
-  deposit: "deposit_on",
-  preliminary: "preliminary_on",
-  notary: "notary_on",
-};
+export type StepSchedule = Record<DealStage, { day: string | null; time: string | null }>;
 
-/** A date for every step: when it happened, or when it's planned (→ reminders). */
-export function DealDates({
+/**
+ * Under the stage bar: schedule the next step (day + time) — then the steps
+ * with the day each happened or is planned for.
+ */
+export function DealSchedule({
   dealId,
   kind,
   stage,
   status,
-  dates,
+  steps,
   canEdit,
   today,
 }: {
@@ -65,34 +61,106 @@ export function DealDates({
   kind: DealKind;
   stage: DealStage;
   status: DealStatus;
-  dates: StageDates;
+  steps: StepSchedule;
   canEdit: boolean;
   today: string;
 }) {
   const { t, lang } = useI18n();
-  const [values, setValues] = useState(dates);
   const { pending, run, message, reset } = useSave();
   const stages = dealStages(kind);
   const labels = kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
   const current = status === "won" ? stages.length : stages.indexOf(stage);
-  const changed = stages.some((s) => values[STAGE_COLUMN[s]] !== dates[STAGE_COLUMN[s]]);
+  // Reached steps are done — except the viewing / notary while the deal still waits at them.
+  const isDone = (key: DealStage, index: number) =>
+    index < current || (index === current && key !== "viewing" && key !== "notary");
+  const ahead = stages.filter((key, index) => !isDone(key, index));
+
+  // Start with the first step ahead that has no date yet.
+  const first = ahead.find((key) => !steps[key].day) ?? ahead[0];
+  const [step, setStep] = useState<DealStage | undefined>(first);
+  const [day, setDay] = useState(first ? (steps[first].day ?? "") : "");
+  const [time, setTime] = useState(first ? (steps[first].time?.slice(0, 5) ?? "") : "");
+
+  function pick(next: DealStage) {
+    setStep(next);
+    setDay(steps[next].day ?? "");
+    setTime(steps[next].time?.slice(0, 5) ?? "");
+    reset();
+  }
+
+  const when = (key: DealStage) => {
+    const { day: d, time: tm } = steps[key];
+    if (!d) return null;
+    return tm ? `${formatDayMonth(d, lang)}, ${tm.slice(0, 5)}` : formatDate(d, lang);
+  };
 
   return (
-    <div className="space-y-3">
-      {canEdit && <p className="text-xs text-muted">{t.deals.datesHint}</p>}
-      <ol className="space-y-2">
+    <div className="space-y-4">
+      {canEdit && status === "open" && step && (
+        <div className="space-y-3 rounded-xl border border-accent/30 bg-accent-soft/40 p-3.5">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <CalendarClock className="size-4 text-accent-fg" />
+            {t.deals.scheduleTitle}
+          </p>
+          <label className="block text-xs font-medium text-muted">
+            {t.deals.scheduleStep}
+            <select value={step} onChange={(e) => pick(e.target.value as DealStage)} className={`${inputClass} mt-1`}>
+              {ahead.map((key) => (
+                <option key={key} value={key}>
+                  {labels[key]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+            <label className="block min-w-0 text-xs font-medium text-muted">
+              {t.deals.scheduleDate}
+              <input
+                type="date"
+                value={day}
+                min={today}
+                onChange={(e) => {
+                  setDay(e.target.value);
+                  reset();
+                }}
+                className={`${inputClass} mt-1`}
+              />
+            </label>
+            <label className="block min-w-0 text-xs font-medium text-muted">
+              {t.deals.scheduleTime}
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => {
+                  setTime(e.target.value);
+                  reset();
+                }}
+                className={`${inputClass} mt-1`}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            disabled={pending || !isDay(day)}
+            onClick={() => run(() => scheduleDealStep(dealId, step, day, time || null))}
+            className={`${buttonClass.primary} w-full`}
+          >
+            {pending && <Loader2 className="size-4 animate-spin" />}
+            {t.deals.schedule}
+          </button>
+          {message}
+          <p className="text-[11px] text-muted">{t.deals.scheduleHint}</p>
+        </div>
+      )}
+
+      <ol className="space-y-1">
         {stages.map((key, index) => {
-          const column = STAGE_COLUMN[key];
-          const value = values[column];
-          // Reached steps are done — except the viewing / notary while the deal still waits at them.
-          const done = index < current || (index === current && key !== "viewing" && key !== "notary");
-          const soon = !done && value && (value === today || value === addDays(today, 1));
+          const done = isDone(key, index);
+          const date = when(key);
+          const d = steps[key].day;
+          const soon = !done && d && (d === today || d === addDays(today, 1));
           return (
-            // Phone: the date goes under the stage name; wider screens: on the same line.
-            <li
-              key={key}
-              className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[1.5rem_minmax(0,1fr)_11rem]"
-            >
+            <li key={key} className="flex items-center gap-3 py-1.5">
               <span
                 className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
                   done
@@ -104,48 +172,33 @@ export function DealDates({
               >
                 {done ? <Check className="size-3.5" /> : index + 1}
               </span>
-              <span className={`min-w-0 text-sm ${index === current ? "font-semibold" : "text-fg-2"}`}>
+              <span className={`min-w-0 flex-1 truncate text-sm ${index === current ? "font-semibold" : "text-fg-2"}`}>
                 {labels[key]}
-                {soon && (
-                  <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">
-                    {value === today ? t.home.todayLabel : t.home.tomorrowLabel}
-                  </span>
-                )}
               </span>
-              {canEdit ? (
-                <input
-                  type="date"
-                  value={value ?? ""}
-                  aria-label={labels[key]}
-                  onChange={(e) => {
-                    setValues((v) => ({ ...v, [column]: e.target.value || null }));
-                    reset();
-                  }}
-                  className={`${inputClass} col-start-2 py-1.5! sm:col-start-3`}
-                />
-              ) : (
-                <span className="col-start-2 text-sm text-muted sm:col-start-3">
-                  {value ? formatDate(value, lang) : "—"}
+              {soon && (
+                <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">
+                  {d === today ? t.home.todayLabel : t.home.tomorrowLabel}
                 </span>
+              )}
+              <span className={`shrink-0 text-sm tabular-nums ${date ? (done ? "text-muted" : "font-medium") : "text-faint"}`}>
+                {date ?? "—"}
+              </span>
+              {canEdit && status === "open" && !done && date && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(() => scheduleDealStep(dealId, key, null, null))}
+                  title={t.deals.unschedule}
+                  aria-label={t.deals.unschedule}
+                  className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-subtle transition hover:bg-raised hover:text-danger"
+                >
+                  <X className="size-3.5" />
+                </button>
               )}
             </li>
           );
         })}
       </ol>
-      {canEdit && (
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <button
-            type="button"
-            disabled={pending || !changed}
-            onClick={() => run(() => saveDealDates(dealId, values))}
-            className={buttonClass.primary}
-          >
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            {t.deals.saveDates}
-          </button>
-          {message}
-        </div>
-      )}
     </div>
   );
 }

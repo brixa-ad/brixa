@@ -5,7 +5,7 @@ import { BadgeCheck, Building2, Handshake, Pencil, Phone, User } from "lucide-re
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { DealActions, DealStageBar, DeleteDealButton } from "@/components/deal/DealControls";
-import { DealDates, DealOffers, DealPaymentsForm, type OfferRow } from "@/components/deal/DealDetails";
+import { DealOffers, DealPaymentsForm, DealSchedule, type OfferRow } from "@/components/deal/DealDetails";
 import { Card, buttonClass } from "@/components/ui/form";
 import { sofiaToday } from "@/lib/dates";
 import { dealTitle, getDeal } from "@/lib/deals";
@@ -83,8 +83,8 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
           <Card title={t.deals.datesTitle}>
             <DealStageBar dealId={id} kind={deal.kind} stage={deal.stage} status={deal.status} canMove={canEdit} />
             <div className="mt-5 border-t border-line-soft pt-4">
-              <DealDates
-                // stage moves stamp dates in the database — start fresh then
+              <DealSchedule
+                // a stage move changes what comes next — start the scheduler fresh then
                 key={`${deal.stage}-${deal.status}`}
                 dealId={id}
                 kind={deal.kind}
@@ -92,12 +92,12 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
                 status={deal.status}
                 canEdit={canEdit}
                 today={today}
-                dates={{
-                  viewing_on: deal.viewing_on,
-                  offer_on: deal.offer_on,
-                  deposit_on: deal.deposit_on,
-                  preliminary_on: deal.preliminary_on,
-                  notary_on: deal.notary_on,
+                steps={{
+                  viewing: { day: deal.viewing_on, time: deal.viewing_time },
+                  offer: { day: deal.offer_on, time: deal.offer_time },
+                  deposit: { day: deal.deposit_on, time: deal.deposit_time },
+                  preliminary: { day: deal.preliminary_on, time: deal.preliminary_time },
+                  notary: { day: deal.notary_on, time: deal.notary_time },
                 }}
               />
             </div>

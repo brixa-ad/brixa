@@ -1267,12 +1267,17 @@ create table public.deals (
   partner_agency text check (partner_agency is null or char_length(partner_agency) <= 120),
   partner_broker text check (partner_broker is null or char_length(partner_broker) <= 120),
   partner_side text check (partner_side is null or partner_side in ('buyer', 'seller')),
-  -- when each step happened, or is planned
+  -- when each step happened, or is planned (time: when it's scheduled)
   viewing_on date,
   offer_on date,
   deposit_on date,
   preliminary_on date,
   notary_on date,
+  viewing_time time,
+  offer_time time,
+  deposit_time time,
+  preliminary_time time,
+  notary_time time,
   -- money the buyer pays along the way
   deposit_amount numeric(14, 2) check (deposit_amount is null or deposit_amount >= 0),
   preliminary_bank numeric(14, 2) check (preliminary_bank is null or preliminary_bank >= 0),
@@ -1347,7 +1352,8 @@ create index deal_stage_log_deal_idx on public.deal_stage_log (deal_id, changed_
 create table public.deal_reminders (
   deal_id uuid not null references public.deals (id) on delete cascade,
   stage text not null,
-  kind text not null check (kind in ('eve', 'day')),
+  -- the evening before, on the day, about an hour before the time
+  kind text not null check (kind in ('eve', 'day', 'soon')),
   due date not null,
   primary key (deal_id, stage, kind, due)
 );
@@ -1448,7 +1454,7 @@ $$;
 -- ---------------------------------------------------------------------
 
 -- Brokers run their deals; confirming the commission is the manager's.
--- Reaching a stage stamps its date (a planned date in the future becomes today).
+-- Reaching a stage stamps its date (a planned date in the future becomes today, without the planned time).
 create or replace function public.guard_deal()
 returns trigger
 language plpgsql
@@ -1484,11 +1490,15 @@ begin
   if tg_op = 'INSERT' or new.stage is distinct from old.stage or new.status is distinct from old.status then
     if new.stage = 'offer' and (new.offer_on is null or new.offer_on > today) then
       new.offer_on := today;
+      new.offer_time := null;
     elsif new.stage = 'deposit' and (new.deposit_on is null or new.deposit_on > today) then
       new.deposit_on := today;
+      new.deposit_time := null;
     elsif new.stage = 'preliminary' and (new.preliminary_on is null or new.preliminary_on > today) then
       new.preliminary_on := today;
+      new.preliminary_time := null;
     elsif new.stage = 'notary' and new.status = 'won' then
+      if new.notary_on is distinct from new.closed_on then new.notary_time := null; end if;
       new.notary_on := new.closed_on;
     end if;
   end if;
@@ -1697,6 +1707,7 @@ create trigger deals_log_stage
 -- Upcoming steps → reminders (run by a schedule every 15 minutes)
 --   • the evening before (from 18:00): the broker
 --   • on the day (from 08:00): the broker and the managers
+--   • about an hour before the time, when one is set: the broker
 -- Only steps still ahead (the viewing while the deal is at "viewing", the notary while it is at "notary").
 -- ---------------------------------------------------------------------
 create or replace function public.notify_deal_dates(at_time timestamptz default now())
@@ -1707,21 +1718,24 @@ set search_path = public
 as $$
 declare
   local_now timestamp := at_time at time zone 'Europe/Sofia';
+  now_time time := local_now::time;
   today date := local_now::date;
   stages text[] := array['viewing', 'offer', 'deposit', 'preliminary', 'notary'];
   item record;
   manager record;
-  reminder text;
+  payload jsonb;
   sent integer := 0;
 begin
   for item in
-    select d.id, d.organization_id, d.broker_id, d.kind, s.stage, s.due,
+    select d.id, d.organization_id, d.broker_id, d.kind, s.stage, s.due, s.at, k.reminder,
       coalesce(p.title, c.full_name, '') as label
     from public.deals d
     cross join lateral (values
-      ('viewing', d.viewing_on), ('offer', d.offer_on), ('deposit', d.deposit_on),
-      ('preliminary', d.preliminary_on), ('notary', d.notary_on)
-    ) as s (stage, due)
+      ('viewing', d.viewing_on, d.viewing_time), ('offer', d.offer_on, d.offer_time),
+      ('deposit', d.deposit_on, d.deposit_time), ('preliminary', d.preliminary_on, d.preliminary_time),
+      ('notary', d.notary_on, d.notary_time)
+    ) as s (stage, due, at)
+    cross join lateral (values ('eve'), ('day'), ('soon')) as k (reminder)
     left join public.properties p on p.id = d.property_id
     left join public.clients c on c.id = d.client_id
     where d.status = 'open'
@@ -1731,26 +1745,30 @@ begin
         array_position(stages, s.stage) > array_position(stages, d.stage)
         or (s.stage = d.stage and s.stage in ('viewing', 'notary'))
       )
-      and (
-        (s.due = today + 1 and local_now::time >= time '18:00')
-        or (s.due = today and local_now::time >= time '08:00')
-      )
+      and case k.reminder
+        when 'eve' then s.due = today + 1 and now_time >= time '18:00'
+        when 'day' then s.due = today and now_time >= time '08:00'
+        else s.due = today and s.at is not null and now_time >= s.at - interval '1 hour' and now_time < s.at
+      end
   loop
-    reminder := case when item.due = today then 'day' else 'eve' end;
-
     insert into public.deal_reminders (deal_id, stage, kind, due)
-    values (item.id, item.stage, reminder, item.due)
+    values (item.id, item.stage, item.reminder, item.due)
     on conflict do nothing;
     if not found then continue; end if;
 
+    payload := jsonb_build_object(
+      'title', item.label, 'stage', item.stage, 'kind', item.kind,
+      'time', to_char(item.at, 'HH24:MI')
+    );
+
     perform public.notify(
       item.organization_id, item.broker_id, null,
-      case reminder when 'day' then 'deal_date_today' else 'deal_date_tomorrow' end,
-      jsonb_build_object('title', item.label, 'stage', item.stage, 'kind', item.kind),
+      case item.reminder when 'eve' then 'deal_date_tomorrow' when 'day' then 'deal_date_today' else 'deal_date_soon' end,
+      payload,
       '/deals/' || item.id
     );
 
-    if reminder = 'day' then
+    if item.reminder = 'day' then
       for manager in
         select profile_id from public.organization_members
         where organization_id = item.organization_id
@@ -1759,10 +1777,7 @@ begin
       loop
         perform public.notify(
           item.organization_id, manager.profile_id, item.broker_id, 'deal_date_team',
-          jsonb_build_object(
-            'title', item.label, 'stage', item.stage, 'kind', item.kind,
-            'actor', public.person_name(item.broker_id)
-          ),
+          payload || jsonb_build_object('actor', public.person_name(item.broker_id)),
           '/deals/' || item.id
         );
       end loop;

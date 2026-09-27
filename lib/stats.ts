@@ -129,6 +129,8 @@ export type UpcomingStep = {
   kind: DealKind;
   stage: (typeof STEPS)[number];
   day: string;
+  /** HH:MM, when scheduled at a set time */
+  time: string | null;
   brokerName: string | null;
 };
 
@@ -139,7 +141,7 @@ export async function getUpcomingSteps(session: SessionContext, today: string): 
   let query = supabase
     .from("deals")
     .select(
-      `id, kind, stage, broker_id, ${STEP_COLUMNS.join(", ")},
+      `id, kind, stage, broker_id, ${STEP_COLUMNS.join(", ")}, ${STEPS.map((s) => `${s}_time`).join(", ")},
       property:properties(title), client:clients(full_name), broker:profiles!deals_broker_id_fkey(full_name, email)`
     )
     .eq("organization_id", session.organizationId)
@@ -169,11 +171,12 @@ export async function getUpcomingSteps(session: SessionContext, today: string): 
         kind: row.kind as DealKind,
         stage,
         day,
+        time: (row[`${stage}_time`] as string | null)?.slice(0, 5) ?? null,
         brokerName: row.broker_id === session.userId ? null : (broker?.full_name || broker?.email || null),
       });
     });
   }
-  return steps.sort((a, b) => a.day.localeCompare(b.day));
+  return steps.sort((a, b) => a.day.localeCompare(b.day) || (a.time ?? "99").localeCompare(b.time ?? "99"));
 }
 
 /** The agency's ranking for this month and this year (commission + activity points). */

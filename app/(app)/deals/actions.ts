@@ -139,18 +139,16 @@ export async function deleteDeal(dealId: string) {
   redirect("/deals");
 }
 
-export type StageDates = Record<"viewing_on" | "offer_on" | "deposit_on" | "preliminary_on" | "notary_on", string | null>;
-
-/** When each step happened or is planned (the reminders run off these). */
-export async function saveDealDates(dealId: string, dates: StageDates) {
-  const keys = ["viewing_on", "offer_on", "deposit_on", "preliminary_on", "notary_on"] as const;
-  const changes: Record<string, string | null> = {};
-  for (const key of keys) {
-    const value = dates[key];
-    if (value !== null && !isDay(value)) return { ok: false, message: "generic" } as const;
-    changes[key] = value;
+/** Schedule a step for a day (and optionally a time) — the reminders run off these. No day = unschedule. */
+export async function scheduleDealStep(dealId: string, stage: string, day: string | null, time: string | null) {
+  if (
+    !isOneOf(DEAL_STAGES, stage) ||
+    (day !== null && !isDay(day)) ||
+    (time !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
+  ) {
+    return { ok: false, message: "generic" } as const;
   }
-  return update(dealId, changes);
+  return update(dealId, { [`${stage}_on`]: day, [`${stage}_time`]: day ? time : null });
 }
 
 export type DealPayments = {

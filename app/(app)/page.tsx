@@ -286,6 +286,7 @@ export default async function HomePage() {
                           className={`w-16 shrink-0 text-center text-xs font-bold ${soon ? "text-warning" : "text-muted"}`}
                         >
                           {soon ?? formatDayMonth(step.day, lang)}
+                          {step.time && <span className="block font-medium text-fg-2">{step.time}</span>}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium">{stages[step.stage]}</span>
