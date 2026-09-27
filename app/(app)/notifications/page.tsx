@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, BellOff, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, BellOff, BellRing, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
-import { formatDate, formatPrice } from "@/lib/format";
-import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
+import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { notificationText, type NotificationData } from "@/lib/notification-text";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,57 +17,11 @@ export async function generateMetadata(): Promise<Metadata> {
 type Row = {
   id: string;
   type: string;
-  data: { title?: string; actor?: string; days?: number; amount?: number; stage?: string; kind?: string; time?: string | null };
+  data: NotificationData;
   link: string | null;
   read_at: string | null;
   created_at: string;
 };
-
-/** Notifications are stored as type + data; the text is written in the reader's language. */
-function text(n: Row, t: Dictionary, lang: Lang) {
-  const vars = {
-    title: n.data.title ?? "",
-    actor: n.data.actor ?? "",
-    days: n.data.days ?? 0,
-    amount: formatPrice(Number(n.data.amount ?? 0), "EUR", lang) ?? "",
-    stage:
-      (n.data.kind === "rent" ? t.options.dealStageRent : t.options.dealStage)[
-        (n.data.stage ?? "viewing") as keyof typeof t.options.dealStage
-      ] ?? "",
-    time: n.data.time ?? "",
-  };
-  const late = (n.data.days ?? 0) > 0;
-  switch (n.type) {
-    case "task_assigned":
-      return fmt(t.notifications.task_assigned, vars);
-    case "task_done":
-      return fmt(t.notifications.task_done, vars);
-    case "task_overdue":
-      return fmt(late ? t.notifications.task_overdue_days : t.notifications.task_overdue, vars);
-    case "task_overdue_team":
-      return fmt(late ? t.notifications.task_overdue_team_days : t.notifications.task_overdue_team, vars);
-    case "deal_to_confirm":
-      return fmt(t.notifications.deal_to_confirm, vars);
-    case "deal_confirmed":
-      return fmt(t.notifications.deal_confirmed, vars);
-    case "deal_returned":
-      return fmt(t.notifications.deal_returned, vars);
-    case "commission_logged":
-      return fmt(t.notifications.commission_logged, vars);
-    case "overtaken":
-      return fmt(t.notifications.overtaken, vars);
-    case "deal_date_tomorrow":
-      return fmt(n.data.time ? t.notifications.deal_date_tomorrow_at : t.notifications.deal_date_tomorrow, vars);
-    case "deal_date_today":
-      return fmt(n.data.time ? t.notifications.deal_date_today_at : t.notifications.deal_date_today, vars);
-    case "deal_date_team":
-      return fmt(n.data.time ? t.notifications.deal_date_team_at : t.notifications.deal_date_team, vars);
-    case "deal_date_soon":
-      return fmt(t.notifications.deal_date_soon, vars);
-    default:
-      return vars.title;
-  }
-}
 
 const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   task_assigned: { icon: ClipboardList, tone: "bg-accent-soft text-accent-fg" },
@@ -83,6 +37,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   deal_date_today: { icon: CalendarClock, tone: "bg-warning/10 text-warning" },
   deal_date_team: { icon: CalendarClock, tone: "bg-warning/10 text-warning" },
   deal_date_soon: { icon: AlarmClock, tone: "bg-danger/10 text-danger" },
+  push_test: { icon: BellRing, tone: "bg-success/10 text-success" },
 };
 
 export default async function NotificationsPage() {
@@ -119,7 +74,7 @@ export default async function NotificationsPage() {
                   <Icon className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm leading-snug ${n.read_at ? "text-fg-2" : "font-semibold text-fg"}`}>{text(n, t, lang)}</p>
+                  <p className={`text-sm leading-snug ${n.read_at ? "text-fg-2" : "font-semibold text-fg"}`}>{notificationText(n.type, n.data, t, lang)}</p>
                   <p className="mt-0.5 text-xs text-subtle">{formatDate(n.created_at, lang, true)}</p>
                 </div>
                 {!n.read_at && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-fg" aria-hidden />}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
+import { StopPushAfterSignOut } from "@/components/push/ServiceWorker";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getTheme } from "@/lib/theme-server";
 import { LoginForm } from "./LoginForm";
@@ -16,6 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <main className="flex min-h-screen flex-col">
+      <StopPushAfterSignOut />
       <div className="flex items-center justify-between px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8">
         <Logo />
         <div className="flex items-center gap-2">

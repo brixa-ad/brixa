@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
+import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card } from "@/components/ui/form";
 import { getI18n } from "@/lib/i18n/server";
@@ -29,22 +30,28 @@ export default async function SettingsPage() {
           />
         </Card>
 
-        <Card title={t.settings.appearance}>
-          <dl className="space-y-4 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <dt className="font-medium">{t.settings.language}</dt>
-              <dd>
-                <LanguageToggle />
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="font-medium">{t.settings.theme}</dt>
-              <dd>
-                <ThemeToggle initialTheme={theme} />
-              </dd>
-            </div>
-          </dl>
-        </Card>
+        <div className="space-y-6">
+          <Card title={t.push.title} description={t.push.hint} id="push">
+            <PushSettings />
+          </Card>
+
+          <Card title={t.settings.appearance}>
+            <dl className="space-y-4 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="font-medium">{t.settings.language}</dt>
+                <dd>
+                  <LanguageToggle />
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="font-medium">{t.settings.theme}</dt>
+                <dd>
+                  <ThemeToggle initialTheme={theme} />
+                </dd>
+              </div>
+            </dl>
+          </Card>
+        </div>
       </div>
     </>
   );

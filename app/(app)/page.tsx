@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
+import { PushBanner } from "@/components/push/PushBanner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
@@ -110,6 +111,8 @@ export default async function HomePage() {
           </div>
         </figure>
       </section>
+
+      <PushBanner />
 
       {/* ---- managers: closings waiting for a yes ---- */}
       {(toConfirm ?? 0) > 0 && (

@@ -6,6 +6,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
 import { PasskeyPrompt } from "@/components/passkey/PasskeyPrompt";
+import { ServiceWorker } from "@/components/push/ServiceWorker";
 import { SideMenu } from "@/components/SideMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getI18n } from "@/lib/i18n/server";
@@ -116,6 +117,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">
         <PasskeyPrompt />
+        <ServiceWorker />
         {children}
       </main>
 
