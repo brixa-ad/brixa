@@ -12,7 +12,7 @@ export async function saveBottomNav(keys: string[] | null): Promise<{ ok: boolea
   if (!session) return { ok: false };
 
   if (keys !== null) {
-    const allowed = navKeysFor(session.isManager) as string[];
+    const allowed = navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY)) as string[];
     const unique = [...new Set(keys)];
     if (unique.length === 0 || unique.length > BOTTOM_NAV_MAX || !unique.every((key) => allowed.includes(key))) {
       return { ok: false };

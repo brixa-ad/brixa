@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
           <SideMenu
-            items={navKeysFor(session.isManager)}
+            items={navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}
             name={displayName}
             subtitle={`${session.organizationName} · ${t.roles[session.role]}`}
             avatarPath={session.avatarPath}
@@ -121,7 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <BottomNav items={bottomNavFor(session.bottomNav, session.isManager)} />
+      <BottomNav items={bottomNavFor(session.bottomNav, session.isManager, Boolean(process.env.ANTHROPIC_API_KEY))} />
     </div>
   );
 }

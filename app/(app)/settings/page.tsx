@@ -35,8 +35,8 @@ export default async function SettingsPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card title={t.settings.bottomBar} description={t.settings.bottomBarHint}>
           <BottomBarSettings
-            initial={bottomNavFor(session!.bottomNav, session!.isManager)}
-            all={navKeysFor(session!.isManager)}
+            initial={bottomNavFor(session!.bottomNav, session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}
+            all={navKeysFor(session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}
           />
         </Card>
 
