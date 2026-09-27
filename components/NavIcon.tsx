@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bell,
   Building2,
   Handshake,
@@ -19,6 +20,7 @@ const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   deals: Handshake,
   properties: Building2,
   clients: Users,
+  stats: BarChart3,
   team: UsersRound,
   goals: Target,
   notifications: Bell,
