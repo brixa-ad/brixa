@@ -62,6 +62,7 @@ export default async function SettingsPage() {
                   defaultCurrency: agency.defaultCurrency,
                   commissionSalePercent: agency.commissionSalePercent,
                   commissionRentMonths: agency.commissionRentMonths,
+                  referralPercent: agency.referralPercent,
                   points: agency.points,
                 }}
               />

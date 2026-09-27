@@ -77,7 +77,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
     return s ? `/deals?${s}` : "/deals";
   };
 
-  const pipeline = tab === "open" ? deals.reduce((sum, d) => sum + (d.commission ?? 0), 0) : 0;
+  const pipeline = tab === "open" ? deals.reduce((sum, d) => sum + (d.net_commission ?? d.commission ?? 0), 0) : 0;
   const byStage = new Map<string, DealRow[]>(DEAL_STAGES.map((stage) => [stage, []]));
   for (const deal of deals) byStage.get(deal.stage)?.push(deal);
 

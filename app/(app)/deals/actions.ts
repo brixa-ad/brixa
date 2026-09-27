@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { DEAL_LIMITS, isDay, validateDeal, type DealErrors, type DealInput } from "@/lib/deal-validation";
 import { CURRENCIES, DEAL_STAGES, isOneOf } from "@/lib/options";
+import { getAgency } from "@/lib/agency";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,8 +47,13 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
       .eq("profile_id", input.brokerId)
       .maybeSingle(),
     input.clientId
-      ? supabase.from("clients").select("id").eq("id", input.clientId).not("responsible_broker_id", "is", null).maybeSingle()
-      : { data: true },
+      ? supabase
+          .from("clients")
+          .select("id, source, referrer")
+          .eq("id", input.clientId)
+          .not("responsible_broker_id", "is", null)
+          .maybeSingle()
+      : { data: true as const },
     input.propertyId
       ? supabase.from("properties").select("id").eq("id", input.propertyId).maybeSingle()
       : { data: true },
@@ -74,11 +80,21 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
     partner_side: input.withPartner ? input.partnerSide : null,
   };
 
+  // A new deal with a client an external broker brought: their usual share goes on it (editable in the payments).
+  const linked = input.clientId ? (client.data as { source: string | null; referrer: string | null }) : null;
+  const referral =
+    !dealId && linked?.source === "external_broker"
+      ? {
+          referral_name: linked.referrer,
+          referral_percent: (await getAgency(session.organizationId))?.referralPercent ?? 10,
+        }
+      : {};
+
   const { data, error } = dealId
     ? await supabase.from("deals").update(row).eq("id", dealId).select("id, property_id, client_id").maybeSingle()
     : await supabase
         .from("deals")
-        .insert({ ...row, organization_id: session.organizationId, created_by: session.userId })
+        .insert({ ...row, ...referral, organization_id: session.organizationId, created_by: session.userId })
         .select("id, property_id, client_id")
         .single();
 
@@ -164,16 +180,31 @@ export type DealPayments = {
 const amountOk = (value: number | null) =>
   value === null || (Number.isFinite(value) && value >= 0 && value <= DEAL_LIMITS.amount);
 
-export async function saveDealPayments(dealId: string, p: DealPayments) {
+export async function saveDealPayments(dealId: string, p: DealPayments, referral: DealReferral) {
   if (!Object.values(p).every(amountOk)) return { ok: false, message: "generic" } as const;
+  const name = referral.name.trim();
+  const percent = referral.percent;
+  if (
+    name.length > DEAL_LIMITS.name ||
+    (percent !== null && !(Number.isFinite(percent) && percent >= 0 && percent <= 100)) ||
+    (referral.paidOn !== null && !isDay(referral.paidOn))
+  ) {
+    return { ok: false, message: "generic" } as const;
+  }
+  const none = !name && !percent;
   return update(dealId, {
     deposit_amount: p.depositAmount,
     preliminary_bank: p.preliminaryBank,
     preliminary_cash: p.preliminaryCash,
     notary_bank: p.notaryBank,
     notary_cash: p.notaryCash,
+    referral_name: none ? null : name || null,
+    referral_percent: none ? null : percent,
+    referral_paid_on: none ? null : referral.paidOn,
   });
 }
+
+export type DealReferral = { name: string; percent: number | null; paidOn: string | null };
 
 export type OfferInput = {
   amount: number;

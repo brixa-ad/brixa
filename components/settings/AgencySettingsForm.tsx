@@ -24,6 +24,7 @@ export function AgencySettingsForm({
     ...initial,
     commissionSalePercent: String(initial.commissionSalePercent),
     commissionRentMonths: String(initial.commissionRentMonths),
+    referralPercent: String(initial.referralPercent),
     points: Object.fromEntries(POINT_KEYS.map((k) => [k, String(initial.points[k])])) as Record<(typeof POINT_KEYS)[number], string>,
   });
   const [logo, setLogo] = useState(logoUrl);
@@ -126,6 +127,10 @@ export function AgencySettingsForm({
             <input inputMode="decimal" value={values.commissionRentMonths} onChange={(e) => set("commissionRentMonths", e.target.value)} className={`${inputClass} mt-1`} />
           </label>
         </div>
+        <label className="mt-3 block text-xs font-medium text-muted sm:w-1/2">
+          {t.agency.referralPercent}
+          <input inputMode="decimal" value={values.referralPercent} onChange={(e) => set("referralPercent", e.target.value)} className={`${inputClass} mt-1`} />
+        </label>
       </div>
 
       {/* ranking points */}
@@ -160,6 +165,7 @@ export function AgencySettingsForm({
                 ...values,
                 commissionSalePercent: num(values.commissionSalePercent),
                 commissionRentMonths: num(values.commissionRentMonths),
+                referralPercent: num(values.referralPercent),
                 points: Object.fromEntries(POINT_KEYS.map((k) => [k, Number(values.points[k] || "0")])) as AgencyInput["points"],
               });
               setStatus(result.ok ? "saved" : "failed");

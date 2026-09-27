@@ -27,6 +27,8 @@ export type Agency = {
   defaultCurrency: "EUR" | "BGN" | "USD";
   commissionSalePercent: number;
   commissionRentMonths: number;
+  /** an external broker's usual share, % of the commission */
+  referralPercent: number;
   points: AgencyPoints;
 };
 
@@ -62,6 +64,7 @@ export const getAgency = cache(async (organizationId: string): Promise<Agency | 
     defaultCurrency: data.default_currency === "BGN" || data.default_currency === "USD" ? data.default_currency : "EUR",
     commissionSalePercent: n(data.commission_sale_percent, 3),
     commissionRentMonths: n(data.commission_rent_months, 1),
+    referralPercent: n(data.referral_percent, 10),
     points: {
       dealDouble: n(data.points_deal_double, DEFAULT_POINTS.dealDouble),
       deal: n(data.points_deal, DEFAULT_POINTS.deal),

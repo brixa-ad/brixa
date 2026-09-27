@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, Building, Clock, Handshake, Megaphone, Tags } from "lucide-react";
+import { AlertTriangle, Building, Clock, Handshake, Megaphone, Tags, UserRoundPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { Card } from "@/components/ui/form";
@@ -71,7 +71,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
   };
   const stageLabel = (stage: keyof typeof t.options.dealStage) => t.options.dealStage[stage];
 
-  const { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, offerStats } = stats;
+  const { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, externalBrokers, offerStats } = stats;
   const maxGap = Math.max(0, ...stageTimes.map((g) => g.avgDays));
   const maxClients = Math.max(0, ...clientSources.map((s) => s.clients));
   const kinds = [
@@ -116,7 +116,11 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
         {[
           { label: t.stats.closedDeals, value: String(summary.won) },
-          { label: t.stats.commission, value: euro(summary.commission) },
+          {
+            label: t.stats.commission,
+            value: euro(summary.commission),
+            hint: externalBrokers.fees > 0 ? t.stats.netHint : undefined,
+          },
           { label: t.stats.avgCommission, value: summary.avgCommission === null ? "—" : euro(summary.avgCommission) },
           { label: t.stats.winRate, value: percent(summary.winRate), hint: t.stats.winRateHint },
           { label: t.stats.cycle, value: days(summary.avgCycleDays) },
@@ -201,33 +205,6 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
           )}
         </Card>
 
-        {/* ---- stalled deals ---- */}
-        <Card
-          title={<CardTitle icon={AlertTriangle}>{t.stats.staleTitle}</CardTitle>}
-          description={t.stats.staleHint}
-        >
-          {stale.length === 0 ? (
-            <p className="text-sm text-muted">{t.stats.noStale}</p>
-          ) : (
-            <ul className="-mx-2 space-y-0.5">
-              {stale.map((d) => {
-                const labels = d.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
-                return (
-                  <li key={d.id}>
-                    <Link href={`/deals/${d.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-raised">
-                      <Handshake className="size-4 shrink-0 text-warning" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.title}</span>
-                      <span className="shrink-0 text-xs font-semibold text-warning">
-                        {fmt(t.stats.staleDays, { days: d.days, stage: labels[d.stage] })}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
-
         {/* ---- client sources ---- */}
         <Card title={<CardTitle icon={Megaphone}>{t.stats.sourcesTitle}</CardTitle>}>
           {clientSources.length === 0 ? (
@@ -260,6 +237,73 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                 ))}
               </ul>
             </>
+          )}
+        </Card>
+
+        {/* ---- external brokers: a channel that costs a share of the commission ---- */}
+        <Card title={<CardTitle icon={UserRoundPlus}>{t.stats.referralsTitle}</CardTitle>} description={t.stats.referralsHint}>
+          {externalBrokers.rows.length === 0 ? (
+            <p className="text-sm text-muted">{t.stats.noReferrals}</p>
+          ) : (
+            <>
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+                <span />
+                <span className="text-right">{t.stats.referredClients}</span>
+                <span className="text-right">{t.stats.wonFrom}</span>
+                <span className="text-right">{t.stats.referralFees}</span>
+              </div>
+              <ul className="space-y-2.5">
+                {externalBrokers.rows.map((row) => (
+                  <li
+                    key={row.name ?? "none"}
+                    className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_5.5rem] items-baseline gap-2 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-fg-2">{row.name ?? t.stats.unknownReferrer}</span>
+                      {row.commission > 0 && (
+                        <span className="block truncate text-[11px] text-subtle">{euro(row.commission)}</span>
+                      )}
+                    </span>
+                    <span className="text-right font-semibold tabular-nums">{row.clients}</span>
+                    <span className="text-right tabular-nums">{row.won}</span>
+                    <span className="truncate text-right tabular-nums text-muted">{euro(row.fees)}</span>
+                  </li>
+                ))}
+              </ul>
+              {externalBrokers.fees > 0 && (
+                <p className="mt-4 border-t border-line-soft pt-3 text-sm text-muted">
+                  {fmt(t.stats.referralsTotal, { amount: euro(externalBrokers.fees) })}
+                </p>
+              )}
+            </>
+          )}
+        </Card>
+
+        {/* ---- stalled deals ---- */}
+        <Card
+          title={<CardTitle icon={AlertTriangle}>{t.stats.staleTitle}</CardTitle>}
+          description={t.stats.staleHint}
+          className="lg:col-span-2"
+        >
+          {stale.length === 0 ? (
+            <p className="text-sm text-muted">{t.stats.noStale}</p>
+          ) : (
+            <ul className="-mx-2 space-y-0.5">
+              {stale.map((d) => {
+                const labels = d.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
+                return (
+                  <li key={d.id}>
+                    <Link href={`/deals/${d.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-raised">
+                      <Handshake className="size-4 shrink-0 text-warning" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.title}</span>
+                      <span className="shrink-0 text-xs font-semibold text-warning">
+                        {fmt(t.stats.staleDays, { days: d.days, stage: labels[d.stage] })}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
 

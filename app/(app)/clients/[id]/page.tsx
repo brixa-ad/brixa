@@ -267,8 +267,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t.clients.source}</dt>
-                <dd className="font-medium">
+                <dd className="text-right font-medium">
                   {client.source ? t.options.source[client.source as keyof typeof t.options.source] : "—"}
+                  {client.referrer && (
+                    <span className="block text-xs font-normal text-muted">{fmt(t.clients.fromReferrer, { name: client.referrer })}</span>
+                  )}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">

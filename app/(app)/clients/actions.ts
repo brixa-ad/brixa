@@ -13,6 +13,8 @@ export type ClientSaveResult =
 
 const uniq = (ids: string[]) => [...new Set(ids.filter(Boolean))];
 
+const hasReferrer = (source: string | null) => source === "referral" || source === "external_broker";
+
 async function prepare(input: ClientInput, clientId: string | null) {
   const session = await getSession();
   if (!session) return { ok: false as const, message: "noOrg" as const };
@@ -53,6 +55,7 @@ async function prepare(input: ClientInput, clientId: string | null) {
     types: uniq(input.types),
     client_class: input.clientClass,
     source: input.source,
+    referrer: hasReferrer(input.source) ? input.referrer.trim() || null : null,
     stage: input.stage,
     notes: input.notes.trim() || null,
     responsible_broker_id: free ? null : session.isManager ? (input.brokerId ?? session.userId) : session.userId,

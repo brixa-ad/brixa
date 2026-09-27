@@ -74,6 +74,7 @@ export const CLIENT_CLASSES = ["A", "B", "C"] as const;
 export const CLIENT_SOURCES = [
   "personal",
   "referral",
+  "external_broker",
   "email",
   "google",
   "facebook",

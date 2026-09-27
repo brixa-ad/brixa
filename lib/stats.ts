@@ -39,7 +39,7 @@ export async function getMyNumbers(session: SessionContext, today: string) {
   const [won, listings, buyers, goals, acts, listedLately] = await Promise.all([
     supabase
       .from("deals")
-      .select("commission, closed_on, confirmed_at, price, currency")
+      .select("commission:net_commission, closed_on, confirmed_at, price, currency")
       .eq("broker_id", me)
       .eq("status", "won")
       .gte("closed_on", yearAgo < yearStart ? yearAgo : yearStart),

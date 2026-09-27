@@ -310,6 +310,25 @@ export function ClientForm({
               )}
             </Field>
           </div>
+
+          {(draft.source === "referral" || draft.source === "external_broker") && (
+            <Field
+              label={t.clients.referrer}
+              error={err("referrer")}
+              hint={draft.source === "external_broker" ? t.clients.referrerHint : undefined}
+            >
+              {(props) => (
+                <input
+                  {...props}
+                  value={draft.referrer}
+                  maxLength={120}
+                  placeholder={t.clients.referrerPlaceholder}
+                  onChange={(e) => set("referrer", e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+          )}
         </div>
       </Card>
 

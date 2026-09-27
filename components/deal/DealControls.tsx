@@ -14,6 +14,7 @@ import {
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { DEAL_LIMITS, isDay, parseAmount } from "@/lib/deal-validation";
+import { formatPrice } from "@/lib/format";
 import { dealStages, type DealKind, type DealStage, type DealStatus } from "@/lib/options";
 
 function useDealAction() {
@@ -101,6 +102,7 @@ export function DealActions({
   status,
   confirmed,
   commission,
+  referralPercent,
   today,
   canEdit,
   isManager,
@@ -109,11 +111,13 @@ export function DealActions({
   status: DealStatus;
   confirmed: boolean;
   commission: number | null;
+  /** an external broker's share, % */
+  referralPercent: number | null;
   today: string;
   canEdit: boolean;
   isManager: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { pending, error, run } = useDealAction();
   const [amount, setAmount] = useState(commission === null ? "" : String(commission));
   const [closedOn, setClosedOn] = useState(today);
@@ -138,6 +142,11 @@ export function DealActions({
               aria-invalid={amount !== "" && !amountOk ? true : undefined}
               className={`${inputClass} mt-1.5`}
             />
+            {referralPercent && amountOk ? (
+              <span className="mt-1 block text-xs font-normal text-muted">
+                {t.deals.forAgency}: {formatPrice(Math.round(parsed! * (100 - referralPercent)) / 100, "EUR", lang)} (−{referralPercent}%)
+              </span>
+            ) : null}
           </label>
           <label className="block text-sm font-medium text-fg-2">
             {t.deals.closedOn}

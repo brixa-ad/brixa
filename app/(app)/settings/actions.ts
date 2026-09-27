@@ -81,6 +81,7 @@ export type AgencyInput = {
   defaultCurrency: string;
   commissionSalePercent: number;
   commissionRentMonths: number;
+  referralPercent: number;
   points: Record<"dealDouble" | "deal" | "listing" | "exclusive" | "viewing" | "meeting" | "client" | "call", number>;
 };
 
@@ -96,6 +97,7 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
     !["EUR", "BGN", "USD"].includes(input.defaultCurrency) ||
     !(input.commissionSalePercent >= 0 && input.commissionSalePercent <= 100) ||
     !(input.commissionRentMonths >= 0 && input.commissionRentMonths <= 24) ||
+    !(input.referralPercent >= 0 && input.referralPercent <= 100) ||
     !Object.values(input.points).every(whole)
   ) {
     return { ok: false };
@@ -113,6 +115,7 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
       default_currency: input.defaultCurrency,
       commission_sale_percent: input.commissionSalePercent,
       commission_rent_months: input.commissionRentMonths,
+      referral_percent: input.referralPercent,
       points_deal_double: input.points.dealDouble,
       points_deal: input.points.deal,
       points_listing: input.points.listing,

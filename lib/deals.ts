@@ -16,6 +16,11 @@ export type DealRow = {
   currency: string;
   /** euro: expected while open, real once won */
   commission: number | null;
+  /** what stays with the agency after the external broker's share — what counts */
+  net_commission: number | null;
+  referral_name: string | null;
+  referral_percent: number | null;
+  referral_paid_on: string | null;
   closed_on: string | null;
   confirmed_at: string | null;
   lost_reason: string | null;
@@ -54,11 +59,12 @@ export type DealRow = {
   confirmer: Person | null;
 };
 
-export const DEAL_SELECT = `id, kind, stage, status, price, currency, commission, closed_on, confirmed_at, lost_reason, notes,
+export const DEAL_SELECT = `id, kind, stage, status, price, currency, commission, net_commission, closed_on, confirmed_at, lost_reason, notes,
   double_sided, buyer_rate, partner_agency, partner_broker, partner_side,
   viewing_on, offer_on, deposit_on, preliminary_on, notary_on,
   viewing_time, offer_time, deposit_time, preliminary_time, notary_time,
   deposit_amount, preliminary_bank, preliminary_cash, notary_bank, notary_cash,
+  referral_name, referral_percent, referral_paid_on,
   broker_id, created_by, property_id, client_id, created_at, updated_at,
   property:properties(id, title, status),
   client:clients(id, full_name, phone),
@@ -72,6 +78,8 @@ export function toDeals(rows: unknown[] | null): DealRow[] {
     ...row,
     price: num(row.price),
     commission: num(row.commission),
+    net_commission: num(row.net_commission),
+    referral_percent: num(row.referral_percent),
     buyer_rate: num(row.buyer_rate),
     deposit_amount: num(row.deposit_amount),
     preliminary_bank: num(row.preliminary_bank),

@@ -22,7 +22,7 @@ export function DealCard({
 }) {
   const title = dealTitle(deal, t);
   const stageLabels = deal.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
-  const amount = formatPrice(deal.commission, "EUR", lang);
+  const amount = formatPrice(deal.net_commission ?? deal.commission, "EUR", lang);
 
   return (
     <Link
@@ -43,6 +43,11 @@ export function DealCard({
         </span>
       </div>
       {deal.property && deal.client && <p className="mt-0.5 truncate text-xs text-muted">{deal.client.full_name}</p>}
+      {deal.referral_percent ? (
+        <p className="mt-0.5 truncate text-xs text-muted">
+          {t.deals.externalBroker} −{deal.referral_percent}%{deal.referral_name ? ` · ${deal.referral_name}` : ""}
+        </p>
+      ) : null}
       {deal.partner_agency && (
         <p className="mt-0.5 truncate text-xs text-muted">{fmt(t.deals.partnerLabel, { agency: deal.partner_agency })}</p>
       )}

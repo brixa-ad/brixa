@@ -14,7 +14,12 @@ type DealStat = {
   status: DealStatus;
   price: number | null;
   currency: string;
+  /** what stays with the agency (after an external broker's share) */
   commission: number | null;
+  /** before the external broker's share */
+  gross: number | null;
+  referral_name: string | null;
+  referral_percent: number | null;
   closed_on: string | null;
   created_at: string;
   updated_at: string;
@@ -27,7 +32,7 @@ type DealStat = {
   preliminary_on: string | null;
   notary_on: string | null;
   property: { title: string; asking_price: number | null; currency: string } | null;
-  client: { full_name: string; source: string | null } | null;
+  client: { full_name: string; source: string | null; referrer: string | null } | null;
 };
 
 const STAGE_DAY: Record<DealStage, keyof DealStat> = {
@@ -63,15 +68,16 @@ export async function getStatistics(session: SessionContext, period: Period, bro
   let dealQuery = supabase
     .from("deals")
     .select(
-      `id, kind, stage, status, price, currency, commission, closed_on, created_at, updated_at,
+      `id, kind, stage, status, price, currency, gross:commission, commission:net_commission, referral_name, referral_percent,
+      closed_on, created_at, updated_at,
       double_sided, partner_agency, partner_side, viewing_on, offer_on, deposit_on, preliminary_on, notary_on,
-      property:properties(title, asking_price, currency), client:clients(full_name, source)`
+      property:properties(title, asking_price, currency), client:clients(full_name, source, referrer)`
     )
     .eq("organization_id", session.organizationId)
     .limit(5000);
   let clientQuery = supabase
     .from("clients")
-    .select("source, created_at")
+    .select("source, referrer, created_at")
     .eq("organization_id", session.organizationId)
     .limit(10000);
   if (broker !== "all") {
@@ -90,6 +96,7 @@ export async function getStatistics(session: SessionContext, period: Period, bro
     ...d,
     price: d.price === null ? null : Number(d.price),
     commission: d.commission === null ? null : Number(d.commission),
+    gross: d.gross === null ? null : Number(d.gross),
     property: d.property
       ? { ...d.property, asking_price: d.property.asking_price === null ? null : Number(d.property.asking_price) }
       : null,
@@ -219,6 +226,28 @@ export async function getStatistics(session: SessionContext, period: Period, bro
   }
   const clientSources = [...sources.values()].sort((a, b) => b.clients - a.clients || b.won - a.won);
 
+  // ---- external brokers: who sends us clients, what came of it, what we paid them
+  const referrers = new Map<string, { name: string | null; clients: number; won: number; fees: number; commission: number }>();
+  const referrerRow = (name: string | null | undefined) => {
+    const clean = name?.trim() || null;
+    const key = clean?.toLowerCase() ?? "";
+    if (!referrers.has(key)) referrers.set(key, { name: clean, clients: 0, won: 0, fees: 0, commission: 0 });
+    return referrers.get(key)!;
+  };
+  for (const c of clientsRes.data ?? [])
+    if (c.source === "external_broker" && inPeriod(sofiaDay(c.created_at))) referrerRow(c.referrer).clients++;
+  for (const d of won) {
+    if (!d.referral_percent) continue;
+    const row = referrerRow(d.referral_name ?? d.client?.referrer);
+    row.won++;
+    row.fees += (d.gross ?? 0) - (d.commission ?? 0);
+    row.commission += d.commission ?? 0;
+  }
+  const externalBrokers = {
+    rows: [...referrers.values()].sort((a, b) => b.won - a.won || b.clients - a.clients || b.fees - a.fees),
+    fees: sum([...referrers.values()].map((r) => r.fees)),
+  };
+
   // ---- offers vs the final price
   const offersByDeal = new Map<string, { amount: number; currency: string; offered_on: string; created_at: string }[]>();
   for (const o of offersRes.data ?? []) {
@@ -255,7 +284,7 @@ export async function getStatistics(session: SessionContext, period: Period, bro
     rows: priced.slice(0, 10),
   };
 
-  return { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, offerStats };
+  return { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, externalBrokers, offerStats };
 }
 
 export type Statistics = Awaited<ReturnType<typeof getStatistics>>;

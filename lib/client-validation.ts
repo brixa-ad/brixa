@@ -35,6 +35,8 @@ export type ClientInput = {
   types: ClientType[];
   clientClass: ClientClass;
   source: string | null;
+  /** who referred the client (a referral or an external broker) */
+  referrer: string;
   stage: ClientStage;
   notes: string;
   brokerId: string | null;
@@ -106,6 +108,7 @@ export function validateClient(input: ClientInput): ClientErrors {
 
   if (!isOneOf(CLIENT_CLASSES, input.clientClass)) errors.clientClass = "invalid";
   if (input.source !== null && !isOneOf(CLIENT_SOURCES, input.source)) errors.source = "invalid";
+  if (input.referrer.trim().length > 120) errors.referrer = "tooLong";
   if (!isOneOf(CLIENT_STAGES, input.stage)) errors.stage = "invalid";
   if (input.notes.length > NOTES_MAX) errors.notes = "tooLong";
 

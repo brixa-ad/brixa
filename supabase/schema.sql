@@ -33,6 +33,8 @@ create table public.organizations (
   -- commission defaults: sale = % of the price, rent = months of rent
   commission_sale_percent numeric(5, 2) not null default 3 check (commission_sale_percent between 0 and 100),
   commission_rent_months numeric(4, 2) not null default 1 check (commission_rent_months between 0 and 24),
+  -- an external broker who brings a client gets this % of the commission
+  referral_percent numeric(5, 2) not null default 10 check (referral_percent between 0 and 100),
   -- follow-up: a new client within N hours, then every N days by class; 0 = never give clients back
   follow_up_first_hours int not null default 24 check (follow_up_first_hours between 1 and 720),
   follow_up_days_a int not null default 2 check (follow_up_days_a between 1 and 365),
@@ -748,8 +750,10 @@ create table public.clients (
   client_class text not null default 'C' check (client_class in ('A', 'B', 'C')),
   source text check (source in (
     'personal', 'referral', 'email', 'google', 'facebook', 'instagram',
-    'realistimo', 'yavlena', 'billboard', 'signs'
+    'realistimo', 'yavlena', 'billboard', 'signs', 'external_broker'
   )),
+  -- an external broker (or whoever) who referred the client
+  referrer text check (referrer is null or char_length(referrer) <= 120),
   stage text not null default 'new_contact' check (stage in (
     'new_contact', 'called', 'presentation', 'viewing', 'negotiation',
     'deposit', 'deal', 'lost', 'correspondence'
@@ -1331,6 +1335,15 @@ create table public.deals (
   preliminary_cash numeric(14, 2) check (preliminary_cash is null or preliminary_cash >= 0),
   notary_bank numeric(14, 2) check (notary_bank is null or notary_bank >= 0),
   notary_cash numeric(14, 2) check (notary_cash is null or notary_cash >= 0),
+  -- an external broker who brought the client gets a share of the commission
+  referral_name text check (referral_name is null or char_length(referral_name) <= 120),
+  referral_percent numeric(5, 2) check (referral_percent is null or referral_percent between 0 and 100),
+  referral_paid_on date,
+  -- what stays with the agency — this is what counts in rankings, goals and statistics
+  net_commission numeric(12, 2) generated always as (
+    case when commission is null then null
+    else round(commission * (100 - coalesce(referral_percent, 0)) / 100, 2) end
+  ) stored,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -1417,7 +1430,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce(sum(commission), 0)
+  select coalesce(sum(net_commission), 0)
   from public.deals
   where organization_id = target_org
     and broker_id = target_profile
@@ -1664,7 +1677,7 @@ begin
     loop
       perform public.notify(
         new.organization_id, member.profile_id, actor, 'deal_to_confirm',
-        jsonb_build_object('actor', broker_name, 'amount', new.commission, 'title', label),
+        jsonb_build_object('actor', broker_name, 'amount', new.net_commission, 'title', label),
         '/deals/' || new.id
       );
     end loop;
@@ -1686,7 +1699,7 @@ begin
     if new.broker_id <> actor then
       perform public.notify(
         new.organization_id, new.broker_id, actor, 'deal_confirmed',
-        jsonb_build_object('actor', public.person_name(actor), 'amount', new.commission, 'title', label),
+        jsonb_build_object('actor', public.person_name(actor), 'amount', new.net_commission, 'title', label),
         '/deals/' || new.id
       );
     end if;
@@ -1697,14 +1710,14 @@ begin
     loop
       perform public.notify(
         new.organization_id, member.profile_id, new.broker_id, 'commission_logged',
-        jsonb_build_object('actor', broker_name, 'amount', new.commission),
+        jsonb_build_object('actor', broker_name, 'amount', new.net_commission),
         '/'
       );
     end loop;
 
     if date_trunc('month', new.closed_on::timestamp) = date_trunc('month', public.sofia_today()::timestamp) then
       after_total := public.month_commission(new.organization_id, new.broker_id, new.closed_on);
-      before_total := after_total - new.commission;
+      before_total := after_total - new.net_commission;
       for member in
         select x.profile_id
         from (
@@ -1882,7 +1895,7 @@ as $$
     from span
   ),
   won as (
-    select d.broker_id as pid, sum(d.commission) as total, count(*)::int as n,
+    select d.broker_id as pid, sum(d.net_commission) as total, count(*)::int as n,
       sum(case when d.double_sided then o.points_deal_double else o.points_deal end)::int as dp
     from public.deals d, bounds b, public.organizations o
     where d.organization_id = target_org and o.id = target_org and d.status = 'won' and d.confirmed_at is not null
@@ -2432,7 +2445,7 @@ as $$
       from public.deals d, bounds b, org
       where d.organization_id = org.id and d.broker_id = target_profile and d.status = 'won'
         and d.confirmed_at is not null and d.closed_on >= b.from_day),
-    (select coalesce(sum(d.commission), 0) from public.deals d, bounds b, org
+    (select coalesce(sum(d.net_commission), 0) from public.deals d, bounds b, org
       where d.organization_id = org.id and d.broker_id = target_profile and d.status = 'won'
         and d.confirmed_at is not null and d.closed_on >= b.from_day),
     (select count(*)::int from public.activities a, bounds b, org

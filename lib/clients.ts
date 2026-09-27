@@ -31,6 +31,7 @@ export type ClientDetail = {
   types: ClientType[];
   client_class: ClientClass;
   source: string | null;
+  referrer: string | null;
   stage: ClientStage;
   notes: string | null;
   /** when the next contact is due (null: free contact, closed deal or lost) */
@@ -67,7 +68,7 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
   const { data, error } = await supabase
     .from("clients")
     .select(
-      `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, stage,
+      `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
       notes, follow_up_at, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
       search:client_searches(*)`

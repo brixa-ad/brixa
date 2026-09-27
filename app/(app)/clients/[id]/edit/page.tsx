@@ -39,6 +39,7 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
           types: client.types,
           clientClass: client.client_class,
           source: client.source,
+          referrer: client.referrer ?? "",
           stage: client.stage,
           notes: client.notes ?? "",
           brokerId: client.responsible_broker_id ?? "free",

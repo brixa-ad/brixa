@@ -113,6 +113,21 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
                 <dd className="mt-1 text-2xl font-bold text-accent-fg">
                   {formatPrice(deal.commission, "EUR", lang) ?? t.common.notSet}
                 </dd>
+                {deal.referral_percent && deal.commission !== null && deal.net_commission !== null ? (
+                  <div className="mt-1.5 space-y-0.5 text-xs">
+                    <p className="text-muted">
+                      {t.deals.externalBroker}
+                      {deal.referral_name ? ` ${deal.referral_name}` : ""}: −{formatPrice(deal.commission - deal.net_commission, "EUR", lang)} (
+                      {deal.referral_percent}%) ·{" "}
+                      {deal.referral_paid_on
+                        ? fmt(t.deals.referralPaid, { date: formatDate(deal.referral_paid_on, lang) })
+                        : t.deals.referralUnpaid}
+                    </p>
+                    <p className="font-semibold text-fg">
+                      {t.deals.forAgency}: {formatPrice(deal.net_commission, "EUR", lang)}
+                    </p>
+                  </div>
+                ) : null}
                 {deal.status === "won" && deal.closed_on && (
                   <p className="mt-0.5 text-xs text-muted">{fmt(t.deals.closed, { date: formatDate(deal.closed_on, lang) })}</p>
                 )}
@@ -235,6 +250,8 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
               price={deal.price}
               currency={deal.currency}
               canEdit={canEdit}
+              commission={deal.commission}
+              referral={{ name: deal.referral_name, percent: deal.referral_percent, paidOn: deal.referral_paid_on }}
               initial={{
                 depositAmount: deal.deposit_amount,
                 preliminaryBank: deal.preliminary_bank,
@@ -252,6 +269,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
             status={deal.status}
             confirmed={confirmed}
             commission={deal.commission}
+            referralPercent={deal.referral_percent}
             today={today}
             canEdit={canEdit}
             isManager={session.isManager}

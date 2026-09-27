@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarClock, Check, CheckCircle2, Loader2, Plus, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, CheckCircle2, Loader2, Plus, Trash2, UserRoundPlus, X } from "lucide-react";
 import {
   addOffer,
   deleteOffer,
@@ -211,18 +211,26 @@ type Payments = {
   notaryCash: number | null;
 };
 
-/** Deposit, what's paid at the preliminary contract and at the notary — by bank and in cash. */
+type Referral = { name: string | null; percent: number | null; paidOn: string | null };
+
+/** Deposit, what's paid at the preliminary contract and at the notary — by bank and in cash;
+ *  and the external broker's share of the commission. */
 export function DealPaymentsForm({
   dealId,
   price,
   currency,
   initial,
+  commission,
+  referral,
   canEdit,
 }: {
   dealId: string;
   price: number | null;
   currency: string;
   initial: Payments;
+  /** euro, before the external broker's share */
+  commission: number | null;
+  referral: Referral;
   canEdit: boolean;
 }) {
   const { t, lang } = useI18n();
@@ -234,13 +242,28 @@ export function DealPaymentsForm({
     notaryBank: str(initial.notaryBank),
     notaryCash: str(initial.notaryCash),
   });
+  const [ref, setRef] = useState({
+    name: referral.name ?? "",
+    percent: str(referral.percent),
+    paidOn: referral.paidOn ?? "",
+  });
   const { pending, run, message, reset } = useSave();
 
   const n = (key: keyof typeof values) => parseAmount(values[key]) ?? 0;
-  const valid = Object.values(values).every((v) => {
-    const parsed = parseAmount(v);
-    return parsed === null || (Number.isFinite(parsed) && parsed >= 0);
-  });
+  const percent = parseAmount(ref.percent);
+  const percentOk = percent === null || (Number.isFinite(percent) && percent >= 0 && percent <= 100);
+  const valid =
+    percentOk &&
+    (ref.paidOn === "" || isDay(ref.paidOn)) &&
+    Object.values(values).every((v) => {
+      const parsed = parseAmount(v);
+      return parsed === null || (Number.isFinite(parsed) && parsed >= 0);
+    });
+  const fee = commission !== null && percent ? Math.round(commission * percent) / 100 : null;
+  const setReferral = (key: keyof typeof ref, value: string) => {
+    setRef((r) => ({ ...r, [key]: value }));
+    reset();
+  };
   const paid = n("depositAmount") + n("preliminaryBank") + n("preliminaryCash");
   const remaining = price !== null ? Math.max(0, price - paid) : null;
   const money = (value: number) => formatPrice(value, currency, lang);
@@ -294,6 +317,68 @@ export function DealPaymentsForm({
         )}
       </dl>
 
+      {/* an external broker who brought the client gets a share of the commission */}
+      <div className="space-y-3 rounded-xl border border-line p-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <UserRoundPlus className="size-4 text-accent-fg" />
+            {t.deals.referralTitle}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">{t.deals.referralHint}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem_10rem]">
+          <label className="block text-xs font-medium text-muted">
+            {t.deals.referralName}
+            <input
+              value={ref.name}
+              disabled={!canEdit}
+              maxLength={DEAL_LIMITS.name}
+              placeholder={t.clients.referrerPlaceholder}
+              onChange={(e) => setReferral("name", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </label>
+          <label className="block text-xs font-medium text-muted">
+            {t.deals.referralPercent}
+            <input
+              inputMode="decimal"
+              value={ref.percent}
+              disabled={!canEdit}
+              placeholder="0"
+              aria-invalid={percentOk ? undefined : true}
+              onChange={(e) => setReferral("percent", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </label>
+          <label className="block text-xs font-medium text-muted">
+            {t.deals.referralPaidOn}
+            <input
+              type="date"
+              value={ref.paidOn}
+              disabled={!canEdit}
+              onChange={(e) => setReferral("paidOn", e.target.value)}
+              className={`${inputClass} mt-1`}
+            />
+          </label>
+        </div>
+        {percent ? (
+          fee !== null && commission !== null ? (
+            <dl className="grid grid-cols-2 gap-3 rounded-lg bg-raised/60 p-3 text-sm">
+              <div>
+                <dt className="text-xs text-muted">{t.deals.referralFee}</dt>
+                <dd className="font-semibold tabular-nums">{formatPrice(fee, "EUR", lang)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t.deals.forAgency}</dt>
+                <dd className="font-semibold tabular-nums text-accent-fg">{formatPrice(commission - fee, "EUR", lang)}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-xs text-muted">{t.deals.referralNoCommission}</p>
+          )
+        ) : null}
+      </div>
+
       {canEdit && (
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -301,13 +386,17 @@ export function DealPaymentsForm({
             disabled={pending || !valid}
             onClick={() =>
               run(() =>
-                saveDealPayments(dealId, {
-                  depositAmount: parseAmount(values.depositAmount),
-                  preliminaryBank: parseAmount(values.preliminaryBank),
-                  preliminaryCash: parseAmount(values.preliminaryCash),
-                  notaryBank: parseAmount(values.notaryBank),
-                  notaryCash: parseAmount(values.notaryCash),
-                })
+                saveDealPayments(
+                  dealId,
+                  {
+                    depositAmount: parseAmount(values.depositAmount),
+                    preliminaryBank: parseAmount(values.preliminaryBank),
+                    preliminaryCash: parseAmount(values.preliminaryCash),
+                    notaryBank: parseAmount(values.notaryBank),
+                    notaryCash: parseAmount(values.notaryCash),
+                  },
+                  { name: ref.name, percent, paidOn: ref.paidOn || null }
+                )
               )
             }
             className={buttonClass.primary}
