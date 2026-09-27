@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, History, ImageIcon, Mail, MapPin, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
+import { Building2, CalendarCheck, History, ImageIcon, Mail, MapPin, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
 import { DeleteClientButton } from "@/components/client/DeleteClientButton";
 import { QuickLog } from "@/components/client/QuickLog";
 import { ContactButtons } from "@/components/ContactButtons";
+import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
 import { TypeIcon } from "@/components/task/TypeIcon";
@@ -22,6 +23,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { memberBack } from "@/lib/member-back";
+import { getMembers } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { sofiaToday } from "@/lib/dates";
@@ -124,6 +126,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   );
   const brokerName = client.broker?.full_name || client.broker?.email || "—";
   const back = await memberBack(from, client.organization_id);
+  // Free contacts are open to everyone to take; only the broker and managers change a client.
+  const isFree = client.responsible_broker_id === null;
+  const canEdit = session.isManager || client.responsible_broker_id === session.userId;
+  const members = session.isManager ? await getMembers(supabase, session.organizationId) : [];
+  const followUpLate = client.follow_up_at !== null && client.follow_up_at <= new Date().toISOString();
 
   return (
     <>
@@ -145,15 +152,38 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                 ? fmt(t.activity.lastContact, { when: formatDate(lastContact, lang, true) })
                 : t.activity.neverContacted}
             </span>
+            {client.follow_up_at && (
+              <span className={`inline-flex items-center gap-1 ${followUpLate ? "font-semibold text-danger" : ""}`}>
+                <CalendarCheck className="size-3.5" />
+                {t.followUp.nextContact}:{" "}
+                {fmt(followUpLate ? t.followUp.lateBy : t.followUp.dueIn, { when: formatDate(client.follow_up_at, lang, true) })}
+              </span>
+            )}
           </span>
         }
         actions={
           <>
-            <ClientStageSelect clientId={client.id} stage={client.stage} />
-            <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
-              <Pencil className="size-4" />
-              {t.common.edit}
-            </Link>
+            {isFree && (
+              <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-fg">
+                {t.contacts.freeBadge}
+              </span>
+            )}
+            {isFree && <ClaimButton clientId={client.id} />}
+            {session.isManager && (
+              <AssignSelect
+                clientId={client.id}
+                current={client.responsible_broker_id}
+                label={isFree ? t.contacts.assign : t.followUp.reassign}
+                members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
+              />
+            )}
+            {canEdit && <ClientStageSelect clientId={client.id} stage={client.stage} />}
+            {canEdit && (
+              <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
+                <Pencil className="size-4" />
+                {t.common.edit}
+              </Link>
+            )}
             {session.isManager && <DeleteClientButton clientId={client.id} />}
           </>
         }
@@ -184,7 +214,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             </div>
             {(client.phone || client.email) && (
               <div className="mt-3">
-                <ContactButtons phone={client.phone} email={client.email} clientId={client.id} />
+                <ContactButtons phone={client.phone} email={client.email} clientId={canEdit ? client.id : null} />
               </div>
             )}
 
@@ -253,13 +283,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             title={
               <span className="flex items-center justify-between gap-3">
                 {t.activity.tasksTitle}
-                <Link
-                  href={`/tasks/new?client=${client.id}`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
-                >
-                  <Plus className="size-3.5" />
-                  {t.activity.addTask}
-                </Link>
+                {canEdit && !isFree && (
+                  <Link
+                    href={`/tasks/new?client=${client.id}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                  >
+                    <Plus className="size-3.5" />
+                    {t.activity.addTask}
+                  </Link>
+                )}
               </span>
             }
           >
@@ -278,13 +310,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             title={
               <span className="flex items-center justify-between gap-3">
                 {t.deals.forClient}
-                <Link
-                  href={`/deals/new?client=${client.id}`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
-                >
-                  <Plus className="size-3.5" />
-                  {t.deals.newDeal}
-                </Link>
+                {canEdit && !isFree && (
+                  <Link
+                    href={`/deals/new?client=${client.id}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                  >
+                    <Plus className="size-3.5" />
+                    {t.deals.newDeal}
+                  </Link>
+                )}
               </span>
             }
           >
@@ -300,7 +334,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
           </Card>
 
           <Card title={t.activity.title}>
-            <QuickLog clientId={client.id} />
+            {canEdit && <QuickLog clientId={client.id} />}
             {activities.length === 0 ? (
               <p className="mt-5 text-sm text-muted">{t.activity.empty}</p>
             ) : (

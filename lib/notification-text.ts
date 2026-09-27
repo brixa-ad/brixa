@@ -10,6 +10,7 @@ export type NotificationData = {
   kind?: string;
   time?: string | null;
   count?: number;
+  hours?: number;
 };
 
 /**
@@ -28,6 +29,7 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       ] ?? "",
     time: data.time ?? "",
     count: data.count ?? 0,
+    hours: data.hours ?? 24,
   };
   const late = (data.days ?? 0) > 0;
   switch (type) {
@@ -61,6 +63,15 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(t.notifications.tasks_missed, vars);
     case "tasks_missed_team":
       return fmt(t.notifications.tasks_missed_team, vars);
+    case "follow_up_missed":
+    case "follow_up_missed_team":
+    case "client_released":
+    case "client_released_team":
+    case "free_contact":
+    case "client_assigned":
+    case "contact_claimed":
+    case "follow_ups_today":
+      return fmt(t.notifications[type], vars);
     case "task_reminder":
       return fmt(t.notifications.task_reminder, vars);
     case "push_test":

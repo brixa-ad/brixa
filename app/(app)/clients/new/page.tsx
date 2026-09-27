@@ -11,7 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.clients.newClient };
 }
 
-export default async function NewClientPage() {
+export default async function NewClientPage({ searchParams }: PageProps<"/clients/new">) {
+  const free = (await searchParams).free === "1";
   const session = (await getSession())!;
   const [{ t }, lookups] = await Promise.all([getI18n(), getClientFormLookups(session.organizationId)]);
 
@@ -36,7 +37,8 @@ export default async function NewClientPage() {
           source: null,
           stage: "new_contact",
           notes: "",
-          brokerId: session.userId,
+          // "Нов свободен контакт" opens this with ?free=1 (managers)
+          brokerId: session.isManager && free ? "free" : session.userId,
           search: emptySearch(),
         }}
       />

@@ -67,6 +67,7 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
             .select("id")
             .eq("organization_id", session.organizationId)
             .eq("id", input.ownerClientId)
+            .not("responsible_broker_id", "is", null)
             .maybeSingle()
         : Promise.resolve({ data: null }),
       propertyId

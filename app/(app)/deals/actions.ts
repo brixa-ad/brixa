@@ -45,7 +45,9 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
       .eq("organization_id", session.organizationId)
       .eq("profile_id", input.brokerId)
       .maybeSingle(),
-    input.clientId ? supabase.from("clients").select("id").eq("id", input.clientId).maybeSingle() : { data: true },
+    input.clientId
+      ? supabase.from("clients").select("id").eq("id", input.clientId).not("responsible_broker_id", "is", null).maybeSingle()
+      : { data: true },
     input.propertyId
       ? supabase.from("properties").select("id").eq("id", input.propertyId).maybeSingle()
       : { data: true },

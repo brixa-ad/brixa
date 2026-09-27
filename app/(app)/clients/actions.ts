@@ -26,7 +26,8 @@ async function prepare(input: ClientInput, clientId: string | null) {
 
   const supabase = await createClient();
 
-  if (session.isManager && input.brokerId && input.brokerId !== session.userId) {
+  const free = session.isManager && input.brokerId === "free";
+  if (session.isManager && !free && input.brokerId && input.brokerId !== session.userId) {
     const { data: member } = await supabase
       .from("organization_members")
       .select("profile_id")
@@ -54,7 +55,7 @@ async function prepare(input: ClientInput, clientId: string | null) {
     source: input.source,
     stage: input.stage,
     notes: input.notes.trim() || null,
-    responsible_broker_id: session.isManager ? (input.brokerId ?? session.userId) : session.userId,
+    responsible_broker_id: free ? null : session.isManager ? (input.brokerId ?? session.userId) : session.userId,
   };
 
   const s = input.search;

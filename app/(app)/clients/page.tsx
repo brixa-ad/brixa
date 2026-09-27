@@ -62,6 +62,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path)`
     )
     .eq("organization_id", session.organizationId)
+    .not("responsible_broker_id", "is", null) // free contacts have their own page
     .order("updated_at", { ascending: false })
     .limit(LIMIT);
 
@@ -78,7 +79,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
 
   const [{ data, error }, { data: all }, members] = await Promise.all([
     query,
-    supabase.from("clients").select("client_class, stage").eq("organization_id", session.organizationId),
+    supabase.from("clients").select("client_class, stage").eq("organization_id", session.organizationId).not("responsible_broker_id", "is", null),
     session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
   ]);
   if (error) console.error("Loading clients failed:", error.message);

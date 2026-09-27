@@ -160,7 +160,9 @@ export function ClientForm({
         <div role="alert" className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           {duplicateOf
-            ? fmt(t.clients.duplicatePhone, { name: duplicateOf })
+            ? duplicateOf === "#free"
+              ? t.followUp.duplicateFree
+              : fmt(t.clients.duplicatePhone, { name: duplicateOf })
             : failed
               ? t.errors.generic
               : t.form.fixErrors}
@@ -303,6 +305,7 @@ export function ClientForm({
                       {m.full_name || m.email}
                     </option>
                   ))}
+                  {canAssignBroker && <option value="free">{t.followUp.freeOption}</option>}
                 </select>
               )}
             </Field>

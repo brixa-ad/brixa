@@ -121,7 +121,13 @@ export async function getTaskFormLookups(organizationId: string) {
   const supabase = await createClient();
   const [members, clients, properties] = await Promise.all([
     getMembers(supabase, organizationId),
-    supabase.from("clients").select("id, full_name, phone").eq("organization_id", organizationId).order("full_name").limit(1000),
+    supabase
+      .from("clients")
+      .select("id, full_name, phone")
+      .eq("organization_id", organizationId)
+      .not("responsible_broker_id", "is", null)
+      .order("full_name")
+      .limit(1000),
     supabase
       .from("properties")
       .select("id, title")

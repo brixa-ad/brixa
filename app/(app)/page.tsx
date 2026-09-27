@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { PushBanner } from "@/components/push/PushBanner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
-import { addDays, daysBetween, sofiaToday, TIME_ZONE } from "@/lib/dates";
+import { addDays, daysBetween, sofiaDay, sofiaToday, TIME_ZONE } from "@/lib/dates";
 import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
@@ -45,6 +45,16 @@ export default async function HomePage() {
       : Promise.resolve({ count: 0 }),
     getUpcomingSteps(session, today),
   ]);
+  // my follow-ups due by the end of today
+  const { data: dueRows } = await supabase
+    .from("clients")
+    .select("follow_up_at")
+    .eq("responsible_broker_id", session.userId)
+    .not("follow_up_at", "is", null)
+    .lt("follow_up_at", addDays(today, 2)); // a little past today; narrowed below
+  const nowIso = new Date().toISOString();
+  const followUpsLate = (dueRows ?? []).filter((r) => r.follow_up_at! <= nowIso).length;
+  const followUpsToday = (dueRows ?? []).filter((r) => r.follow_up_at! > nowIso && sofiaDay(r.follow_up_at!) === today).length;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
   const { goals } = numbers;
   const dailyGoals = [
@@ -265,6 +275,39 @@ export default async function HomePage() {
               ))}
             </div>
           </Card>
+
+          {/* ---- clients to get back to ---- */}
+          <Link
+            href="/follow-up"
+            className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs transition hover:border-accent/50 ${
+              followUpsLate > 0 ? "border-danger/40 bg-danger/5" : "border-line bg-surface"
+            }`}
+          >
+            <span
+              className={`grid size-10 shrink-0 place-items-center rounded-xl ${
+                followUpsLate > 0 ? "bg-danger/10 text-danger" : "bg-accent-soft text-accent-fg"
+              }`}
+            >
+              <CalendarCheck className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">{t.followUp.homeTitle}</span>
+              <span className="block text-xs text-muted">
+                {followUpsLate === 0 && followUpsToday === 0 ? (
+                  t.followUp.homeNone
+                ) : (
+                  <>
+                    {followUpsLate > 0 && (
+                      <span className="font-semibold text-danger">{fmt(t.followUp.homeOverdue, { count: followUpsLate })}</span>
+                    )}
+                    {followUpsLate > 0 && followUpsToday > 0 && " · "}
+                    {followUpsToday > 0 && fmt(t.followUp.homeToday, { count: followUpsToday })}
+                  </>
+                )}
+              </span>
+            </span>
+            <ArrowRight className="size-4 text-muted" />
+          </Link>
 
           {/* ---- scheduled deal steps ---- */}
           <Card

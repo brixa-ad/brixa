@@ -88,6 +88,7 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
       .select("id, full_name, phone")
       .eq("organization_id", organizationId)
       .overlaps("types", ["seller", "landlord"])
+      .not("responsible_broker_id", "is", null)
       .order("full_name"),
     getCommissionDefaults(organizationId),
   ]);
