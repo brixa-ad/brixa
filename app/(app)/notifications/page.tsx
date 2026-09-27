@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, BellOff, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, BellOff, CalendarClock, CheckCircle2, ClipboardList, Handshake, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 type Row = {
   id: string;
   type: string;
-  data: { title?: string; actor?: string; days?: number; amount?: number };
+  data: { title?: string; actor?: string; days?: number; amount?: number; stage?: string; kind?: string };
   link: string | null;
   read_at: string | null;
   created_at: string;
@@ -30,6 +30,10 @@ function text(n: Row, t: Dictionary, lang: Lang) {
     actor: n.data.actor ?? "",
     days: n.data.days ?? 0,
     amount: formatPrice(Number(n.data.amount ?? 0), "EUR", lang) ?? "",
+    stage:
+      (n.data.kind === "rent" ? t.options.dealStageRent : t.options.dealStage)[
+        (n.data.stage ?? "viewing") as keyof typeof t.options.dealStage
+      ] ?? "",
   };
   const late = (n.data.days ?? 0) > 0;
   switch (n.type) {
@@ -51,6 +55,12 @@ function text(n: Row, t: Dictionary, lang: Lang) {
       return fmt(t.notifications.commission_logged, vars);
     case "overtaken":
       return fmt(t.notifications.overtaken, vars);
+    case "deal_date_tomorrow":
+      return fmt(t.notifications.deal_date_tomorrow, vars);
+    case "deal_date_today":
+      return fmt(t.notifications.deal_date_today, vars);
+    case "deal_date_team":
+      return fmt(t.notifications.deal_date_team, vars);
     default:
       return vars.title;
   }
@@ -66,6 +76,9 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   deal_returned: { icon: Undo2, tone: "bg-warning/10 text-warning" },
   commission_logged: { icon: Trophy, tone: "bg-accent-soft text-accent-fg" },
   overtaken: { icon: TrendingUp, tone: "bg-danger/10 text-danger" },
+  deal_date_tomorrow: { icon: CalendarClock, tone: "bg-accent-soft text-accent-fg" },
+  deal_date_today: { icon: CalendarClock, tone: "bg-warning/10 text-warning" },
+  deal_date_team: { icon: CalendarClock, tone: "bg-warning/10 text-warning" },
 };
 
 export default async function NotificationsPage() {

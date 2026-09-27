@@ -26,3 +26,8 @@ export function formatDate(value: string, lang: Lang, withTime = false) {
 export function settlementLabel(settlement: { name: string; settlement_type: string }) {
   return `${settlement.settlement_type} ${settlement.name}`;
 }
+
+/** "27 септ." / "Sep 27" */
+export function formatDayMonth(value: string, lang: Lang) {
+  return new Intl.DateTimeFormat(locale(lang), { day: "numeric", month: "short" }).format(new Date(value));
+}

@@ -11,6 +11,7 @@ type Person = { profileId: string; name: string; avatarPath: string | null };
 type Values = Record<Exclude<keyof GoalRow, "profileId">, string>;
 
 const FIELDS = ["dailyCalls", "dailyViewings", "dailyListings", "monthlyTarget", "yearlyTarget"] as const;
+const BONUSES = ["monthlyBonus", "yearlyBonus"] as const;
 
 export function GoalsForm({ people, initial }: { people: Person[]; initial: Record<string, GoalRow | undefined> }) {
   const { t } = useI18n();
@@ -20,7 +21,11 @@ export function GoalsForm({ people, initial }: { people: Person[]; initial: Reco
         const g = initial[p.profileId];
         return [
           p.profileId,
-          Object.fromEntries(FIELDS.map((f) => [f, g && g[f] ? String(g[f]) : ""])) as Values,
+          {
+            ...Object.fromEntries(FIELDS.map((f) => [f, g && g[f] ? String(g[f]) : ""])),
+            monthlyBonus: g?.monthlyBonus ?? "",
+            yearlyBonus: g?.yearlyBonus ?? "",
+          } as Values,
         ];
       })
     )
@@ -34,6 +39,10 @@ export function GoalsForm({ people, initial }: { people: Person[]; initial: Reco
     dailyListings: t.goals.listings,
     monthlyTarget: t.goals.monthly,
     yearlyTarget: t.goals.yearly,
+  };
+  const bonusLabels: Record<(typeof BONUSES)[number], string> = {
+    monthlyBonus: t.goals.monthlyBonus,
+    yearlyBonus: t.goals.yearlyBonus,
   };
 
   function set(profileId: string, field: (typeof FIELDS)[number], value: string) {
@@ -60,6 +69,8 @@ export function GoalsForm({ people, initial }: { people: Person[]; initial: Reco
         dailyListings: n(v.dailyListings),
         monthlyTarget: n(v.monthlyTarget),
         yearlyTarget: n(v.yearlyTarget),
+        monthlyBonus: v.monthlyBonus,
+        yearlyBonus: v.yearlyBonus,
       };
     });
     startTransition(async () => {
@@ -89,6 +100,24 @@ export function GoalsForm({ people, initial }: { people: Person[]; initial: Reco
                     value={values[person.profileId][field]}
                     placeholder="0"
                     onChange={(e) => set(person.profileId, field, e.target.value)}
+                    className={`${inputClass} mt-1`}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {BONUSES.map((field) => (
+                <label key={field} className="block text-[11px] font-medium text-muted">
+                  {bonusLabels[field]}
+                  <input
+                    value={values[person.profileId][field]}
+                    maxLength={200}
+                    placeholder={t.goals.bonusPlaceholder}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setValues((v) => ({ ...v, [person.profileId]: { ...v[person.profileId], [field]: value } }));
+                      setStatus("idle");
+                    }}
                     className={`${inputClass} mt-1`}
                   />
                 </label>

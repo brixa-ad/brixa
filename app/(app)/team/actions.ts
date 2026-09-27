@@ -122,6 +122,9 @@ export type GoalRow = {
   dailyListings: number;
   monthlyTarget: number;
   yearlyTarget: number;
+  /** what the broker wins for hitting the target */
+  monthlyBonus: string;
+  yearlyBonus: string;
 };
 
 const whole = (value: number, max: number) => Number.isInteger(value) && value >= 0 && value <= max;
@@ -141,7 +144,11 @@ export async function saveGoals(rows: GoalRow[]): Promise<{ ok: boolean }> {
       r.monthlyTarget <= 100_000_000 &&
       Number.isFinite(r.yearlyTarget) &&
       r.yearlyTarget >= 0 &&
-      r.yearlyTarget <= 100_000_000
+      r.yearlyTarget <= 100_000_000 &&
+      typeof r.monthlyBonus === "string" &&
+      r.monthlyBonus.length <= 200 &&
+      typeof r.yearlyBonus === "string" &&
+      r.yearlyBonus.length <= 200
   );
   if (!valid || rows.length === 0) return { ok: false };
 
@@ -155,6 +162,8 @@ export async function saveGoals(rows: GoalRow[]): Promise<{ ok: boolean }> {
       daily_listings: r.dailyListings,
       monthly_target: r.monthlyTarget,
       yearly_target: r.yearlyTarget,
+      monthly_bonus: r.monthlyBonus.trim() || null,
+      yearly_bonus: r.yearlyBonus.trim() || null,
       updated_by: session.userId,
       updated_at: new Date().toISOString(),
     })),

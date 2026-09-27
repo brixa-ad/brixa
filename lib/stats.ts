@@ -1,5 +1,6 @@
 import "server-only";
 import { addDays, daysBetween, sofiaDay } from "./dates";
+import type { DealKind } from "./options";
 import type { SessionContext } from "./session";
 import { createClient } from "./supabase/server";
 
@@ -9,6 +10,8 @@ export type Goals = {
   dailyListings: number;
   monthlyTarget: number;
   yearlyTarget: number;
+  monthlyBonus: string | null;
+  yearlyBonus: string | null;
 };
 
 export type BoardRow = {
@@ -81,6 +84,8 @@ export async function getMyNumbers(session: SessionContext, today: string) {
     dailyListings: g?.daily_listings ?? 0,
     monthlyTarget: Number(g?.monthly_target ?? 0),
     yearlyTarget: Number(g?.yearly_target ?? 0),
+    monthlyBonus: g?.monthly_bonus ?? null,
+    yearlyBonus: g?.yearly_bonus ?? null,
   };
 
   // What an hour is worth: the last 12 months (or since joining) over the hours worked.
@@ -113,6 +118,62 @@ export async function getMyNumbers(session: SessionContext, today: string) {
       listings: (listedLately.data ?? []).filter((p) => sofiaDay(p.created_at) === today).length,
     },
   };
+}
+
+const STEP_COLUMNS = ["viewing_on", "offer_on", "deposit_on", "preliminary_on", "notary_on"] as const;
+const STEPS = ["viewing", "offer", "deposit", "preliminary", "notary"] as const;
+
+export type UpcomingStep = {
+  dealId: string;
+  title: string;
+  kind: DealKind;
+  stage: (typeof STEPS)[number];
+  day: string;
+  brokerName: string | null;
+};
+
+/** Scheduled deal steps in the next two weeks (own deals; managers: the whole agency). */
+export async function getUpcomingSteps(session: SessionContext, today: string): Promise<UpcomingStep[]> {
+  const supabase = await createClient();
+  const until = addDays(today, 14);
+  let query = supabase
+    .from("deals")
+    .select(
+      `id, kind, stage, broker_id, ${STEP_COLUMNS.join(", ")},
+      property:properties(title), client:clients(full_name), broker:profiles!deals_broker_id_fkey(full_name, email)`
+    )
+    .eq("organization_id", session.organizationId)
+    .eq("status", "open")
+    .or(STEP_COLUMNS.map((c) => `and(${c}.gte.${today},${c}.lte.${until})`).join(","));
+  if (!session.isManager) query = query.eq("broker_id", session.userId);
+  const { data, error } = await query;
+  if (error) {
+    console.error("Loading upcoming deal steps failed:", error.message);
+    return [];
+  }
+
+  const steps: UpcomingStep[] = [];
+  for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const current = STEPS.indexOf(row.stage as (typeof STEPS)[number]);
+    STEPS.forEach((stage, index) => {
+      const day = row[STEP_COLUMNS[index]] as string | null;
+      if (!day || day < today || day > until) return;
+      // Only steps still ahead (the viewing / the notary while the deal waits at it).
+      if (index < current || (index === current && stage !== "viewing" && stage !== "notary")) return;
+      const property = row.property as { title: string } | null;
+      const client = row.client as { full_name: string } | null;
+      const broker = row.broker as { full_name: string | null; email: string } | null;
+      steps.push({
+        dealId: row.id as string,
+        title: property?.title ?? client?.full_name ?? "",
+        kind: row.kind as DealKind,
+        stage,
+        day,
+        brokerName: row.broker_id === session.userId ? null : (broker?.full_name || broker?.email || null),
+      });
+    });
+  }
+  return steps.sort((a, b) => a.day.localeCompare(b.day));
 }
 
 /** The agency's ranking for this month and this year (commission + activity points). */

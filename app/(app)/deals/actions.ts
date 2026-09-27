@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { DEAL_LIMITS, isDay, validateDeal, type DealErrors, type DealInput } from "@/lib/deal-validation";
-import { DEAL_STAGES, isOneOf } from "@/lib/options";
+import { CURRENCIES, DEAL_STAGES, isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,6 +64,12 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
     currency: input.currency,
     commission: input.commission,
     notes: input.notes.trim() || null,
+    // a double-sided deal has no other agency, and the other way round
+    double_sided: input.doubleSided && !input.withPartner,
+    buyer_rate: input.doubleSided && !input.withPartner ? input.buyerRate : null,
+    partner_agency: input.withPartner ? input.partnerAgency.trim() : null,
+    partner_broker: input.withPartner ? input.partnerBroker.trim() || null : null,
+    partner_side: input.withPartner ? input.partnerSide : null,
   };
 
   const { data, error } = dealId
@@ -131,4 +137,111 @@ export async function deleteDeal(dealId: string) {
   if (error || !data?.length) return { ok: false };
   refresh(data[0]);
   redirect("/deals");
+}
+
+export type StageDates = Record<"viewing_on" | "offer_on" | "deposit_on" | "preliminary_on" | "notary_on", string | null>;
+
+/** When each step happened or is planned (the reminders run off these). */
+export async function saveDealDates(dealId: string, dates: StageDates) {
+  const keys = ["viewing_on", "offer_on", "deposit_on", "preliminary_on", "notary_on"] as const;
+  const changes: Record<string, string | null> = {};
+  for (const key of keys) {
+    const value = dates[key];
+    if (value !== null && !isDay(value)) return { ok: false, message: "generic" } as const;
+    changes[key] = value;
+  }
+  return update(dealId, changes);
+}
+
+export type DealPayments = {
+  depositAmount: number | null;
+  preliminaryBank: number | null;
+  preliminaryCash: number | null;
+  notaryBank: number | null;
+  notaryCash: number | null;
+};
+
+const amountOk = (value: number | null) =>
+  value === null || (Number.isFinite(value) && value >= 0 && value <= DEAL_LIMITS.amount);
+
+export async function saveDealPayments(dealId: string, p: DealPayments) {
+  if (!Object.values(p).every(amountOk)) return { ok: false, message: "generic" } as const;
+  return update(dealId, {
+    deposit_amount: p.depositAmount,
+    preliminary_bank: p.preliminaryBank,
+    preliminary_cash: p.preliminaryCash,
+    notary_bank: p.notaryBank,
+    notary_cash: p.notaryCash,
+  });
+}
+
+export type OfferInput = {
+  amount: number;
+  currency: string;
+  offeredBy: string;
+  agency: string;
+  offeredOn: string;
+  note: string;
+};
+
+export async function addOffer(dealId: string, input: OfferInput): Promise<DealActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, message: "generic" };
+  const offeredBy = input.offeredBy.trim();
+  if (
+    !amountOk(input.amount) ||
+    input.amount === null ||
+    !isOneOf(CURRENCIES, input.currency) ||
+    !offeredBy ||
+    offeredBy.length > DEAL_LIMITS.name ||
+    input.agency.trim().length > DEAL_LIMITS.name ||
+    !isDay(input.offeredOn) ||
+    input.note.length > 1000
+  ) {
+    return { ok: false, message: "generic" };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("deal_offers").insert({
+    deal_id: dealId,
+    amount: input.amount,
+    currency: input.currency,
+    offered_by: offeredBy,
+    agency: input.agency.trim() || null,
+    offered_on: input.offeredOn,
+    note: input.note.trim() || null,
+    created_by: session.userId,
+  });
+  if (error) {
+    console.error("Adding offer failed:", error.message);
+    return { ok: false, message: "generic" };
+  }
+  revalidatePath(`/deals/${dealId}`);
+  return { ok: true };
+}
+
+/** Accepting an offer makes its amount the deal's agreed price. */
+export async function setOfferStatus(offerId: string, status: "open" | "accepted" | "rejected"): Promise<DealActionResult> {
+  if (!["open", "accepted", "rejected"].includes(status)) return { ok: false, message: "generic" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_offers")
+    .update({ status })
+    .eq("id", offerId)
+    .select("deal_id, amount, currency")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Updating offer failed:", error?.message ?? "no row");
+    return { ok: false, message: "generic" };
+  }
+  if (status === "accepted") return update(data.deal_id, { price: data.amount, currency: data.currency });
+  revalidatePath(`/deals/${data.deal_id}`);
+  return { ok: true };
+}
+
+export async function deleteOffer(offerId: string): Promise<DealActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("deal_offers").delete().eq("id", offerId).select("deal_id");
+  if (error || !data?.length) return { ok: false, message: "generic" };
+  revalidatePath(`/deals/${data[0].deal_id}`);
+  return { ok: true };
 }

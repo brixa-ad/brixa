@@ -9,7 +9,14 @@ import { useI18n } from "@/components/I18nProvider";
 import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { commissionRate, expectedCommission, rateLabel, type CommissionDefaults } from "@/lib/commission";
-import { DEAL_LIMITS, parseAmount, validateDeal, type DealErrors, type DealInput } from "@/lib/deal-validation";
+import {
+  DEAL_LIMITS,
+  PARTNER_SIDES,
+  parseAmount,
+  validateDeal,
+  type DealErrors,
+  type DealInput,
+} from "@/lib/deal-validation";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, DEAL_KINDS, dealStages, type Currency, type DealKind, type DealStage } from "@/lib/options";
 import { formatPrice } from "@/lib/format";
@@ -30,13 +37,25 @@ export type DealFormLookups = {
 };
 
 /** Raw form state — amounts stay strings while typing. */
-export type DealFormValues = Omit<DealInput, "price" | "commission"> & { price: string; commission: string };
+export type DealFormValues = Omit<DealInput, "price" | "commission" | "buyerRate"> & {
+  price: string;
+  commission: string;
+  buyerRate: string;
+};
 
 const toInput = (values: DealFormValues): DealInput => ({
   ...values,
   price: parseAmount(values.price),
   commission: parseAmount(values.commission),
+  buyerRate: parseAmount(values.buyerRate),
 });
+
+/** Seller-side rate plus, on a double-sided deal, the buyer's. */
+function totalRate(values: DealFormValues, propertyRate: number | null | undefined, defaults: CommissionDefaults) {
+  const seller = commissionRate(values.kind, propertyRate, defaults);
+  const buyer = values.doubleSided ? (parseAmount(values.buyerRate) ?? 0) : 0;
+  return { seller, total: seller + (Number.isFinite(buyer) ? buyer : 0) };
+}
 
 export function DealForm({
   dealId,
@@ -65,8 +84,11 @@ export function DealForm({
   const err = (key: keyof DealInput) => (errors[key] ? t.errors[errors[key]!] : undefined);
 
   const property = lookups.properties.find((p) => p.id === values.propertyId);
-  const rate = commissionRate(values.kind, property?.commission_rate, lookups.defaults);
-  const auto = expectedCommission(values.kind, input.price, values.currency, rate);
+  const rates = totalRate(values, property?.commission_rate, lookups.defaults);
+  const auto = expectedCommission(values.kind, input.price, values.currency, rates.total);
+  const rateText = values.doubleSided
+    ? `${rateLabel(values.kind, rates.seller, t.units.months)} + ${rateLabel(values.kind, rates.total - rates.seller, t.units.months)}`
+    : rateLabel(values.kind, rates.seller, t.units.months);
 
   function set<K extends keyof DealFormValues>(key: K, value: DealFormValues[K]) {
     setValues((current) => {
@@ -85,7 +107,7 @@ export function DealForm({
       next.kind,
       parseAmount(next.price),
       next.currency,
-      commissionRate(next.kind, p?.commission_rate, lookups.defaults)
+      totalRate(next, p?.commission_rate, lookups.defaults).total
     );
     return { ...next, commission: amount === null ? next.commission : String(amount) };
   }
@@ -246,7 +268,7 @@ export function DealForm({
             error={err("commission")}
             hint={
               auto !== null && String(auto) === values.commission
-                ? fmt(t.deals.commissionAuto, { rate: rateLabel(values.kind, rate, t.units.months) })
+                ? fmt(t.deals.commissionAuto, { rate: rateText })
                 : undefined
             }
           >
@@ -278,6 +300,109 @@ export function DealForm({
               </div>
             )}
           </Field>
+
+          {/* ---- both sides pay us / the other side is another agency ---- */}
+          <div className="space-y-3 rounded-xl border border-line p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={values.doubleSided}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setValues((current) =>
+                    withAutoCommission({
+                      ...current,
+                      doubleSided: on,
+                      withPartner: on ? false : current.withPartner,
+                      buyerRate:
+                        on && !current.buyerRate
+                          ? String(current.kind === "rent" ? lookups.defaults.rentMonths : lookups.defaults.salePercent)
+                          : current.buyerRate,
+                    })
+                  );
+                }}
+                className="mt-0.5 size-5 accent-[var(--accent)]"
+              />
+              <span>
+                <span className="block text-sm font-medium">{t.deals.doubleSided}</span>
+                <span className="block text-xs text-muted">{t.deals.doubleSidedHint}</span>
+              </span>
+            </label>
+            {values.doubleSided && (
+              <Field label={values.kind === "rent" ? t.deals.buyerRateRent : t.deals.buyerRate} error={err("buyerRate")}>
+                {(props) => (
+                  <input
+                    {...props}
+                    inputMode="decimal"
+                    value={values.buyerRate}
+                    onChange={(e) => set("buyerRate", e.target.value)}
+                    className={`${inputClass} sm:max-w-40`}
+                  />
+                )}
+              </Field>
+            )}
+
+            <label className="flex cursor-pointer items-start gap-3 border-t border-line-soft pt-3">
+              <input
+                type="checkbox"
+                checked={values.withPartner}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setValues((current) =>
+                    withAutoCommission({ ...current, withPartner: on, doubleSided: on ? false : current.doubleSided })
+                  );
+                }}
+                className="mt-0.5 size-5 accent-[var(--accent)]"
+              />
+              <span>
+                <span className="block text-sm font-medium">{t.deals.withPartner}</span>
+                <span className="block text-xs text-muted">{t.deals.withPartnerHint}</span>
+              </span>
+            </label>
+            {values.withPartner && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t.deals.partnerAgency} required error={err("partnerAgency")}>
+                  {(props) => (
+                    <input
+                      {...props}
+                      value={values.partnerAgency}
+                      maxLength={DEAL_LIMITS.name}
+                      onChange={(e) => set("partnerAgency", e.target.value)}
+                      className={inputClass}
+                    />
+                  )}
+                </Field>
+                <Field label={t.deals.partnerBroker} error={err("partnerBroker")}>
+                  {(props) => (
+                    <input
+                      {...props}
+                      value={values.partnerBroker}
+                      maxLength={DEAL_LIMITS.name}
+                      onChange={(e) => set("partnerBroker", e.target.value)}
+                      className={inputClass}
+                    />
+                  )}
+                </Field>
+                <div className="sm:col-span-2">
+                  <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.deals.partnerSide}</span>
+                  <div className="flex gap-2" role="radiogroup">
+                    {PARTNER_SIDES.map((side) => (
+                      <button
+                        key={side}
+                        type="button"
+                        role="radio"
+                        aria-checked={values.partnerSide === side}
+                        onClick={() => set("partnerSide", side)}
+                        className={chip(values.partnerSide === side)}
+                      >
+                        {side === "buyer" ? t.deals.partnerBuyer : t.deals.partnerSeller}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <Field
             label={t.deals.fieldBroker}

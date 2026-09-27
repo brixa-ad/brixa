@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, Building2, Pencil, Phone, User } from "lucide-react";
+import { BadgeCheck, Building2, Handshake, Pencil, Phone, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { DealActions, DealStageBar, DeleteDealButton } from "@/components/deal/DealControls";
+import { DealDates, DealOffers, DealPaymentsForm, type OfferRow } from "@/components/deal/DealDetails";
 import { Card, buttonClass } from "@/components/ui/form";
 import { sofiaToday } from "@/lib/dates";
 import { dealTitle, getDeal } from "@/lib/deals";
@@ -12,6 +13,7 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 import { personName } from "@/lib/tasks";
 
 export async function generateMetadata({ params }: PageProps<"/deals/[id]">): Promise<Metadata> {
@@ -23,6 +25,16 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
   const { id } = await params;
   const [{ t, lang }, deal, session] = await Promise.all([getI18n(), getDeal(id), getSession()]);
   if (!deal || !session) notFound();
+
+  const supabase = await createClient();
+  const { data: offerRows } = await supabase
+    .from("deal_offers")
+    .select("id, amount, currency, offered_by, agency, offered_on, status, note")
+    .eq("deal_id", id)
+    .order("offered_on", { ascending: false })
+    .order("created_at", { ascending: false });
+  const offers = ((offerRows ?? []) as OfferRow[]).map((o) => ({ ...o, amount: Number(o.amount) }));
+  const today = sofiaToday();
 
   const mine = deal.broker_id === session.userId;
   const confirmed = Boolean(deal.confirmed_at);
@@ -68,8 +80,27 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <Card>
+          <Card title={t.deals.datesTitle}>
             <DealStageBar dealId={id} kind={deal.kind} stage={deal.stage} status={deal.status} canMove={canEdit} />
+            <div className="mt-5 border-t border-line-soft pt-4">
+              <DealDates
+                // stage moves stamp dates in the database — start fresh then
+                key={`${deal.stage}-${deal.status}`}
+                dealId={id}
+                kind={deal.kind}
+                stage={deal.stage}
+                status={deal.status}
+                canEdit={canEdit}
+                today={today}
+                dates={{
+                  viewing_on: deal.viewing_on,
+                  offer_on: deal.offer_on,
+                  deposit_on: deal.deposit_on,
+                  preliminary_on: deal.preliminary_on,
+                  notary_on: deal.notary_on,
+                }}
+              />
+            </div>
           </Card>
 
           <Card>
@@ -151,6 +182,30 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
                   )}
                 </dd>
               </div>
+              {(deal.double_sided || deal.partner_agency) && (
+                <div className="sm:col-span-2">
+                  <dd className="flex flex-wrap items-center gap-2">
+                    {deal.double_sided && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-fg">
+                        <Handshake className="size-3.5" />
+                        {t.deals.doubleSided}
+                        {deal.buyer_rate !== null && ` · +${deal.buyer_rate}${deal.kind === "rent" ? ` ${t.units.months}` : "%"}`}
+                      </span>
+                    )}
+                    {deal.partner_agency && (
+                      <span className="inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-raised px-2.5 py-1 text-xs font-semibold text-fg-2">
+                        {fmt(t.deals.partnerLabel, { agency: deal.partner_agency })}
+                        {deal.partner_broker && <span className="font-normal text-muted">· {deal.partner_broker}</span>}
+                        {deal.partner_side && (
+                          <span className="font-normal text-muted">
+                            · {deal.partner_side === "buyer" ? t.deals.partnerBuyer : t.deals.partnerSeller}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
               {deal.status === "lost" && deal.lost_reason && (
                 <div>
                   <dt className="text-xs text-muted">{t.deals.reason}</dt>
@@ -166,6 +221,26 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
               </div>
             )}
           </Card>
+
+          <Card title={t.deals.offersTitle}>
+            <DealOffers dealId={id} offers={offers} currency={deal.currency} canEdit={canEdit} today={today} />
+          </Card>
+
+          <Card title={t.deals.paymentsTitle}>
+            <DealPaymentsForm
+              dealId={id}
+              price={deal.price}
+              currency={deal.currency}
+              canEdit={canEdit}
+              initial={{
+                depositAmount: deal.deposit_amount,
+                preliminaryBank: deal.preliminary_bank,
+                preliminaryCash: deal.preliminary_cash,
+                notaryBank: deal.notary_bank,
+                notaryCash: deal.notary_cash,
+              }}
+            />
+          </Card>
         </div>
 
         <Card title={deal.status === "open" ? t.deals.closeTitle : t.options.dealStatus[deal.status]}>
@@ -174,7 +249,7 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
             status={deal.status}
             confirmed={confirmed}
             commission={deal.commission}
-            today={sofiaToday()}
+            today={today}
             canEdit={canEdit}
             isManager={session.isManager}
           />

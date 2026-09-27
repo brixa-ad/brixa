@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CheckCircle2, Clock, Plus, Quote, Target } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
-import { daysBetween, sofiaToday, TIME_ZONE } from "@/lib/dates";
-import { formatPrice } from "@/lib/format";
+import { addDays, daysBetween, sofiaToday, TIME_ZONE } from "@/lib/dates";
+import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
-import { getLeaderboards, getMyNumbers } from "@/lib/stats";
+import { getLeaderboards, getMyNumbers, getUpcomingSteps } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
 
@@ -27,7 +27,7 @@ export default async function HomePage() {
   const today = sofiaToday();
   const supabase = await createClient();
 
-  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }] = await Promise.all([
+  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }, upcoming] = await Promise.all([
     getI18n(),
     getMyDay(session.userId, today),
     session.isManager ? getTeamDay(session.organizationId, today) : Promise.resolve(null),
@@ -42,6 +42,7 @@ export default async function HomePage() {
           .eq("status", "won")
           .is("confirmed_at", null)
       : Promise.resolve({ count: 0 }),
+    getUpcomingSteps(session, today),
   ]);
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
   const { goals } = numbers;
@@ -62,16 +63,18 @@ export default async function HomePage() {
       goal: goals.dailyListings,
     },
   ];
-  const targets = [
+  const missions = [
     {
-      label: t.home.targetMonth,
+      label: t.home.missionMonth,
       done: numbers.monthCommission,
       target: goals.monthlyTarget,
+      bonus: goals.monthlyBonus,
     },
     {
-      label: t.home.targetYear,
+      label: t.home.missionYear,
       done: numbers.ytdCommission,
       target: goals.yearlyTarget,
+      bonus: goals.yearlyBonus,
     },
   ];
 
@@ -214,7 +217,7 @@ export default async function HomePage() {
             </footer>
           </Card>
 
-          <Leaderboard month={boards.month} year={boards.year} viewerId={session.userId} />
+          <Leaderboard month={boards.month} year={boards.year} viewerId={session.userId} missions={missions} />
         </div>
 
         <div className="space-y-6">
@@ -260,47 +263,43 @@ export default async function HomePage() {
             </div>
           </Card>
 
-          {/* ---- commission targets ---- */}
+          {/* ---- scheduled deal steps ---- */}
           <Card
             title={
               <span className="flex items-center gap-2">
-                <Target className="size-4 text-brand-cyan" />
-                {t.home.targetsTitle}
+                <CalendarClock className="size-4 text-brand-cyan" />
+                {t.home.upcomingDeals}
               </span>
             }
           >
-            <div className="space-y-4">
-              {targets.map((row) => {
-                const percent = row.target > 0 ? Math.round((row.done / row.target) * 100) : null;
-                return (
-                  <div key={row.label}>
-                    <div className="flex items-baseline justify-between gap-2 text-sm">
-                      <span className="text-fg-2">{row.label}</span>
-                      {percent !== null && <span className="text-xs font-bold text-accent-fg">{percent}%</span>}
-                    </div>
-                    <p className="mt-0.5 text-lg font-bold tracking-tight">
-                      {euro(row.done)}
-                      {row.target > 0 && (
-                        <span className="ml-1.5 text-xs font-medium text-muted">
-                          {fmt(t.home.targetOf, { target: euro(row.target) })}
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-muted">{t.home.upcomingNone}</p>
+            ) : (
+              <ul className="-mx-2 space-y-0.5">
+                {upcoming.slice(0, 8).map((step) => {
+                  const soon = step.day === today ? t.home.todayLabel : step.day === addDays(today, 1) ? t.home.tomorrowLabel : null;
+                  const stages = step.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
+                  return (
+                    <li key={`${step.dealId}-${step.stage}`}>
+                      <Link href={`/deals/${step.dealId}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-raised">
+                        <span
+                          className={`w-16 shrink-0 text-center text-xs font-bold ${soon ? "text-warning" : "text-muted"}`}
+                        >
+                          {soon ?? formatDayMonth(step.day, lang)}
                         </span>
-                      )}
-                    </p>
-                    {percent !== null && (
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-raised">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
-                          style={{ width: `${Math.min(100, percent)}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {goals.monthlyTarget === 0 && goals.yearlyTarget === 0 && (
-                <p className="text-xs text-muted">{t.home.noTarget}</p>
-              )}
-            </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{stages[step.stage]}</span>
+                          <span className="block truncate text-xs text-muted">
+                            {step.title}
+                            {step.brokerName ? ` · ${step.brokerName}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Card>
 
           {/* ---- what an hour is worth ---- */}

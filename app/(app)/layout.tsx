@@ -6,8 +6,10 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
 import { PasskeyPrompt } from "@/components/passkey/PasskeyPrompt";
+import { SideMenu } from "@/components/SideMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getI18n } from "@/lib/i18n/server";
+import { bottomNavFor, navKeysFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getTheme } from "@/lib/theme-server";
@@ -38,7 +40,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:gap-8 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
+          <SideMenu
+            items={navKeysFor(session.isManager)}
+            name={displayName}
+            subtitle={`${session.organizationName} · ${t.roles[session.role]}`}
+            avatarPath={session.avatarPath}
+            unread={unread ?? 0}
+          />
           <Link href="/" className="shrink-0">
             <Logo />
           </Link>
@@ -110,7 +119,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav items={bottomNavFor(session.bottomNav, session.isManager)} />
     </div>
   );
 }

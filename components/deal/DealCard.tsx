@@ -28,11 +28,21 @@ export function DealCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{title}</p>
-        <span className="shrink-0 rounded-md bg-raised px-1.5 py-0.5 text-[11px] font-medium text-muted">
-          {t.options.dealKind[deal.kind]}
+        <span className="flex shrink-0 gap-1">
+          {deal.double_sided && (
+            <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-bold text-accent-fg" title={t.deals.doubleSided}>
+              ×2
+            </span>
+          )}
+          <span className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] font-medium text-muted">
+            {t.options.dealKind[deal.kind]}
+          </span>
         </span>
       </div>
       {deal.property && deal.client && <p className="mt-0.5 truncate text-xs text-muted">{deal.client.full_name}</p>}
+      {deal.partner_agency && (
+        <p className="mt-0.5 truncate text-xs text-muted">{fmt(t.deals.partnerLabel, { agency: deal.partner_agency })}</p>
+      )}
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div className="min-w-0">

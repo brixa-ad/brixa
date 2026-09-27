@@ -47,6 +47,13 @@ export default async function NewDealPage({ searchParams }: PageProps<"/deals/ne
           currency,
           commission: commission === null ? "" : String(commission),
           notes: "",
+          doubleSided: false,
+          buyerRate: "",
+          withPartner: false,
+          partnerAgency: "",
+          partnerBroker: "",
+          // our listing, their buyer — the usual case
+          partnerSide: property ? "buyer" : "seller",
         }}
       />
     </>

@@ -33,6 +33,8 @@ export default async function GoalsPage() {
       dailyListings: g.daily_listings,
       monthlyTarget: Number(g.monthly_target),
       yearlyTarget: Number(g.yearly_target),
+      monthlyBonus: g.monthly_bonus ?? "",
+      yearlyBonus: g.yearly_bonus ?? "",
     };
   }
 

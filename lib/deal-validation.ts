@@ -12,11 +12,22 @@ export type DealInput = {
   /** euro */
   commission: number | null;
   notes: string;
+  /** both sides pay: buyerRate is the buyer's % (rent: months) */
+  doubleSided: boolean;
+  buyerRate: number | null;
+  /** the other side is another agency */
+  withPartner: boolean;
+  partnerAgency: string;
+  partnerBroker: string;
+  partnerSide: PartnerSide;
 };
+
+export const PARTNER_SIDES = ["buyer", "seller"] as const;
+export type PartnerSide = (typeof PARTNER_SIDES)[number];
 
 export type DealErrors = Partial<Record<keyof DealInput, ErrorCode>>;
 
-export const DEAL_LIMITS = { notes: 5000, reason: 500, amount: 100_000_000 };
+export const DEAL_LIMITS = { notes: 5000, reason: 500, amount: 100_000_000, name: 120 };
 
 export function validateDeal(input: DealInput): DealErrors {
   const errors: DealErrors = {};
@@ -31,6 +42,18 @@ export function validateDeal(input: DealInput): DealErrors {
   checkAmount(errors, "commission", input.commission);
   if (!isOneOf(CURRENCIES, input.currency)) errors.currency = "invalid";
   if (input.notes.length > DEAL_LIMITS.notes) errors.notes = "tooLong";
+  if (input.doubleSided) {
+    const max = input.kind === "rent" ? 24 : 100;
+    if (input.buyerRate === null) errors.buyerRate = "required";
+    else if (!Number.isFinite(input.buyerRate) || input.buyerRate < 0 || input.buyerRate > max) errors.buyerRate = "range";
+  }
+  if (input.withPartner) {
+    const agency = input.partnerAgency.trim();
+    if (!agency) errors.partnerAgency = "required";
+    else if (agency.length > DEAL_LIMITS.name) errors.partnerAgency = "tooLong";
+    if (input.partnerBroker.trim().length > DEAL_LIMITS.name) errors.partnerBroker = "tooLong";
+    if (!isOneOf(PARTNER_SIDES, input.partnerSide)) errors.partnerSide = "invalid";
+  }
   return errors;
 }
 

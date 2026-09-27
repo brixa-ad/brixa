@@ -20,6 +20,21 @@ export type DealRow = {
   confirmed_at: string | null;
   lost_reason: string | null;
   notes: string | null;
+  double_sided: boolean;
+  buyer_rate: number | null;
+  partner_agency: string | null;
+  partner_broker: string | null;
+  partner_side: "buyer" | "seller" | null;
+  viewing_on: string | null;
+  offer_on: string | null;
+  deposit_on: string | null;
+  preliminary_on: string | null;
+  notary_on: string | null;
+  deposit_amount: number | null;
+  preliminary_bank: number | null;
+  preliminary_cash: number | null;
+  notary_bank: number | null;
+  notary_cash: number | null;
   broker_id: string | null;
   created_by: string | null;
   property_id: string | null;
@@ -34,6 +49,9 @@ export type DealRow = {
 };
 
 export const DEAL_SELECT = `id, kind, stage, status, price, currency, commission, closed_on, confirmed_at, lost_reason, notes,
+  double_sided, buyer_rate, partner_agency, partner_broker, partner_side,
+  viewing_on, offer_on, deposit_on, preliminary_on, notary_on,
+  deposit_amount, preliminary_bank, preliminary_cash, notary_bank, notary_cash,
   broker_id, created_by, property_id, client_id, created_at, updated_at,
   property:properties(id, title, status),
   client:clients(id, full_name, phone),
@@ -47,6 +65,12 @@ export function toDeals(rows: unknown[] | null): DealRow[] {
     ...row,
     price: num(row.price),
     commission: num(row.commission),
+    buyer_rate: num(row.buyer_rate),
+    deposit_amount: num(row.deposit_amount),
+    preliminary_bank: num(row.preliminary_bank),
+    preliminary_cash: num(row.preliminary_cash),
+    notary_bank: num(row.notary_bank),
+    notary_cash: num(row.notary_cash),
   }));
 }
 

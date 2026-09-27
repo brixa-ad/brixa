@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trophy } from "lucide-react";
+import { Gift, Trophy } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
 import { formatPrice } from "@/lib/format";
@@ -10,8 +10,20 @@ import type { BoardRow } from "@/lib/stats";
 
 const MEDALS = ["bg-[#f5c542] text-[#3b2a00]", "bg-[#c9d1dc] text-[#1f2937]", "bg-[#d99a5b] text-[#3a1d00]"];
 
-/** Top 10 of the agency: commission or activity points, this month or this year. */
-export function Leaderboard({ month, year, viewerId }: { month: BoardRow[]; year: BoardRow[]; viewerId: string }) {
+export type Mission = { label: string; done: number; target: number; bonus: string | null };
+
+/** Top 10 of the agency: commission or activity points, this month or this year — with my missions and rewards on top. */
+export function Leaderboard({
+  month,
+  year,
+  viewerId,
+  missions,
+}: {
+  month: BoardRow[];
+  year: BoardRow[];
+  viewerId: string;
+  missions: Mission[];
+}) {
   const { t, lang } = useI18n();
   const [board, setBoard] = useState<"money" | "activity">("money");
   const [period, setPeriod] = useState<"month" | "year">("month");
@@ -89,6 +101,54 @@ export function Leaderboard({ month, year, viewerId }: { month: BoardRow[]; year
           </div>
         </div>
       </header>
+
+      {missions.some((m) => m.target > 0 || m.bonus) && (
+        <div className="mb-5 grid gap-3 sm:grid-cols-2">
+          {missions
+            .filter((m) => m.target > 0 || m.bonus)
+            .map((mission) => {
+              const percent = mission.target > 0 ? Math.min(100, (mission.done / mission.target) * 100) : null;
+              const done = percent !== null && percent >= 100;
+              return (
+                <div
+                  key={mission.label}
+                  className={`rounded-xl border p-3.5 ${done ? "border-success/40 bg-success/10" : "border-line bg-canvas/40"}`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-subtle">{mission.label}</p>
+                    {percent !== null && (
+                      <span className={`text-xs font-bold ${done ? "text-success" : "text-accent-fg"}`}>
+                        {done ? t.home.missionDone : `${Math.round(percent)}%`}
+                      </span>
+                    )}
+                  </div>
+                  {mission.target > 0 && (
+                    <>
+                      <p className="mt-1 text-sm font-semibold tabular-nums">
+                        {formatPrice(mission.done, "EUR", lang)}
+                        <span className="ml-1 text-xs font-medium text-muted">
+                          {fmt(t.home.targetOf, { target: formatPrice(mission.target, "EUR", lang) ?? "" })}
+                        </span>
+                      </p>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-raised">
+                        <div
+                          className={`h-full rounded-full ${done ? "bg-success" : "bg-gradient-to-r from-accent to-brand-cyan"}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {mission.bonus && (
+                    <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-brand-cyan">
+                      <Gift className="size-4 shrink-0" />
+                      <span className="min-w-0">{fmt(t.home.reward, { bonus: mission.bonus })}</span>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
 
       {leader === 0 ? (
         <p className="py-4 text-sm text-muted">{t.home.boardEmpty}</p>

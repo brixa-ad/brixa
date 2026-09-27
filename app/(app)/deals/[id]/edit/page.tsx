@@ -39,6 +39,12 @@ export default async function EditDealPage({ params }: PageProps<"/deals/[id]/ed
           currency: isOneOf(CURRENCIES, deal.currency) ? deal.currency : "EUR",
           commission: deal.commission === null ? "" : String(deal.commission),
           notes: deal.notes ?? "",
+          doubleSided: deal.double_sided,
+          buyerRate: deal.buyer_rate === null ? "" : String(deal.buyer_rate),
+          withPartner: Boolean(deal.partner_agency),
+          partnerAgency: deal.partner_agency ?? "",
+          partnerBroker: deal.partner_broker ?? "",
+          partnerSide: deal.partner_side ?? "buyer",
         }}
       />
     </>

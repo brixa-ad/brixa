@@ -2,34 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Handshake, House, ListChecks, Users } from "lucide-react";
+import { NAV_HREF, isActive, type NavKey } from "@/lib/nav";
 import { useI18n } from "./I18nProvider";
+import { NavIcon } from "./NavIcon";
 
 /**
- * App-style tab bar on phones. Hidden on create/edit screens, which have their own
- * fixed save bar at the bottom. The profile is the avatar in the top bar.
+ * App-style tab bar on phones, with the sections the user picked in Settings.
+ * Hidden on screens with their own fixed save bar at the bottom.
  */
-export function BottomNav() {
+export function BottomNav({ items }: { items: NavKey[] }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  if (/\/(new|edit)$/.test(pathname)) return null;
-
-  const tabs = [
-    { href: "/", label: t.nav.home, icon: House },
-    { href: "/tasks", label: t.nav.tasks, icon: ListChecks },
-    { href: "/deals", label: t.nav.deals, icon: Handshake },
-    { href: "/properties", label: t.nav.properties, icon: Building2 },
-    { href: "/clients", label: t.nav.clients, icon: Users },
-  ];
+  if (/\/(new|edit)$/.test(pathname) || pathname.startsWith("/team/goals")) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-      <ul className="grid grid-cols-5">
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+      <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((key) => {
+          const href = NAV_HREF[key];
+          const active = isActive(href, pathname);
           return (
-            <li key={href}>
+            <li key={key}>
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
@@ -37,8 +31,8 @@ export function BottomNav() {
                   active ? "text-accent-fg" : "text-muted"
                 }`}
               >
-                <Icon className="size-5" strokeWidth={active ? 2.4 : 2} />
-                {label}
+                <NavIcon name={key} className="size-5" strokeWidth={active ? 2.4 : 2} />
+                <span className="max-w-full truncate px-1">{t.nav[key]}</span>
               </Link>
             </li>
           );

@@ -9,6 +9,8 @@ export type SessionContext = {
   email: string;
   fullName: string | null;
   avatarPath: string | null;
+  /** the phone bottom bar as saved in Settings (null = default) */
+  bottomNav: string[] | null;
   organizationId: string;
   organizationName: string;
   role: Role;
@@ -30,7 +32,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
   if (!user) redirect("/login");
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
-    supabase.from("profiles").select("full_name, email, avatar_path").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("full_name, email, avatar_path, bottom_nav").eq("id", user.id).maybeSingle(),
     supabase
       .from("organization_members")
       .select("organization_id, role, organizations(name)")
@@ -49,6 +51,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     email: profile?.email ?? user.email ?? "",
     fullName: profile?.full_name ?? null,
     avatarPath: profile?.avatar_path ?? null,
+    bottomNav: profile?.bottom_nav ?? null,
     organizationId: membership.organization_id,
     organizationName: org?.name ?? "",
     role: membership.role as Role,
