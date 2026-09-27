@@ -52,8 +52,9 @@ export function DealForm({
   const { t, lang } = useI18n();
   const router = useRouter();
   const [values, setValues] = useState(initial);
-  // Until the user types a commission, it follows the property and the price.
-  const [commissionTouched, setCommissionTouched] = useState(Boolean(initial.commission));
+  // Until the user types a commission, it follows the property and the price
+  // (a saved deal keeps the amount it was saved with).
+  const [commissionTouched, setCommissionTouched] = useState(Boolean(dealId && initial.commission));
   const [submitted, setSubmitted] = useState(false);
   const [serverErrors, setServerErrors] = useState<DealErrors>({});
   const [failed, setFailed] = useState<null | "generic" | "confirmed">(null);
