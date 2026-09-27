@@ -120,6 +120,8 @@ export function DealForm({
         next.kind = p.operation_type === "rent" ? "rent" : "sale";
         if (!dealStages(next.kind).includes(next.stage)) next.stage = "offer";
         if (p.current_price !== null) next.price = String(p.current_price);
+        // our listing — so another agency would be bringing the buyer
+        next.partnerSide = "buyer";
         if ((CURRENCIES as readonly string[]).includes(p.currency)) next.currency = p.currency as Currency;
       }
       return withAutoCommission(next);

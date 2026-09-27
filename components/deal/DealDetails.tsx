@@ -88,7 +88,11 @@ export function DealDates({
           const done = index < current || (index === current && key !== "viewing" && key !== "notary");
           const soon = !done && value && (value === today || value === addDays(today, 1));
           return (
-            <li key={key} className="flex items-center gap-3">
+            // Phone: the date goes under the stage name; wider screens: on the same line.
+            <li
+              key={key}
+              className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[1.5rem_minmax(0,1fr)_11rem]"
+            >
               <span
                 className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
                   done
@@ -100,7 +104,7 @@ export function DealDates({
               >
                 {done ? <Check className="size-3.5" /> : index + 1}
               </span>
-              <span className={`min-w-0 flex-1 text-sm ${index === current ? "font-semibold" : "text-fg-2"}`}>
+              <span className={`min-w-0 text-sm ${index === current ? "font-semibold" : "text-fg-2"}`}>
                 {labels[key]}
                 {soon && (
                   <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-semibold text-warning">
@@ -117,10 +121,12 @@ export function DealDates({
                     setValues((v) => ({ ...v, [column]: e.target.value || null }));
                     reset();
                   }}
-                  className={`${inputClass} w-40 shrink-0 py-1.5!`}
+                  className={`${inputClass} col-start-2 py-1.5! sm:col-start-3`}
                 />
               ) : (
-                <span className="text-sm text-muted">{value ? formatDate(value, lang) : "—"}</span>
+                <span className="col-start-2 text-sm text-muted sm:col-start-3">
+                  {value ? formatDate(value, lang) : "—"}
+                </span>
               )}
             </li>
           );
