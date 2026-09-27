@@ -54,7 +54,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const monday = mondayOf(requested);
   const sunday = addDays(monday, 6);
   // Managers can look at a colleague's week; everyone else sees their own.
-  const person = session.isManager && typeof params.broker === "string" ? params.broker : session.userId;
+  const person =
+    session.isManager && typeof params.broker === "string" && params.broker !== "all" ? params.broker : session.userId;
 
   const supabase = await createClient();
   const stepFilter = Object.values(STEP_COLUMNS)
@@ -156,6 +157,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
               value={person}
               selfId={session.userId}
               members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
+              allowAll={false}
             />
           ) : undefined
         }

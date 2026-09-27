@@ -11,12 +11,15 @@ export function BrokerPicker({
   members,
   selfId,
   allByDefault = false,
+  allowAll = true,
 }: {
   value: string;
   members: { id: string; name: string }[];
   selfId: string;
   /** the page shows everyone when there is no ?broker= */
   allByDefault?: boolean;
+  /** offer "everyone" (not on pages that show one person, like the calendar) */
+  allowAll?: boolean;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -43,7 +46,7 @@ export function BrokerPicker({
           {m.name}
         </option>
       ))}
-      <option value="all">{t.tasks.allBrokers}</option>
+      {allowAll && <option value="all">{t.tasks.allBrokers}</option>}
     </select>
   );
 }
