@@ -2,6 +2,7 @@
 export const NAV_KEYS = [
   "home",
   "tasks",
+  "calendar",
   "deals",
   "properties",
   "clients",
@@ -18,6 +19,7 @@ export type NavKey = (typeof NAV_KEYS)[number];
 export const NAV_HREF: Record<NavKey, string> = {
   home: "/",
   tasks: "/tasks",
+  calendar: "/calendar",
   deals: "/deals",
   properties: "/properties",
   clients: "/clients",

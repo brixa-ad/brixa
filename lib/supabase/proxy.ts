@@ -2,8 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Sign-in pages, the app icons and manifest (phones fetch these before anyone signs in),
-// the service worker, and /api/push (called by the database; it checks its own token).
-const PUBLIC_PATHS = ["/login", "/auth", "/icon", "/apple-icon", "/manifest.webmanifest", "/sw.js", "/api/push"];
+// the service worker, /api/push (called by the database) and the calendar feed (read by
+// Google Calendar) — both check their own secret token.
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth",
+  "/icon",
+  "/apple-icon",
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/api/push",
+  "/api/calendar",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

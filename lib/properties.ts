@@ -20,6 +20,12 @@ export type PropertyDetail = {
   settlement_id: string | null;
   neighborhood_id: string | null;
   address: string | null;
+  street: string | null;
+  street_no: string | null;
+  block: string | null;
+  entrance: string | null;
+  apartment: string | null;
+  cadastral_id: string | null;
   area: number | null;
   rooms: number | null;
   bedrooms: number | null;

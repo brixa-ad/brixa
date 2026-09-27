@@ -319,16 +319,29 @@ export function PropertyForm({
               settlements={lookups.settlements}
               settlementId={values.settlementId}
               neighborhoodId={values.neighborhoodId}
-              address={values.address}
+              address={{
+                street: values.street,
+                streetNo: values.streetNo,
+                block: values.block,
+                entrance: values.entrance,
+                apartment: values.apartment,
+                cadastralId: values.cadastralId,
+              }}
+              showFlatParts={showBuilding}
               onLocationChange={(next) => {
                 set("settlementId", next.settlementId);
                 set("neighborhoodId", next.neighborhoodId);
               }}
-              onAddressChange={(value) => set("address", value)}
+              onAddressChange={(key, value) => set(key, value)}
               errors={{
                 settlementId: errorText("settlementId"),
                 neighborhoodId: errorText("neighborhoodId"),
-                address: errorText("address"),
+                street: errorText("street"),
+                streetNo: errorText("streetNo"),
+                block: errorText("block"),
+                entrance: errorText("entrance"),
+                apartment: errorText("apartment"),
+                cadastralId: errorText("cadastralId"),
               }}
             />
           </Card>

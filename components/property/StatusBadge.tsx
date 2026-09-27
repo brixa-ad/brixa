@@ -5,6 +5,7 @@ const STYLES: Record<string, string> = {
   sold: "bg-indigo-950/85 text-indigo-300 ring-indigo-400/30",
   rented: "bg-sky-950/85 text-sky-300 ring-sky-400/30",
   withdrawn: "bg-zinc-900/85 text-zinc-300 ring-white/15",
+  sold_elsewhere: "bg-rose-950/85 text-rose-300 ring-rose-400/30",
 };
 
 export function StatusBadge({ status, label }: { status: string; label: string }) {

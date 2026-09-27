@@ -137,13 +137,13 @@ export default async function HomePage() {
               href: "/deals?tab=won",
             },
             {
-              label: t.home.statCommission,
-              value: euro(numbers.ytdCommission),
+              label: t.home.statTurnover,
+              value: euro(numbers.ytdTurnover),
               href: "/deals?tab=won",
               extra:
-                numbers.pendingCommission > 0
+                numbers.pendingTurnover > 0
                   ? fmt(t.home.pendingAmount, {
-                      amount: euro(numbers.pendingCommission),
+                      amount: euro(numbers.pendingTurnover),
                     })
                   : null,
             },

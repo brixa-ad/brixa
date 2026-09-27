@@ -38,6 +38,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   deal_date_team: { icon: CalendarClock, tone: "bg-warning/10 text-warning" },
   deal_date_soon: { icon: AlarmClock, tone: "bg-danger/10 text-danger" },
   push_test: { icon: BellRing, tone: "bg-success/10 text-success" },
+  task_reminder: { icon: AlarmClock, tone: "bg-warning/10 text-warning" },
 };
 
 export default async function NotificationsPage() {

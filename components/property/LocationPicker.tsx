@@ -8,6 +8,7 @@ import { Field, inputClass } from "@/components/ui/form";
 import { settlementLabel } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import type { Neighborhood, Region, Settlement } from "@/lib/types";
+import { ADDRESS_LIMITS, type AddressParts } from "@/lib/address";
 
 const POPULAR = [
   { region: "SOF", city: "София" },
@@ -16,12 +17,15 @@ const POPULAR = [
   { region: "BGS", city: "Бургас" },
 ];
 
+type AddressFields = AddressParts & { cadastralId: string };
+
 export function LocationPicker({
   regions,
   settlements,
   settlementId,
   neighborhoodId,
   address,
+  showFlatParts,
   onLocationChange,
   onAddressChange,
   errors,
@@ -30,10 +34,12 @@ export function LocationPicker({
   settlements: Settlement[];
   settlementId: string;
   neighborhoodId: string | null;
-  address: string;
+  address: AddressFields;
+  /** block / entrance / apartment only make sense for flats and offices */
+  showFlatParts: boolean;
   onLocationChange: (next: { settlementId: string; neighborhoodId: string | null }) => void;
-  onAddressChange: (value: string) => void;
-  errors: { settlementId?: string; neighborhoodId?: string; address?: string };
+  onAddressChange: (key: keyof AddressFields, value: string) => void;
+  errors: { settlementId?: string; neighborhoodId?: string } & Partial<Record<keyof AddressFields, string>>;
 }) {
   const { t } = useI18n();
 
@@ -198,13 +204,58 @@ export function LocationPicker({
         </Field>
       )}
 
-      <Field label={t.location.address} error={errors.address}>
+      <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3">
+        <Field label={t.location.street} error={errors.street}>
+          {(props) => (
+            <input
+              {...props}
+              value={address.street}
+              maxLength={ADDRESS_LIMITS.street}
+              onChange={(event) => onAddressChange("street", event.target.value)}
+              placeholder={t.location.streetPlaceholder}
+              className={inputClass}
+            />
+          )}
+        </Field>
+        <Field label={t.location.streetNo} error={errors.streetNo}>
+          {(props) => (
+            <input
+              {...props}
+              value={address.streetNo}
+              maxLength={ADDRESS_LIMITS.streetNo}
+              onChange={(event) => onAddressChange("streetNo", event.target.value)}
+              className={inputClass}
+            />
+          )}
+        </Field>
+      </div>
+
+      {showFlatParts && (
+        <div className="grid grid-cols-3 gap-3">
+          {(["block", "entrance", "apartment"] as const).map((key) => (
+            <Field key={key} label={t.location[key]} error={errors[key]}>
+              {(props) => (
+                <input
+                  {...props}
+                  value={address[key]}
+                  maxLength={ADDRESS_LIMITS[key]}
+                  onChange={(event) => onAddressChange(key, event.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+          ))}
+        </div>
+      )}
+
+      <Field label={t.location.cadastral} error={errors.cadastralId}>
         {(props) => (
           <input
             {...props}
-            value={address}
-            onChange={(event) => onAddressChange(event.target.value)}
-            placeholder={t.location.addressPlaceholder}
+            value={address.cadastralId}
+            maxLength={ADDRESS_LIMITS.cadastralId}
+            onChange={(event) => onAddressChange("cadastralId", event.target.value)}
+            placeholder={t.location.cadastralPlaceholder}
             className={inputClass}
           />
         )}

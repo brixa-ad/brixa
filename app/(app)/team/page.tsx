@@ -4,12 +4,11 @@ import { Mail, Phone, ShieldCheck, Target } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, buttonClass } from "@/components/ui/form";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
-import { getLeaderboards } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/types";
 import { InviteForm, RemoveMemberButton, RenameForm, RevokeButton, RoleSelect } from "./TeamForms";
@@ -30,7 +29,7 @@ export default async function TeamPage() {
   const supabase = await createClient();
   const isOwner = session.role === "owner";
 
-  const [{ t, lang }, members, { data: invitations }, boards] = await Promise.all([
+  const [{ t, lang }, members, { data: invitations }] = await Promise.all([
     getI18n(),
     getMembers(supabase, session.organizationId),
     session.isManager
@@ -41,9 +40,7 @@ export default async function TeamPage() {
           .is("accepted_at", null)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as { id: string; email: string; role: Role; created_at: string }[] }),
-    getLeaderboards(session.organizationId),
   ]);
-  const thisMonth = new Map(boards.month.map((row) => [row.profileId, row]));
 
   const nameOf = (m: { full_name: string | null; email: string }) => m.full_name || m.email;
 
@@ -90,12 +87,6 @@ export default async function TeamPage() {
                         {isYou && <span className="ml-1.5 text-xs font-normal text-subtle">({t.team.you})</span>}
                       </p>
                       <p className="truncate text-sm text-muted">{member.job_title || member.email}</p>
-                      <p className="truncate text-xs font-medium text-accent-fg">
-                        {fmt(t.team.monthStats, {
-                          amount: formatPrice(thisMonth.get(member.profile_id)?.commission ?? 0, "EUR", lang) ?? "0",
-                          points: thisMonth.get(member.profile_id)?.points ?? 0,
-                        })}
-                      </p>
                       {member.phone && (
                         <p className="flex items-center gap-1 truncate text-xs text-subtle sm:hidden">
                           <Phone className="size-3" />

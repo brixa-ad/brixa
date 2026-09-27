@@ -1,7 +1,7 @@
 // Fixed option lists. Codes are stored in the database; labels live in the dictionaries.
 
 export const OPERATION_TYPES = ["sale", "rent", "buy", "wanted"] as const;
-export const STATUSES = ["active", "reserved", "sold", "rented", "withdrawn"] as const;
+export const STATUSES = ["active", "reserved", "sold", "rented", "withdrawn", "sold_elsewhere"] as const;
 export const CURRENCIES = ["EUR", "BGN", "USD"] as const;
 
 export const CONDITIONS = [

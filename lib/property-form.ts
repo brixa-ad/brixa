@@ -9,7 +9,12 @@ export type PropertyFormValues = {
   title: string;
   settlementId: string;
   neighborhoodId: string | null;
-  address: string;
+  street: string;
+  streetNo: string;
+  block: string;
+  entrance: string;
+  apartment: string;
+  cadastralId: string;
   area: string;
   rooms: string;
   bedrooms: string;
@@ -39,7 +44,12 @@ export function emptyFormValues(userId: string): PropertyFormValues {
     title: "",
     settlementId: "",
     neighborhoodId: null,
-    address: "",
+    street: "",
+    streetNo: "",
+    block: "",
+    entrance: "",
+    apartment: "",
+    cadastralId: "",
     area: "",
     rooms: "",
     bedrooms: "",

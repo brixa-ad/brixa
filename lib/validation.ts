@@ -1,3 +1,4 @@
+import { ADDRESS_LIMITS } from "./address";
 import {
   CONDITIONS,
   CONSTRUCTION_TYPES,
@@ -20,7 +21,12 @@ export type PropertyInput = {
   title: string;
   settlementId: string;
   neighborhoodId: string | null;
-  address: string;
+  street: string;
+  streetNo: string;
+  block: string;
+  entrance: string;
+  apartment: string;
+  cadastralId: string;
   area: number | null;
   rooms: number | null;
   bedrooms: number | null;
@@ -65,7 +71,9 @@ export function validateProperty(input: PropertyInput, categoryCode?: string): F
   else if (title.length > TITLE_MAX) errors.title = "tooLong";
 
   if (!input.settlementId) errors.settlementId = "required";
-  if (input.address.length > 300) errors.address = "tooLong";
+  for (const key of ["street", "streetNo", "block", "entrance", "apartment", "cadastralId"] as const) {
+    if (input[key].trim().length > ADDRESS_LIMITS[key]) errors[key] = "tooLong";
+  }
 
   checkNumber(errors, "area", input.area, { positive: true });
 

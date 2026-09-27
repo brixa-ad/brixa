@@ -40,7 +40,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
   const supabase = await createClient();
   const isSelf = id === session.userId;
 
-  const [{ t, lang }, { data: membership }, { data: profile }, propertiesRes] = await Promise.all([
+  const [{ t, lang }, { data: membership }, { data: profile }, propertiesRes, { data: statRows }] = await Promise.all([
     getI18n(),
     supabase
       .from("organization_members")
@@ -60,6 +60,8 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
       .eq("organization_id", session.organizationId)
       .eq("responsible_broker_id", id)
       .order("updated_at", { ascending: false }),
+    // Totals only (no clients) — every colleague may see them.
+    supabase.rpc("member_stats", { target_profile: id, period: "year" }),
   ]);
 
   if (!membership || !profile) notFound();
@@ -67,6 +69,19 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
   const role = membership.role as Role;
   const name = profile.full_name || profile.email;
   const properties = (propertiesRes.data ?? []) as unknown as PropertyRow[];
+
+  const results = (statRows as Record<string, number | string>[] | null)?.[0] ?? null;
+  const n = (key: string) => Number(results?.[key] ?? 0);
+  // Their deals and clients open for managers (and for themselves); properties for everyone.
+  const canOpenWork = session.isManager || isSelf;
+  const dealsHref = (tab?: string) => {
+    const qs = new URLSearchParams();
+    if (tab) qs.set("tab", tab);
+    if (!isSelf) qs.set("broker", id);
+    const q = qs.toString();
+    return q ? `/deals?${q}` : "/deals";
+  };
+  const propertiesHref = (status?: string) => `/properties?broker=${id}${status ? `&status=${status}` : ""}`;
 
   const counts = { total: properties.length, active: 0, reserved: 0, closed: 0 };
   for (const p of properties) {
@@ -122,6 +137,54 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
         </Card>
 
         <div className="space-y-6">
+          {results && (
+            <Card
+              title={
+                <span className="flex items-baseline gap-2">
+                  {t.profile.resultsTitle}
+                  <span className="text-sm font-normal text-muted">{t.profile.resultsYear}</span>
+                </span>
+              }
+            >
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: t.profile.resultDeals, value: String(n("deals_won")), href: canOpenWork ? dealsHref("won") : null },
+                  { label: t.profile.resultTurnover, value: formatPrice(n("turnover"), "EUR", lang) ?? "0", href: null },
+                  { label: t.profile.resultCommission, value: formatPrice(n("commission"), "EUR", lang) ?? "0", href: null },
+                  { label: t.profile.openDeals, value: String(n("open_deals")), href: canOpenWork ? dealsHref() : null },
+                  { label: t.profile.resultViewings, value: String(n("viewings")), href: null },
+                  { label: t.profile.resultCalls, value: String(n("calls")), href: null },
+                  { label: t.profile.resultMeetings, value: String(n("meetings")), href: null },
+                  {
+                    label: t.profile.resultClients,
+                    value: String(n("new_clients")),
+                    href: canOpenWork ? (isSelf ? "/clients" : `/clients?broker=${id}`) : null,
+                  },
+                ].map((tile) => {
+                  const body = (
+                    <>
+                      <dt className="text-xs font-medium text-muted">{tile.label}</dt>
+                      <dd className="mt-1 truncate text-xl font-bold tracking-tight">{tile.value}</dd>
+                    </>
+                  );
+                  return tile.href ? (
+                    <Link
+                      key={tile.label}
+                      href={tile.href}
+                      className="rounded-xl bg-raised px-4 py-3 ring-1 ring-transparent transition hover:ring-accent/50"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div key={tile.label} className="rounded-xl bg-raised px-4 py-3">
+                      {body}
+                    </div>
+                  );
+                })}
+              </dl>
+            </Card>
+          )}
+
           <Card title={t.profile.about}>
             {profile.bio ? (
               <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{profile.bio}</p>
@@ -164,16 +227,22 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
             }
           >
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                [t.list.statTotal, counts.total],
-                [t.list.statActive, counts.active],
-                [t.list.statReserved, counts.reserved],
-                [t.list.statClosed, counts.closed],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-raised px-4 py-3">
+              {(
+                [
+                  [t.list.statTotal, counts.total, propertiesHref()],
+                  [t.list.statActive, counts.active, propertiesHref("active")],
+                  [t.list.statReserved, counts.reserved, propertiesHref("reserved")],
+                  [t.list.statClosed, counts.closed, propertiesHref("sold")],
+                ] as const
+              ).map(([label, value, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="rounded-xl bg-raised px-4 py-3 ring-1 ring-transparent transition hover:ring-accent/50"
+                >
                   <dt className="text-xs font-medium text-muted">{label}</dt>
                   <dd className="mt-1 text-2xl font-bold tracking-tight">{value}</dd>
-                </div>
+                </Link>
               ))}
             </dl>
 

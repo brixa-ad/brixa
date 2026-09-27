@@ -1,5 +1,6 @@
 "use server";
 
+import { composeAddress } from "@/lib/address";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isOneOf, STATUSES } from "@/lib/options";
@@ -111,7 +112,17 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     region_id: settlementRes.data!.region_id,
     settlement_id: input.settlementId,
     neighborhood_id: input.neighborhoodId,
-    address: input.address.trim() || null,
+    street: input.street.trim() || null,
+    street_no: input.streetNo.trim() || null,
+    block: building ? input.block.trim() || null : null,
+    entrance: building ? input.entrance.trim() || null : null,
+    apartment: building ? input.apartment.trim() || null : null,
+    cadastral_id: input.cadastralId.trim() || null,
+    address:
+      composeAddress(
+        building ? input : { ...input, block: "", entrance: "", apartment: "" },
+        building ? input.floor : null
+      ) || null,
     area: input.area,
     rooms: building ? input.rooms : null,
     bedrooms: building ? input.bedrooms : null,

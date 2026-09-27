@@ -55,6 +55,8 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(data.time ? t.notifications.deal_date_team_at : t.notifications.deal_date_team, vars);
     case "deal_date_soon":
       return fmt(t.notifications.deal_date_soon, vars);
+    case "task_reminder":
+      return fmt(t.notifications.task_reminder, vars);
     case "push_test":
       return t.notifications.push_test;
     default:

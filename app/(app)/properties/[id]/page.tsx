@@ -258,6 +258,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               )}
               <Row name={t.detail.location} value={locationParts.join(", ") || null} />
               {property.address && <Row name={t.location.address} value={property.address} />}
+              {property.cadastral_id && <Row name={t.location.cadastral} value={property.cadastral_id} />}
               <Row name={t.detail.created} value={formatDate(property.created_at, lang)} />
               <Row name={t.detail.updated} value={formatDate(property.updated_at, lang, true)} />
             </dl>

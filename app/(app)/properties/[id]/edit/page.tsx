@@ -17,6 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const str = (value: number | string | null) => (value === null ? "" : String(value));
 
+const hasParts = (p: PropertyDetail) => Boolean(p.street || p.street_no || p.block || p.entrance || p.apartment);
+
 function toFormValues(property: PropertyDetail): PropertyFormValues {
   return {
     categoryId: property.category_id,
@@ -25,7 +27,13 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     title: property.title,
     settlementId: property.settlement_id ?? "",
     neighborhoodId: property.neighborhood_id,
-    address: property.address ?? "",
+    // Older listings only have the whole line — it starts out as the street.
+    street: property.street ?? (hasParts(property) ? "" : (property.address ?? "")),
+    streetNo: property.street_no ?? "",
+    block: property.block ?? "",
+    entrance: property.entrance ?? "",
+    apartment: property.apartment ?? "",
+    cadastralId: property.cadastral_id ?? "",
     area: str(property.area),
     rooms: str(property.rooms),
     bedrooms: str(property.bedrooms),

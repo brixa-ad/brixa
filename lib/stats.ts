@@ -1,4 +1,5 @@
 import "server-only";
+import { toEuro } from "./commission";
 import { addDays, daysBetween, sofiaDay } from "./dates";
 import type { DealKind } from "./options";
 import type { SessionContext } from "./session";
@@ -37,7 +38,7 @@ export async function getMyNumbers(session: SessionContext, today: string) {
   const [won, listings, buyers, goals, profile, membership, acts, listedLately] = await Promise.all([
     supabase
       .from("deals")
-      .select("commission, closed_on, confirmed_at")
+      .select("commission, closed_on, confirmed_at, price, currency")
       .eq("broker_id", me)
       .eq("status", "won")
       .gte("closed_on", yearAgo < yearStart ? yearAgo : yearStart),
@@ -70,6 +71,8 @@ export async function getMyNumbers(session: SessionContext, today: string) {
 
   const deals = (won.data ?? []).map((d) => ({
     amount: Number(d.commission ?? 0),
+    // the sale price in euro (USD can't be converted — left out)
+    volume: d.price === null ? 0 : (toEuro(Number(d.price), d.currency) ?? 0),
     day: d.closed_on as string,
     confirmed: Boolean(d.confirmed_at),
   }));
@@ -105,6 +108,8 @@ export async function getMyNumbers(session: SessionContext, today: string) {
   return {
     ytdDeals: thisYear.length,
     ytdCommission: ytd,
+    ytdTurnover: thisYear.reduce((total, d) => total + d.volume, 0),
+    pendingTurnover: deals.filter((d) => !d.confirmed && d.day >= yearStart).reduce((total, d) => total + d.volume, 0),
     pendingCommission: sum(deals.filter((d) => !d.confirmed && d.day >= yearStart)),
     monthCommission: sum(confirmed.filter((d) => d.day >= monthStart)),
     activeListings: listings.count ?? 0,

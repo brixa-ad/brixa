@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  CalendarDays,
   Handshake,
   House,
   ListChecks,
@@ -17,6 +18,7 @@ import type { NavKey } from "@/lib/nav";
 const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   home: House,
   tasks: ListChecks,
+  calendar: CalendarDays,
   deals: Handshake,
   properties: Building2,
   clients: Users,
