@@ -11,7 +11,7 @@ import { getSharedListing } from "@/lib/share";
 export async function generateMetadata({ params }: PageProps<"/p/[token]">): Promise<Metadata> {
   const { token } = await params;
   const [listing, { lang }] = await Promise.all([getSharedListing(token), getI18n()]);
-  if (!listing) return { title: "BRIXA", robots: { index: false } };
+  if (!listing) return { title: { absolute: "BRIXA" }, robots: { index: false } };
   const p = listing.property;
   const price = formatPrice(p.price, p.currency, lang);
   const description = [price, p.area ? `${formatNumber(p.area, lang)} м²` : null, p.neighborhood, p.settlement]

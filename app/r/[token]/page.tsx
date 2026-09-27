@@ -15,7 +15,7 @@ const periodLabel = (report: OwnerReport["report"], lang: Lang) =>
 export async function generateMetadata({ params }: PageProps<"/r/[token]">): Promise<Metadata> {
   const { token } = await params;
   const [data, { t, lang }] = await Promise.all([getOwnerReport(token), getI18n()]);
-  if (!data) return { title: "BRIXA", robots: { index: false } };
+  if (!data) return { title: { absolute: "BRIXA" }, robots: { index: false } };
   return {
     title: { absolute: `${t.report.pageTitle}: ${data.property.title}` },
     description: periodLabel(data.report, lang),
