@@ -31,6 +31,7 @@ export function validateTask(input: TaskInput): TaskErrors {
     errors.dueDate = "invalid";
   }
   if (input.dueTime !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.dueTime)) errors.dueTime = "invalid";
-  if (input.description.length > TASK_LIMITS.description) errors.description = "tooLong";
+  if (!input.description.trim()) errors.description = "required";
+  else if (input.description.length > TASK_LIMITS.description) errors.description = "tooLong";
   return errors;
 }

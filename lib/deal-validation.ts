@@ -41,7 +41,8 @@ export function validateDeal(input: DealInput): DealErrors {
   checkAmount(errors, "price", input.price);
   checkAmount(errors, "commission", input.commission);
   if (!isOneOf(CURRENCIES, input.currency)) errors.currency = "invalid";
-  if (input.notes.length > DEAL_LIMITS.notes) errors.notes = "tooLong";
+  if (!input.notes.trim()) errors.notes = "required";
+  else if (input.notes.length > DEAL_LIMITS.notes) errors.notes = "tooLong";
   if (input.doubleSided) {
     const max = input.kind === "rent" ? 24 : 100;
     if (input.buyerRate === null) errors.buyerRate = "required";

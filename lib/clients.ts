@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { emptySearch, type SearchInput } from "./client-validation";
+import { emptySearch, type OfferInput, type SearchInput } from "./client-validation";
 import { fetchAllSettlements, getMembers } from "./lookups";
 import { CURRENCIES, isOneOf, type ClientClass, type ClientStage, type ClientType } from "./options";
 import { createClient } from "./supabase/server";
@@ -21,6 +21,31 @@ type SearchRow = {
   feature_ids: string[];
 };
 
+type OfferRow = {
+  operation: string;
+  subtype_id: string | null;
+  settlement_id: string | null;
+  neighborhood_id: string | null;
+  area: number | string | null;
+  rooms: number | null;
+  price: number | string | null;
+  currency: string;
+};
+
+export function offerFromRow(row: OfferRow | null): OfferInput | null {
+  if (!row) return null;
+  return {
+    operation: row.operation === "rent" ? "rent" : "sale",
+    subtypeId: row.subtype_id,
+    settlementId: row.settlement_id,
+    neighborhoodId: row.neighborhood_id,
+    area: row.area === null ? null : Number(row.area),
+    rooms: row.rooms,
+    price: row.price === null ? null : Number(row.price),
+    currency: isOneOf(CURRENCIES, row.currency) ? row.currency : "EUR",
+  };
+}
+
 export type ClientDetail = {
   id: string;
   organization_id: string;
@@ -40,6 +65,7 @@ export type ClientDetail = {
   updated_at: string;
   broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
   search: SearchInput | null;
+  offer: OfferInput | null;
 };
 
 const num = (value: number | string | null) => (value === null ? null : Number(value));
@@ -71,7 +97,8 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
       `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
       notes, follow_up_at, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
-      search:client_searches(*)`
+      search:client_searches(*),
+      offer:client_offers(*)`
     )
     .eq("id", id)
     .maybeSingle();
@@ -84,10 +111,13 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
 
   const rawSearch = data.search as unknown as SearchRow | SearchRow[] | null;
   const searchRow = Array.isArray(rawSearch) ? (rawSearch[0] ?? null) : rawSearch;
+  const rawOffer = data.offer as unknown as OfferRow | OfferRow[] | null;
+  const offerRow = Array.isArray(rawOffer) ? (rawOffer[0] ?? null) : rawOffer;
 
   return {
-    ...(data as unknown as Omit<ClientDetail, "search">),
+    ...(data as unknown as Omit<ClientDetail, "search" | "offer">),
     search: searchFromRow(searchRow),
+    offer: offerFromRow(offerRow),
   };
 });
 

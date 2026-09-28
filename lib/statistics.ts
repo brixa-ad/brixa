@@ -227,15 +227,13 @@ export async function getStatistics(session: SessionContext, period: Period, bro
   const clientSources = [...sources.values()].sort((a, b) => b.clients - a.clients || b.won - a.won);
 
   // ---- external brokers: who sends us clients, what came of it, what we paid them
-  const referrers = new Map<string, { name: string | null; clients: number; won: number; fees: number; commission: number }>();
+  const referrers = new Map<string, { name: string | null; won: number; fees: number; commission: number }>();
   const referrerRow = (name: string | null | undefined) => {
     const clean = name?.trim() || null;
     const key = clean?.toLowerCase() ?? "";
-    if (!referrers.has(key)) referrers.set(key, { name: clean, clients: 0, won: 0, fees: 0, commission: 0 });
+    if (!referrers.has(key)) referrers.set(key, { name: clean, won: 0, fees: 0, commission: 0 });
     return referrers.get(key)!;
   };
-  for (const c of clientsRes.data ?? [])
-    if (c.source === "external_broker" && inPeriod(sofiaDay(c.created_at))) referrerRow(c.referrer).clients++;
   for (const d of won) {
     if (!d.referral_percent) continue;
     const row = referrerRow(d.referral_name ?? d.client?.referrer);
@@ -244,7 +242,7 @@ export async function getStatistics(session: SessionContext, period: Period, bro
     row.commission += d.commission ?? 0;
   }
   const externalBrokers = {
-    rows: [...referrers.values()].sort((a, b) => b.won - a.won || b.clients - a.clients || b.fees - a.fees),
+    rows: [...referrers.values()].sort((a, b) => b.won - a.won || b.fees - a.fees),
     fees: sum([...referrers.values()].map((r) => r.fees)),
   };
 

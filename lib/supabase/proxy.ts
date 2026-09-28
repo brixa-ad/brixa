@@ -18,6 +18,8 @@ const PUBLIC_PATHS = [
   "/api/share",
   // the owner's report: the owner has the link
   "/r",
+  // a client's search shared with colleagues
+  "/s",
 ];
 
 export async function updateSession(request: NextRequest) {

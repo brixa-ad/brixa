@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { saveTask } from "@/app/(app)/tasks/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { NoteArea } from "@/components/ui/Dictate";
 import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { addDays } from "@/lib/dates";
@@ -205,15 +206,14 @@ export function TaskForm({
             )}
           </Field>
 
-          <Field label={t.tasks.fieldDescription} error={err("description")}>
+          <Field label={t.tasks.fieldDescription} required error={err("description")}>
             {(props) => (
-              <textarea
+              <NoteArea
                 {...props}
                 rows={4}
                 maxLength={TASK_LIMITS.description}
                 value={values.description}
-                onChange={(e) => set("description", e.target.value)}
-                className={`${inputClass} resize-y`}
+                onChange={(value) => set("description", value)}
               />
             )}
           </Field>

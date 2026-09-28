@@ -4,6 +4,7 @@ import {
   CLIENT_STAGES,
   CLIENT_TYPES,
   CURRENCIES,
+  OFFERING_TYPES,
   SEEKING_TYPES,
   isOneOf,
   type ClientClass,
@@ -28,6 +29,18 @@ export type SearchInput = {
   featureIds: string[];
 };
 
+/** What a seller / landlord has — kept even before (or without) a listing. */
+export type OfferInput = {
+  operation: "sale" | "rent";
+  subtypeId: string | null;
+  settlementId: string | null;
+  neighborhoodId: string | null;
+  area: number | null;
+  rooms: number | null;
+  price: number | null;
+  currency: Currency;
+};
+
 export type ClientInput = {
   fullName: string;
   phone: string;
@@ -42,16 +55,43 @@ export type ClientInput = {
   brokerId: string | null;
   /** only saved when the client is a buyer / tenant / investor */
   search: SearchInput;
+  /** only saved when the client is a seller / landlord */
+  offer: OfferInput;
 };
 
 export type ClientErrors = Partial<
-  Record<keyof Omit<ClientInput, "search"> | `search.${keyof SearchInput}`, ErrorCode>
+  Record<
+    keyof Omit<ClientInput, "search" | "offer"> | `search.${keyof SearchInput}` | `offer.${keyof OfferInput}`,
+    ErrorCode
+  >
 >;
 
 export const NOTES_MAX = 5000;
 
 export function isSeeking(types: readonly string[]) {
   return types.some((type) => (SEEKING_TYPES as readonly string[]).includes(type));
+}
+
+export function isOffering(types: readonly string[]) {
+  return types.some((type) => (OFFERING_TYPES as readonly string[]).includes(type));
+}
+
+export function emptyOffer(): OfferInput {
+  return {
+    operation: "sale",
+    subtypeId: null,
+    settlementId: null,
+    neighborhoodId: null,
+    area: null,
+    rooms: null,
+    price: null,
+    currency: "EUR",
+  };
+}
+
+/** Anything filled in beyond the defaults? */
+export function hasOffer(offer: OfferInput) {
+  return Boolean(offer.subtypeId || offer.settlementId || offer.area !== null || offer.rooms !== null || offer.price !== null);
 }
 
 export function emptySearch(): SearchInput {
@@ -110,7 +150,8 @@ export function validateClient(input: ClientInput): ClientErrors {
   if (input.source !== null && !isOneOf(CLIENT_SOURCES, input.source)) errors.source = "invalid";
   if (input.referrer.trim().length > 120) errors.referrer = "tooLong";
   if (!isOneOf(CLIENT_STAGES, input.stage)) errors.stage = "invalid";
-  if (input.notes.length > NOTES_MAX) errors.notes = "tooLong";
+  if (!input.notes.trim()) errors.notes = "required";
+  else if (input.notes.length > NOTES_MAX) errors.notes = "tooLong";
 
   if (isSeeking(input.types)) {
     const s = input.search;
@@ -119,6 +160,15 @@ export function validateClient(input: ClientInput): ClientErrors {
     checkRange(errors, "budgetMin", "budgetMax", s.budgetMin, s.budgetMax);
     checkRange(errors, "areaMin", "areaMax", s.areaMin, s.areaMax);
     checkRange(errors, "roomsMin", "roomsMax", s.roomsMin, s.roomsMax, true);
+  }
+
+  if (isOffering(input.types)) {
+    const o = input.offer;
+    if (o.operation !== "sale" && o.operation !== "rent") errors["offer.operation"] = "invalid";
+    if (!isOneOf(CURRENCIES, o.currency)) errors["offer.currency"] = "invalid";
+    if (o.area !== null && !(Number.isFinite(o.area) && o.area > 0)) errors["offer.area"] = "positive";
+    if (o.price !== null && !(Number.isFinite(o.price) && o.price >= 0)) errors["offer.price"] = "positive";
+    if (o.rooms !== null && !(Number.isInteger(o.rooms) && o.rooms >= 0 && o.rooms <= 100)) errors["offer.rooms"] = "integer";
   }
 
   return errors;

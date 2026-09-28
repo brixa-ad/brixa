@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { deleteTask, setTaskDone } from "@/app/(app)/tasks/actions";
 import { useI18n } from "@/components/I18nProvider";
-import { buttonClass, inputClass } from "@/components/ui/form";
+import { NoteArea } from "@/components/ui/Dictate";
+import { buttonClass } from "@/components/ui/form";
 import { TASK_LIMITS } from "@/lib/task-validation";
 
 /** Tick off with a short "what happened", or reopen. */
@@ -34,19 +35,20 @@ export function CompleteTaskPanel({ taskId, done }: { taskId: string; done: bool
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-fg-2">
+      <label className="block text-sm font-medium text-fg-2" htmlFor="complete-note">
         {t.tasks.completeNote}
-        <textarea
-          rows={3}
-          value={note}
-          maxLength={TASK_LIMITS.note}
-          placeholder={t.tasks.completeNotePlaceholder}
-          onChange={(e) => setNote(e.target.value)}
-          className={`${inputClass} mt-1.5 resize-y`}
-        />
+        <span className="ml-0.5 text-danger">*</span>
       </label>
+      <NoteArea
+        id="complete-note"
+        rows={3}
+        value={note}
+        maxLength={TASK_LIMITS.note}
+        placeholder={t.tasks.completeNotePlaceholder}
+        onChange={setNote}
+      />
       {failed && <p className="text-sm font-medium text-danger">{t.errors.generic}</p>}
-      <button type="button" onClick={() => run(true)} disabled={pending} className={`${buttonClass.primary} w-full py-3`}>
+      <button type="button" onClick={() => run(true)} disabled={pending || !note.trim()} className={`${buttonClass.primary} w-full py-3`}>
         {pending ? <Loader2 className="size-5 animate-spin" /> : <CheckCircle2 className="size-5" />}
         {t.tasks.completeTitle}
       </button>

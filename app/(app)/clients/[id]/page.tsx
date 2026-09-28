@@ -6,26 +6,28 @@ import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
 import { DeleteClientButton } from "@/components/client/DeleteClientButton";
+import { ActivityEntry } from "@/components/client/ActivityEntry";
 import { QuickLog } from "@/components/client/QuickLog";
+import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
-import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { Card, buttonClass } from "@/components/ui/form";
-import { isSeeking, type SearchInput } from "@/lib/client-validation";
+import { isOffering, isSeeking } from "@/lib/client-validation";
 import { getClient } from "@/lib/clients";
-import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/format";
-import { fmt, localName, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
+import { formatDate, formatPrice, settlementLabel } from "@/lib/format";
+import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { memberBack } from "@/lib/member-back";
 import { getMembers } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
+import { describeOffer, describeSearch } from "@/lib/search-describe";
 import { createClient } from "@/lib/supabase/server";
 import { sofiaToday } from "@/lib/dates";
 import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
@@ -34,50 +36,6 @@ import { DEAL_SELECT, toDeals } from "@/lib/deals";
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const client = await getClient((await params).id);
   return { title: client?.full_name ?? "Client" };
-}
-
-function range(min: number | null, max: number | null, t: Dictionary, format: (n: number) => string) {
-  if (min === null && max === null) return null;
-  if (min !== null && max !== null) return `${format(min)} – ${format(max)}`;
-  return min !== null ? `${t.clients.from} ${format(min)}` : `${t.clients.to} ${format(max!)}`;
-}
-
-/** Turn the saved search into short readable lines. */
-async function describeSearch(search: SearchInput, t: Dictionary, lang: Lang) {
-  const supabase = await createClient();
-  const [subtypes, settlements, hoods, features] = await Promise.all([
-    search.subtypeIds.length
-      ? supabase.from("property_subtypes").select("id, name, name_en").in("id", search.subtypeIds)
-      : Promise.resolve({ data: [] }),
-    search.settlementIds.length
-      ? supabase.from("geo_settlements").select("id, name, settlement_type").in("id", search.settlementIds)
-      : Promise.resolve({ data: [] }),
-    search.neighborhoodIds.length
-      ? supabase.from("geo_neighborhoods").select("id, name, settlement_id").in("id", search.neighborhoodIds)
-      : Promise.resolve({ data: [] }),
-    search.featureIds.length
-      ? supabase.from("property_features").select("id, name, name_en").in("id", search.featureIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const locations = (settlements.data ?? []).map((s) => {
-    const inTown = (hoods.data ?? []).filter((h) => h.settlement_id === s.id).map((h) => h.name);
-    return inTown.length ? `${settlementLabel(s)} (${inTown.join(", ")})` : settlementLabel(s);
-  });
-  const money = (n: number) => formatPrice(n, search.currency, lang)!;
-  const plain = (n: number) => formatNumber(n, lang)!;
-
-  return [
-    [t.clients.searchOperation, t.options.searchOperation[search.operation]],
-    [t.clients.searchSubtypes, (subtypes.data ?? []).map((s) => localName(s, lang)).join(", ") || t.clients.anyValue],
-    [t.clients.searchLocations, locations.join(", ") || t.clients.anyValue],
-    [t.clients.searchBudget, range(search.budgetMin, search.budgetMax, t, money) ?? t.clients.anyValue],
-    [t.clients.searchArea, range(search.areaMin, search.areaMax, t, plain) ?? t.clients.anyValue],
-    [t.clients.searchRooms, range(search.roomsMin, search.roomsMax, t, plain) ?? t.clients.anyValue],
-    ...(search.featureIds.length
-      ? [[t.clients.searchFeatures, (features.data ?? []).map((f) => localName(f, lang)).join(", ")]]
-      : []),
-  ] as [string, string][];
 }
 
 export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
@@ -92,14 +50,17 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   const [
     matches,
     searchLines,
+    offerLines,
     { data: owned },
     { data: activityRows },
     { data: taskRows },
     { data: dealRows },
     { data: shareRows },
+    { data: listingRows },
   ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
+    isOffering(client.types) && client.offer ? describeOffer(client.offer, t, lang) : Promise.resolve([] as [string, string][]),
     supabase
       .from("properties")
       .select("id, title, status, current_price, currency")
@@ -108,7 +69,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     // My log for this client (managers see the whole team's)
     supabase
       .from("activities")
-      .select("id, type, note, occurred_at, profile_id, person:profiles(full_name, email)")
+      .select("id, type, note, feedback, outcome, occurred_at, profile_id, person:profiles(full_name, email), property:properties(id, title)")
       .eq("client_id", id)
       .order("occurred_at", { ascending: false })
       .limit(50),
@@ -121,7 +82,17 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .eq("client_id", id)
       .order("created_at", { ascending: false })
       .limit(50),
+    // listings a viewing can be about
+    supabase
+      .from("properties")
+      .select("id, title")
+      .eq("organization_id", session.organizationId)
+      .in("status", ["active", "reserved"])
+      .in("operation_type", ["sale", "rent"])
+      .order("updated_at", { ascending: false })
+      .limit(500),
   ]);
+  const listings = (listingRows ?? []) as { id: string; title: string }[];
   const deals = toDeals(dealRows);
   const sent: ShareRow[] = (
     (shareRows ?? []) as unknown as {
@@ -151,9 +122,12 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     id: string;
     type: string;
     note: string | null;
+    feedback: string | null;
+    outcome: "positive" | "neutral" | "negative" | null;
     occurred_at: string;
     profile_id: string;
     person: { full_name: string | null; email: string } | null;
+    property: { id: string; title: string } | null;
   }[];
   const openTasks = ((taskRows ?? []) as unknown as TaskRow[]).sort(byDue);
   const today = sofiaToday();
@@ -376,29 +350,26 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
           </Card>
 
           <Card title={t.activity.title}>
-            {canEdit && <QuickLog clientId={client.id} />}
+            {canEdit && <QuickLog clientId={client.id} properties={listings} />}
             {activities.length === 0 ? (
               <p className="mt-5 text-sm text-muted">{t.activity.empty}</p>
             ) : (
               <ol className="relative mt-6 space-y-4 border-l border-line pl-5">
                 {activities.map((a) => (
-                  <li key={a.id} className="relative">
-                    <span className="absolute -left-[31px] top-0 grid size-5 place-items-center rounded-full border border-line bg-surface text-accent-fg">
-                      <TypeIcon type={a.type} className="size-3" />
-                    </span>
-                    <p className="text-sm">
-                      <span className="font-medium">
-                        {t.options.activityType[a.type as keyof typeof t.options.activityType] ?? a.type}
-                      </span>
-                      <span className="text-subtle">
-                        {" · "}
-                        {a.profile_id === session.userId ? t.activity.byYou : personName(a.person)}
-                        {" · "}
-                        {formatDate(a.occurred_at, lang, true)}
-                      </span>
-                    </p>
-                    {a.note && <p className="mt-0.5 whitespace-pre-line text-sm text-fg-2">{a.note}</p>}
-                  </li>
+                  <ActivityEntry
+                    key={a.id}
+                    activity={{
+                      id: a.id,
+                      type: a.type,
+                      note: a.note,
+                      feedback: a.feedback,
+                      outcome: a.outcome,
+                      property: a.property,
+                      when: formatDate(a.occurred_at, lang, true),
+                      who: a.profile_id === session.userId ? t.activity.byYou : personName(a.person),
+                      canEdit: a.type !== "task" && (a.profile_id === session.userId || session.isManager),
+                    }}
+                  />
                 ))}
               </ol>
             )}
@@ -407,8 +378,45 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
           {isSeeking(client.types) && (
             <Card title={t.clients.sectionSearch}>
               {searchLines.length > 0 ? (
+                <>
+                  <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                    {searchLines.map(([label, value]) => (
+                      <div key={label}>
+                        <dt className="text-xs text-muted">{label}</dt>
+                        <dd className="mt-0.5 font-medium">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {canEdit && (
+                    <div className="mt-5 border-t border-line-soft pt-4">
+                      <ShareSearchDialog clientId={client.id} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted">{t.clients.noSearch}</p>
+                  <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
+                    {t.clients.addSearch}
+                  </Link>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {isOffering(client.types) && (
+            <Card
+              title={
+                client.types.includes("seller") && client.types.includes("landlord")
+                  ? t.clients.sectionOfferBoth
+                  : client.types.includes("landlord")
+                    ? t.clients.sectionOfferRent
+                    : t.clients.sectionOffer
+              }
+            >
+              {offerLines.length > 0 ? (
                 <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                  {searchLines.map(([label, value]) => (
+                  {offerLines.map(([label, value]) => (
                     <div key={label}>
                       <dt className="text-xs text-muted">{label}</dt>
                       <dd className="mt-0.5 font-medium">{value}</dd>
@@ -417,10 +425,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                 </dl>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-muted">{t.clients.noSearch}</p>
-                  <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
-                    {t.clients.addSearch}
-                  </Link>
+                  <p className="text-sm text-muted">{t.clients.offerHint}</p>
+                  {canEdit && (
+                    <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
+                      <Pencil className="size-4" />
+                      {t.common.edit}
+                    </Link>
+                  )}
                 </div>
               )}
             </Card>

@@ -18,7 +18,7 @@ export async function confirmBrixAction(action: ProposedAction): Promise<{ ok: b
       propertyId: action.propertyId,
       dueDate: action.dueDate,
       dueTime: action.dueTime,
-      description: action.description ?? "",
+      description: action.description?.trim() || action.title,
     });
     return result.ok ? { ok: true, href: `/tasks/${result.id}` } : { ok: false };
   }
@@ -27,7 +27,7 @@ export async function confirmBrixAction(action: ProposedAction): Promise<{ ok: b
     type: action.type,
     clientId: action.clientId,
     propertyId: action.propertyId,
-    note: action.note ?? "",
+    note: action.note?.trim() || "Brix",
   });
   const href = action.clientId ? `/clients/${action.clientId}` : action.propertyId ? `/properties/${action.propertyId}` : undefined;
   return { ok: result.ok, href };

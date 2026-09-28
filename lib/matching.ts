@@ -237,3 +237,75 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
   }
   return buyers.sort((a, b) => b.score - a.score || a.clientClass.localeCompare(b.clientClass));
 }
+
+export type PartnerMatch = {
+  id: string;
+  brokerName: string;
+  agency: string | null;
+  phone: string | null;
+  email: string | null;
+  score: number;
+  overBudgetPct: number | null;
+};
+
+/** Colleagues' searches (other agencies' buyers) that a listing fits. */
+export async function findPartnerSearches(supabase: SupabaseClient, propertyId: string): Promise<PartnerMatch[]> {
+  const { data: property } = await supabase
+    .from("properties")
+    .select(
+      "id, organization_id, operation_type, subtype_id, current_price, currency, area, rooms, settlement_id, neighborhood_id, feature_values:property_feature_values(feature_id)"
+    )
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!property || (property.operation_type !== "sale" && property.operation_type !== "rent")) return [];
+
+  const { data: rows } = await supabase
+    .from("partner_searches")
+    .select(
+      `id, broker_name, agency, phone, email, operation, subtype_ids, settlement_ids, neighborhood_ids,
+      budget_min, budget_max, currency, area_min, area_max, rooms_min, rooms_max, feature_ids`
+    )
+    .eq("organization_id", property.organization_id)
+    .eq("active", true)
+    .eq("operation", property.operation_type)
+    .limit(2000);
+
+  const searches = (rows ?? []) as unknown as (Record<string, unknown> & {
+    id: string;
+    broker_name: string;
+    agency: string | null;
+    phone: string | null;
+    email: string | null;
+    neighborhood_ids: string[];
+  })[];
+  const neighborhoodIds = [...new Set(searches.flatMap((r) => r.neighborhood_ids ?? []))];
+  const { data: hoods } = neighborhoodIds.length
+    ? await supabase.from("geo_neighborhoods").select("id, settlement_id").in("id", neighborhoodIds)
+    : { data: [] as { id: string; settlement_id: string }[] };
+  const settlementOf = new Map((hoods ?? []).map((h) => [h.id, h.settlement_id]));
+
+  const listing: Listing = {
+    ...property,
+    featureIds: ((property.feature_values ?? []) as { feature_id: string }[]).map((f) => f.feature_id),
+  };
+  const out: PartnerMatch[] = [];
+  for (const row of searches) {
+    const search = searchFromRow(row as unknown as Parameters<typeof searchFromRow>[0]);
+    if (!search) continue;
+    if (search.subtypeIds.length && !search.subtypeIds.includes(property.subtype_id)) continue;
+    if (search.settlementIds.length && (!property.settlement_id || !search.settlementIds.includes(property.settlement_id))) continue;
+    const narrowed = new Set(search.neighborhoodIds.map((id) => settlementOf.get(id)).filter((id): id is string => Boolean(id)));
+    const result = fit(listing, search, narrowed);
+    if (!result) continue;
+    out.push({
+      id: row.id,
+      brokerName: row.broker_name,
+      agency: row.agency,
+      phone: row.phone,
+      email: row.email,
+      score: result.score,
+      overBudgetPct: result.overBudgetPct,
+    });
+  }
+  return out.sort((a, b) => b.score - a.score);
+}

@@ -1,67 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
-import { Check, Copy, ExternalLink, Mail, MessageCircle, Share2, X } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, ExternalLink, Mail, MessageCircle, Share2 } from "lucide-react";
+import { Modal, useMounted } from "@/components/ui/Modal";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { whatsappHref } from "@/lib/phone";
 
-export type LinkKind = "listing" | "report";
+export { Modal };
 
-/** The public page a token opens: /p/… for a shared listing, /r/… for an owner's report. */
+export type LinkKind = "listing" | "report" | "search";
+
+/** The public page a token opens: /p/… a shared listing, /r/… an owner's report, /s/… a shared search. */
 export const linkUrl = (kind: LinkKind, token: string) =>
-  `${window.location.origin}/${kind === "report" ? "r" : "p"}/${token}`;
-
-const useMounted = () =>
-  useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-
-/** A sheet from the bottom on phones, a centred dialog on computers. Rendered on <body>. */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const { t } = useI18n();
-  const mounted = useMounted();
-  // the latest onClose, without re-running the setup below on every keystroke
-  const close = useRef(onClose);
-  useEffect(() => {
-    close.current = onClose;
-  });
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && close.current();
-    document.addEventListener("keydown", onKey);
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.documentElement.style.overflow = "";
-    };
-  }, []);
-
-  if (!mounted) return null;
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div onClick={onClose} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:pb-5">
-        <div className="mb-1 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.common.cancel}
-            className="-mr-2 -mt-1 grid size-9 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-raised hover:text-fg"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body,
-  );
-}
+  `${window.location.origin}/${kind === "report" ? "r" : kind === "search" ? "s" : "p"}/${token}`;
 
 /** The link, ready to copy or send by Viber, WhatsApp, email or the phone's own share sheet. */
 export function SendLink({

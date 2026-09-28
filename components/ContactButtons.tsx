@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { CheckCircle2, Loader2, Mail, MessageCircle, Phone } from "lucide-react";
 import { logActivity } from "@/app/(app)/tasks/actions";
 import { useI18n } from "@/components/I18nProvider";
-import { buttonClass, inputClass } from "@/components/ui/form";
+import { NoteArea } from "@/components/ui/Dictate";
+import { buttonClass } from "@/components/ui/form";
 import { mailHref, telHref, viberHref, type ContactKind } from "@/lib/phone";
 
 const LOG_TYPE: Record<ContactKind, "call" | "message" | "email"> = { call: "call", viber: "message", email: "email" };
@@ -88,16 +89,16 @@ export function ContactButtons({
           ) : (
             <>
               <p className="text-sm font-medium">{t.contact.logTitle}</p>
-              <input
+              <NoteArea
+                rows={2}
                 value={note}
                 maxLength={2000}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={setNote}
                 placeholder={t.contact.logPlaceholder}
-                className={inputClass}
               />
               <button
                 type="button"
-                disabled={pending}
+                disabled={pending || !note.trim()}
                 onClick={() =>
                   startTransition(async () => {
                     const result = await logActivity({ type: LOG_TYPE[used], clientId, propertyId: null, note });

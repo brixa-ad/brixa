@@ -74,16 +74,19 @@ export const CLIENT_CLASSES = ["A", "B", "C"] as const;
 export const CLIENT_SOURCES = [
   "personal",
   "referral",
-  "external_broker",
+  "agency",
   "email",
   "google",
   "facebook",
   "instagram",
+  "tiktok",
   "realistimo",
-  "yavlena",
   "billboard",
-  "signs",
+  "flyers",
+  "banner",
 ] as const;
+export const ACTIVITY_OUTCOMES = ["positive", "neutral", "negative"] as const;
+export type ActivityOutcome = (typeof ACTIVITY_OUTCOMES)[number];
 export const CLIENT_STAGES = [
   "new_contact",
   "called",
@@ -103,6 +106,8 @@ export type ClientStage = (typeof CLIENT_STAGES)[number];
 
 /** Client types that look for a property (and so get a search + matches). */
 export const SEEKING_TYPES: readonly ClientType[] = ["buyer", "tenant", "investor"];
+/** Clients who have something to sell or let. */
+export const OFFERING_TYPES: readonly ClientType[] = ["seller", "landlord"];
 /** Client types that can own a listed property. */
 export const OWNER_TYPES: readonly ClientType[] = ["seller", "landlord"];
 

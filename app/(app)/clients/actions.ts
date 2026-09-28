@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isSeeking, validateClient, type ClientErrors, type ClientInput } from "@/lib/client-validation";
+import { hasOffer, isOffering, isSeeking, validateClient, type ClientErrors, type ClientInput } from "@/lib/client-validation";
 import { CLIENT_STAGES, isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +13,7 @@ export type ClientSaveResult =
 
 const uniq = (ids: string[]) => [...new Set(ids.filter(Boolean))];
 
-const hasReferrer = (source: string | null) => source === "referral" || source === "external_broker";
+const hasReferrer = (source: string | null) => source === "referral";
 
 async function prepare(input: ClientInput, clientId: string | null) {
   const session = await getSession();
@@ -79,7 +79,23 @@ async function prepare(input: ClientInput, clientId: string | null) {
       }
     : null;
 
-  return { ok: true as const, session, supabase, row, searchRow };
+  // what a seller / landlord has — even without a listing
+  const o = input.offer;
+  const offerRow =
+    isOffering(input.types) && hasOffer(o)
+      ? {
+          operation: o.operation,
+          subtype_id: o.subtypeId,
+          settlement_id: o.settlementId,
+          neighborhood_id: o.settlementId ? o.neighborhoodId : null,
+          area: o.area,
+          rooms: o.rooms,
+          price: o.price,
+          currency: o.currency,
+        }
+      : null;
+
+  return { ok: true as const, session, supabase, row, searchRow, offerRow };
 }
 
 async function saveSearch(
@@ -92,6 +108,19 @@ async function saveSearch(
     if (error) console.error("Saving search failed:", error.message);
   } else {
     await supabase.from("client_searches").delete().eq("client_id", clientId);
+  }
+}
+
+async function saveOffer(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  offerRow: Record<string, unknown> | null
+) {
+  if (offerRow) {
+    const { error } = await supabase.from("client_offers").upsert({ client_id: clientId, ...offerRow });
+    if (error) console.error("Saving offer failed:", error.message);
+  } else {
+    await supabase.from("client_offers").delete().eq("client_id", clientId);
   }
 }
 
@@ -108,7 +137,7 @@ async function duplicateFromError(
 export async function createClientRecord(input: ClientInput): Promise<ClientSaveResult> {
   const prepared = await prepare(input, null);
   if (!prepared.ok) return prepared;
-  const { session, supabase, row, searchRow } = prepared;
+  const { session, supabase, row, searchRow, offerRow } = prepared;
 
   const { data, error } = await supabase
     .from("clients")
@@ -124,7 +153,7 @@ export async function createClientRecord(input: ClientInput): Promise<ClientSave
     return { ok: false, message: "generic" };
   }
 
-  await saveSearch(supabase, data.id, searchRow);
+  await Promise.all([saveSearch(supabase, data.id, searchRow), saveOffer(supabase, data.id, offerRow)]);
   revalidatePath("/clients");
   return { ok: true, id: data.id };
 }
@@ -132,7 +161,7 @@ export async function createClientRecord(input: ClientInput): Promise<ClientSave
 export async function updateClientRecord(id: string, input: ClientInput): Promise<ClientSaveResult> {
   const prepared = await prepare(input, id);
   if (!prepared.ok) return prepared;
-  const { session, supabase, row, searchRow } = prepared;
+  const { session, supabase, row, searchRow, offerRow } = prepared;
 
   const { data, error } = await supabase.from("clients").update(row).eq("id", id).select("id").maybeSingle();
 
@@ -144,7 +173,7 @@ export async function updateClientRecord(id: string, input: ClientInput): Promis
     return { ok: false, message: error ? "generic" : "notFound" };
   }
 
-  await saveSearch(supabase, id, searchRow);
+  await Promise.all([saveSearch(supabase, id, searchRow), saveOffer(supabase, id, offerRow)]);
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
   return { ok: true, id };

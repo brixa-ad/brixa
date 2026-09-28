@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Loader2, Search, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
-import { CLIENT_CLASSES, CLIENT_STAGES, CLIENT_TYPES } from "@/lib/options";
+import { CLIENT_CLASSES, CLIENT_STAGES } from "@/lib/options";
 
 export function ClientFilters({ brokers }: { brokers: { id: string; name: string }[] }) {
   const { t } = useI18n();
@@ -26,7 +26,7 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
   }
 
-  const hasFilters = ["q", "stage", "class", "type", "broker"].some((key) => searchParams.get(key));
+  const hasFilters = ["q", "stage", "class", "broker"].some((key) => searchParams.get(key));
   const selectClass = `${inputClass} sm:w-auto`;
 
   return (
@@ -62,15 +62,6 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
         {CLIENT_CLASSES.map((cls) => (
           <option key={cls} value={cls}>
             {cls} — {t.options.clientClass[cls]}
-          </option>
-        ))}
-      </select>
-
-      <select aria-label={t.clients.types} value={searchParams.get("type") ?? ""} onChange={(e) => update("type", e.target.value)} className={selectClass}>
-        <option value="">{t.clients.allTypes}</option>
-        {CLIENT_TYPES.map((type) => (
-          <option key={type} value={type}>
-            {t.options.clientType[type]}
           </option>
         ))}
       </select>

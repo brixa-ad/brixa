@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { DEAL_LIMITS, isDay, validateDeal, type DealErrors, type DealInput } from "@/lib/deal-validation";
 import { CURRENCIES, DEAL_STAGES, isOneOf } from "@/lib/options";
-import { getAgency } from "@/lib/agency";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,7 +48,7 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
     input.clientId
       ? supabase
           .from("clients")
-          .select("id, source, referrer")
+          .select("id")
           .eq("id", input.clientId)
           .not("responsible_broker_id", "is", null)
           .maybeSingle()
@@ -80,21 +79,11 @@ export async function saveDeal(input: DealInput, dealId?: string): Promise<DealS
     partner_side: input.withPartner ? input.partnerSide : null,
   };
 
-  // A new deal with a client an external broker brought: their usual share goes on it (editable in the payments).
-  const linked = input.clientId ? (client.data as { source: string | null; referrer: string | null }) : null;
-  const referral =
-    !dealId && linked?.source === "external_broker"
-      ? {
-          referral_name: linked.referrer,
-          referral_percent: (await getAgency(session.organizationId))?.referralPercent ?? 10,
-        }
-      : {};
-
   const { data, error } = dealId
     ? await supabase.from("deals").update(row).eq("id", dealId).select("id, property_id, client_id").maybeSingle()
     : await supabase
         .from("deals")
-        .insert({ ...row, ...referral, organization_id: session.organizationId, created_by: session.userId })
+        .insert({ ...row, organization_id: session.organizationId, created_by: session.userId })
         .select("id, property_id, client_id")
         .single();
 

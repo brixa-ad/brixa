@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ACTIVITY_TYPES, isOneOf } from "@/lib/options";
+import { ACTIVITY_OUTCOMES, ACTIVITY_TYPES, isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { TASK_LIMITS, validateTask, type TaskErrors, type TaskInput } from "@/lib/task-validation";
@@ -74,8 +74,9 @@ export async function saveTask(input: TaskInput, taskId?: string): Promise<TaskS
   return { ok: true, id: data.id };
 }
 
-/** Tick off (with an optional note) or reopen. The database logs the activity. */
+/** Tick off (with what happened — required) or reopen. The database logs the activity. */
 export async function setTaskDone(taskId: string, done: boolean, note?: string) {
+  if (done && !note?.trim()) return { ok: false };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
@@ -103,14 +104,18 @@ export async function deleteTask(taskId: string) {
   redirect("/tasks");
 }
 
-/** "I called / met / showed…" logged straight from a client's page. */
+/** "I called / met / showed…" logged straight from a client's page — always with a note. */
 export async function logActivity(input: {
   type: string;
   clientId: string | null;
   propertyId: string | null;
   note: string;
+  feedback?: string;
+  outcome?: string | null;
 }) {
   if (!isOneOf(ACTIVITY_TYPES, input.type) || input.type === "task") return { ok: false };
+  if (!input.note.trim()) return { ok: false };
+  if (input.outcome && !isOneOf(ACTIVITY_OUTCOMES, input.outcome)) return { ok: false };
   const session = await getSession();
   if (!session) return { ok: false };
 
@@ -121,7 +126,9 @@ export async function logActivity(input: {
     type: input.type,
     client_id: input.clientId,
     property_id: input.propertyId,
-    note: input.note.trim().slice(0, TASK_LIMITS.note) || null,
+    note: input.note.trim().slice(0, TASK_LIMITS.note),
+    feedback: input.feedback?.trim().slice(0, TASK_LIMITS.note) || null,
+    outcome: input.outcome || null,
   });
   if (error) {
     console.error("Logging activity failed:", error.message);
@@ -145,4 +152,43 @@ export async function markNotificationsRead() {
     .eq("recipient_id", session.userId)
     .is("read_at", null);
   revalidatePath("/", "layout");
+}
+
+/** Complete or correct an entry in the history (the author or a manager; the database checks). */
+export async function updateActivity(
+  activityId: string,
+  input: { note: string; feedback: string; outcome: string | null }
+): Promise<{ ok: boolean }> {
+  if (!input.note.trim()) return { ok: false };
+  if (input.outcome && !isOneOf(ACTIVITY_OUTCOMES, input.outcome)) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .update({
+      note: input.note.trim().slice(0, TASK_LIMITS.note),
+      feedback: input.feedback.trim().slice(0, TASK_LIMITS.note) || null,
+      outcome: input.outcome || null,
+    })
+    .eq("id", activityId)
+    .select("client_id, property_id")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Updating activity failed:", error?.message ?? "no row");
+    return { ok: false };
+  }
+  if (data.client_id) revalidatePath(`/clients/${data.client_id}`);
+  if (data.property_id) revalidatePath(`/properties/${data.property_id}`);
+  return { ok: true };
+}
+
+export async function deleteActivity(activityId: string): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("activities").delete().eq("id", activityId).select("client_id, property_id");
+  if (error || !data?.length) return { ok: false };
+  if (data[0].client_id) {
+    revalidatePath(`/clients/${data[0].client_id}`);
+    revalidatePath("/follow-up");
+  }
+  if (data[0].property_id) revalidatePath(`/properties/${data[0].property_id}`);
+  return { ok: true };
 }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AlertCircle, Calculator, Loader2 } from "lucide-react";
 import { saveDeal } from "@/app/(app)/deals/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { NoteArea } from "@/components/ui/Dictate";
 import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { commissionRate, expectedCommission, rateLabel, type CommissionDefaults } from "@/lib/commission";
@@ -428,15 +429,14 @@ export function DealForm({
             )}
           </Field>
 
-          <Field label={t.deals.fieldNotes} error={err("notes")}>
+          <Field label={t.deals.fieldNotes} required error={err("notes")}>
             {(props) => (
-              <textarea
+              <NoteArea
                 {...props}
                 rows={4}
                 maxLength={DEAL_LIMITS.notes}
                 value={values.notes}
-                onChange={(e) => set("notes", e.target.value)}
-                className={`${inputClass} resize-y`}
+                onChange={(value) => set("notes", value)}
               />
             )}
           </Field>

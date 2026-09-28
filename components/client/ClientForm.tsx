@@ -6,33 +6,37 @@ import { useState } from "react";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { createClientRecord, updateClientRecord } from "@/app/(app)/clients/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { NoteArea } from "@/components/ui/Dictate";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import type { ClientFormLookups } from "@/lib/clients";
 import {
   NOTES_MAX,
+  isOffering,
   isSeeking,
   validateClient,
   type ClientErrors,
   type ClientInput,
   type SearchInput,
 } from "@/lib/client-validation";
-import { fmt, localName } from "@/lib/i18n/dictionaries";
+import { fmt } from "@/lib/i18n/dictionaries";
 import {
   CLIENT_CLASSES,
   CLIENT_SOURCES,
   CLIENT_STAGES,
   CLIENT_TYPES,
-  CURRENCIES,
   type ClientClass,
   type ClientType,
-  type Currency,
 } from "@/lib/options";
-import { MultiLocationPicker } from "./MultiLocationPicker";
+import { OfferFields, type OfferDraft } from "./OfferFields";
+import { SearchFields } from "./SearchFields";
 
 type NumKey = "budgetMin" | "budgetMax" | "areaMin" | "areaMax" | "roomsMin" | "roomsMax";
-type Draft = Omit<ClientInput, "search"> & {
+type Draft = Omit<ClientInput, "search" | "offer"> & {
   search: Omit<SearchInput, NumKey> & Record<NumKey, string>;
+  offer: OfferDraft;
 };
+
+const text = (n: number | null) => (n === null ? "" : String(n));
 
 const NUM_KEYS: NumKey[] = ["budgetMin", "budgetMax", "areaMin", "areaMax", "roomsMin", "roomsMax"];
 
@@ -45,7 +49,8 @@ export const CLASS_STYLES: Record<ClientClass, string> = {
 function toDraft(input: ClientInput): Draft {
   const search = { ...input.search } as unknown as Draft["search"];
   for (const key of NUM_KEYS) search[key] = input.search[key] === null ? "" : String(input.search[key]);
-  return { ...input, search };
+  const offer: OfferDraft = { ...input.offer, area: text(input.offer.area), rooms: text(input.offer.rooms), price: text(input.offer.price) };
+  return { ...input, search, offer };
 }
 
 function parse(value: string) {
@@ -56,7 +61,8 @@ function parse(value: string) {
 function toInput(draft: Draft): ClientInput {
   const search = { ...draft.search } as unknown as SearchInput;
   for (const key of NUM_KEYS) search[key] = parse(draft.search[key]);
-  return { ...draft, search };
+  const offer = { ...draft.offer, area: parse(draft.offer.area), rooms: parse(draft.offer.rooms), price: parse(draft.offer.price) };
+  return { ...draft, search, offer };
 }
 
 export function ClientForm({
@@ -72,7 +78,7 @@ export function ClientForm({
   lookups: ClientFormLookups;
   canAssignBroker: boolean;
 }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const [draft, setDraft] = useState(() => toDraft(initial));
   const [submitted, setSubmitted] = useState(false);
@@ -85,6 +91,13 @@ export function ClientForm({
   const errors: ClientErrors = { ...serverErrors, ...(submitted ? validateClient(input) : {}) };
   const err = (key: keyof ClientErrors) => (errors[key] ? t.errors[errors[key]!] : undefined);
   const seeking = isSeeking(draft.types);
+  const offering = isOffering(draft.types);
+  const offerTitle =
+    draft.types.includes("seller") && draft.types.includes("landlord")
+      ? t.clients.sectionOfferBoth
+      : draft.types.includes("landlord")
+        ? t.clients.sectionOfferRent
+        : t.clients.sectionOffer;
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -94,6 +107,10 @@ export function ClientForm({
 
   function setSearch<K extends keyof Draft["search"]>(key: K, value: Draft["search"][K]) {
     setDraft((d) => ({ ...d, search: { ...d.search, [key]: value } }));
+  }
+
+  function setOffer<K extends keyof OfferDraft>(key: K, value: OfferDraft[K]) {
+    setDraft((d) => ({ ...d, offer: { ...d.offer, [key]: value } }));
   }
 
   function toggle<T extends string>(list: T[], value: T) {
@@ -137,21 +154,6 @@ export function ClientForm({
     setFailed(Boolean(result.message));
   }
 
-  const numInput = (key: NumKey, placeholder: string, decimal = true) => (
-    <input
-      inputMode={decimal ? "decimal" : "numeric"}
-      value={draft.search[key]}
-      placeholder={placeholder}
-      aria-invalid={errors[`search.${key}`] ? true : undefined}
-      aria-label={placeholder}
-      onChange={(e) => {
-        if (/^[\d\s]*([.,]\d{0,2})?$/.test(e.target.value)) setSearch(key, e.target.value);
-      }}
-      className={inputClass}
-    />
-  );
-
-  const rangeError = (a: NumKey, b: NumKey) => err(`search.${a}`) ?? err(`search.${b}`);
   const cancelHref = mode === "create" ? "/clients" : `/clients/${clientId}`;
 
   return (
@@ -311,11 +313,10 @@ export function ClientForm({
             </Field>
           </div>
 
-          {(draft.source === "referral" || draft.source === "external_broker") && (
+          {draft.source === "referral" && (
             <Field
               label={t.clients.referrer}
               error={err("referrer")}
-              hint={draft.source === "external_broker" ? t.clients.referrerHint : undefined}
             >
               {(props) => (
                 <input
@@ -334,154 +335,33 @@ export function ClientForm({
 
       {seeking && (
         <Card title={t.clients.sectionSearch}>
-          <div className="space-y-6">
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchOperation}</span>
-              <div className="inline-flex rounded-lg border border-line-strong bg-raised p-0.5" role="radiogroup">
-                {(["sale", "rent"] as const).map((op) => (
-                  <button
-                    key={op}
-                    type="button"
-                    role="radio"
-                    aria-checked={draft.search.operation === op}
-                    onClick={() => setSearch("operation", op)}
-                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
-                      draft.search.operation === op ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"
-                    }`}
-                  >
-                    {t.options.searchOperation[op]}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <SearchFields search={draft.search} onChange={setSearch} lookups={lookups} error={(key) => err(`search.${key}`)} />
+        </Card>
+      )}
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchSubtypes}</span>
-              <div className="space-y-2">
-                {lookups.categories.map((category) => {
-                  const subs = lookups.subtypes.filter((s) => s.category_id === category.id);
-                  return (
-                    <div key={category.id} className="flex flex-wrap items-center gap-1.5">
-                      <span className="w-full text-xs font-semibold uppercase tracking-wide text-subtle sm:w-28">
-                        {localName(category, lang)}
-                      </span>
-                      {subs.map((sub) => {
-                        const on = draft.search.subtypeIds.includes(sub.id);
-                        return (
-                          <button
-                            key={sub.id}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => setSearch("subtypeIds", toggle(draft.search.subtypeIds, sub.id))}
-                            className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                              on ? "border-accent bg-accent text-on-accent" : "border-line-strong text-fg-2 hover:border-subtle"
-                            }`}
-                          >
-                            {localName(sub, lang)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="mt-1.5 text-xs text-muted">{t.clients.searchSubtypesHint}</p>
-            </div>
-
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchLocations}</span>
-              <MultiLocationPicker
-                regions={lookups.regions}
-                settlements={lookups.settlements}
-                settlementIds={draft.search.settlementIds}
-                neighborhoodIds={draft.search.neighborhoodIds}
-                onChange={(next) => {
-                  setSearch("settlementIds", next.settlementIds);
-                  setSearch("neighborhoodIds", next.neighborhoodIds);
-                }}
-              />
-              <p className="mt-1.5 text-xs text-muted">{t.clients.searchLocationsHint}</p>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div>
-                <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchBudget}</span>
-                <div className="grid grid-cols-[1fr_1fr_84px] gap-2">
-                  {numInput("budgetMin", t.clients.from)}
-                  {numInput("budgetMax", t.clients.to)}
-                  <select
-                    aria-label={t.form.currency}
-                    value={draft.search.currency}
-                    onChange={(e) => setSearch("currency", e.target.value as Currency)}
-                    className={inputClass}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                {rangeError("budgetMin", "budgetMax") && (
-                  <p className="mt-1.5 text-xs font-medium text-danger">{rangeError("budgetMin", "budgetMax")}</p>
-                )}
-              </div>
-              <div>
-                <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchArea}</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {numInput("areaMin", t.clients.from)}
-                  {numInput("areaMax", t.clients.to)}
-                </div>
-                {rangeError("areaMin", "areaMax") && (
-                  <p className="mt-1.5 text-xs font-medium text-danger">{rangeError("areaMin", "areaMax")}</p>
-                )}
-              </div>
-              <div>
-                <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchRooms}</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {numInput("roomsMin", t.clients.from, false)}
-                  {numInput("roomsMax", t.clients.to, false)}
-                </div>
-                {rangeError("roomsMin", "roomsMax") && (
-                  <p className="mt-1.5 text-xs font-medium text-danger">{rangeError("roomsMin", "roomsMax")}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchFeatures}</span>
-              <div className="flex flex-wrap gap-1.5">
-                {lookups.features.map((feature) => {
-                  const on = draft.search.featureIds.includes(feature.id);
-                  return (
-                    <button
-                      key={feature.id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setSearch("featureIds", toggle(draft.search.featureIds, feature.id))}
-                      className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                        on ? "border-accent bg-accent text-on-accent" : "border-line-strong text-fg-2 hover:border-subtle"
-                      }`}
-                    >
-                      {localName(feature, lang)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+      {offering && (
+        <Card title={offerTitle} description={t.clients.offerHint}>
+          <OfferFields
+            offer={draft.offer}
+            onChange={setOffer}
+            categories={lookups.categories}
+            subtypes={lookups.subtypes}
+            settlements={lookups.settlements}
+            error={(key) => err(`offer.${key}`)}
+          />
         </Card>
       )}
 
       <Card title={t.clients.sectionNotes}>
-        <Field label={t.clients.notes} error={err("notes")} hint={`${draft.notes.length}/${NOTES_MAX}`}>
+        <Field label={t.clients.notes} required error={err("notes")} hint={`${draft.notes.length}/${NOTES_MAX}`}>
           {(props) => (
-            <textarea
+            <NoteArea
               {...props}
               rows={5}
               maxLength={NOTES_MAX}
               value={draft.notes}
               placeholder={t.clients.notesPlaceholder}
-              onChange={(e) => set("notes", e.target.value)}
-              className={`${inputClass} resize-y`}
+              onChange={(value) => set("notes", value)}
             />
           )}
         </Field>

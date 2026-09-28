@@ -22,6 +22,7 @@ import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
 import { MarketCard } from "@/components/market/MarketCard";
+import { BuyerMatchesCard, PartnerMatchesCard } from "@/components/property/MatchCards";
 import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
@@ -39,6 +40,7 @@ import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getCommissionDefaults } from "@/lib/lookups";
 import { getMarketSnapshot } from "@/lib/market";
+import { findBuyers, findPartnerSearches } from "@/lib/matching";
 import { getProperty } from "@/lib/properties";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
@@ -74,6 +76,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: clientRows },
     { data: reportRows },
     market,
+    buyers,
+    partnerMatches,
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -119,6 +123,9 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         .limit(50),
       // its price against the market (listings only)
       listing ? getMarketSnapshot(id) : Promise.resolve(null),
+      // who it fits: our buyers (the ones this user may see) and colleagues' searches
+      listing ? findBuyers(supabase, id) : Promise.resolve([]),
+      listing ? findPartnerSearches(supabase, id) : Promise.resolve([]),
     ]);
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
@@ -571,6 +578,9 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               lang={lang}
             />
           )}
+
+          {listing && <BuyerMatchesCard buyers={buyers} t={t} />}
+          {partnerMatches.length > 0 && <PartnerMatchesCard matches={partnerMatches} t={t} />}
 
           {listing && (
             <Card

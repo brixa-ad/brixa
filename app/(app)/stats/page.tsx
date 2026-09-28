@@ -246,9 +246,8 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
             <p className="text-sm text-muted">{t.stats.noReferrals}</p>
           ) : (
             <>
-              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
                 <span />
-                <span className="text-right">{t.stats.referredClients}</span>
                 <span className="text-right">{t.stats.wonFrom}</span>
                 <span className="text-right">{t.stats.referralFees}</span>
               </div>
@@ -256,7 +255,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                 {externalBrokers.rows.map((row) => (
                   <li
                     key={row.name ?? "none"}
-                    className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_5.5rem] items-baseline gap-2 text-sm"
+                    className="grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] items-baseline gap-2 text-sm"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-fg-2">{row.name ?? t.stats.unknownReferrer}</span>
@@ -264,8 +263,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
                         <span className="block truncate text-[11px] text-subtle">{euro(row.commission)}</span>
                       )}
                     </span>
-                    <span className="text-right font-semibold tabular-nums">{row.clients}</span>
-                    <span className="text-right tabular-nums">{row.won}</span>
+                    <span className="text-right font-semibold tabular-nums">{row.won}</span>
                     <span className="truncate text-right tabular-nums text-muted">{euro(row.fees)}</span>
                   </li>
                 ))}

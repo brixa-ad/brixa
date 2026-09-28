@@ -5,6 +5,8 @@ import { Check, Hand, Loader2 } from "lucide-react";
 import { assignClient, claimClient } from "@/app/(app)/follow-up/actions";
 import { logActivity } from "@/app/(app)/tasks/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { NoteArea } from "@/components/ui/Dictate";
+import { Modal } from "@/components/ui/Modal";
 import { buttonClass, inputClass } from "@/components/ui/form";
 
 /** "Take" a free contact — the first broker to press gets the client. */
@@ -76,26 +78,51 @@ export function AssignSelect({
   );
 }
 
-/** "We spoke" — logs a call in the client's history, which moves the deadline. */
+/** "We spoke" — asks how it went (required), logs a call in the client's history, which moves the deadline. */
 export function ContactedButton({ clientId }: { clientId: string }) {
   const { t } = useI18n();
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  function save() {
+    setFailed(false);
+    startTransition(async () => {
+      const { ok } = await logActivity({ type: "call", clientId, propertyId: null, note });
+      if (ok) {
+        setDone(true);
+        setAsking(false);
+      } else setFailed(true);
+    });
+  }
+
   return (
-    <button
-      type="button"
-      disabled={pending || done}
-      title={t.followUp.doneHint}
-      onClick={() =>
-        startTransition(async () => {
-          const { ok } = await logActivity({ type: "call", clientId, propertyId: null, note: "" });
-          if (ok) setDone(true);
-        })
-      }
-      className={`${buttonClass.secondary} whitespace-nowrap px-3! py-1.5! text-xs!`}
-    >
-      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-      {t.followUp.done}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={pending || done}
+        title={t.followUp.doneHint}
+        onClick={() => setAsking(true)}
+        className={`${buttonClass.secondary} whitespace-nowrap px-3! py-1.5! text-xs!`}
+      >
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+        {t.followUp.done}
+      </button>
+      {asking && (
+        <Modal title={t.done.contactedTitle} onClose={() => setAsking(false)}>
+          <div className="space-y-3">
+            <p className="text-sm text-muted">{t.done.hint}</p>
+            <NoteArea rows={4} autoFocus maxLength={2000} value={note} placeholder={t.contact.logPlaceholder} onChange={setNote} />
+            {failed && <p className="text-sm font-medium text-danger">{t.errors.generic}</p>}
+            <button type="button" onClick={save} disabled={pending || !note.trim()} className={`${buttonClass.primary} w-full py-3`}>
+              {pending ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
+              {t.contact.logSave}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }

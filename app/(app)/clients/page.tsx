@@ -79,14 +79,16 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
 
   const [{ data, error }, { data: all }, members] = await Promise.all([
     query,
-    supabase.from("clients").select("client_class, stage").eq("organization_id", session.organizationId).not("responsible_broker_id", "is", null),
+    supabase.from("clients").select("client_class, stage, types").eq("organization_id", session.organizationId).not("responsible_broker_id", "is", null),
     session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
   ]);
   if (error) console.error("Loading clients failed:", error.message);
 
   const rows = (data ?? []) as unknown as Row[];
   const counts = { total: 0, hot: 0, active: 0, deals: 0 };
+  const byType: Record<string, number> = {};
   for (const c of all ?? []) {
+    for (const tp of (c.types ?? []) as string[]) byType[tp] = (byType[tp] ?? 0) + 1;
     counts.total++;
     if (c.client_class === "A") counts.hot++;
     if (c.stage === "negotiation" || c.stage === "deposit") counts.active++;
@@ -122,6 +124,37 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
           </div>
         ))}
       </dl>
+
+      {/* sections by what the client does */}
+      <nav className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
+        {(
+          [
+            ["", t.clients.tabAll, counts.total],
+            ["buyer", t.clients.tabBuyers, byType.buyer ?? 0],
+            ["seller", t.clients.tabSellers, byType.seller ?? 0],
+            ["tenant", t.clients.tabTenants, byType.tenant ?? 0],
+            ["landlord", t.clients.tabLandlords, byType.landlord ?? 0],
+          ] as const
+        ).map(([key, label, count]) => {
+          const qs = new URLSearchParams();
+          for (const [k, v] of Object.entries(params)) if (k !== "type" && typeof v === "string" && v) qs.set(k, v);
+          if (key) qs.set("type", key);
+          const href = qs.toString() ? `/clients?${qs}` : "/clients";
+          return (
+            <Link
+              key={key || "all"}
+              href={href}
+              aria-current={type === key ? "page" : undefined}
+              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                type === key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
+              }`}
+            >
+              {label}
+              <span className={`text-xs tabular-nums ${type === key ? "text-on-accent/80" : "text-subtle"}`}>{count}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
       <ClientFilters brokers={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))} />
 
