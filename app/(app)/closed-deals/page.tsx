@@ -6,6 +6,7 @@ import { Card, buttonClass, inputClass } from "@/components/ui/form";
 import {
   CLOSED_PERIODS,
   closedKind,
+  colleagueIsOurs,
   closedStats,
   getClosedDeals,
   periodBounds,
@@ -33,9 +34,8 @@ function place(d: ClosedDealRow) {
   return [d.neighborhood?.name, town].filter(Boolean).join(", ");
 }
 
-/** The broker on the other side: one of ours (no agency to name) or someone at another agency. */
+/** The broker on the other side, and their agency (ours when none is written). */
 function colleagueText(d: ClosedDealRow) {
-  if (d.colleague) return { name: d.colleague.full_name || d.colleague.email, agency: null };
   if (d.colleague_name || d.colleague_agency) return { name: d.colleague_name, agency: d.colleague_agency };
   return null;
 }
@@ -63,11 +63,10 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
       ? deals.filter((d) =>
           [
             d.address,
+            d.street,
             d.neighborhood?.name,
             d.settlement?.name,
-            d.broker?.full_name,
-            d.broker?.email,
-            d.colleague?.full_name,
+            d.broker_name,
             d.colleague_name,
             d.colleague_agency,
           ].some((field) => norm(field).includes(needle))
@@ -192,13 +191,15 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
                           <td className={`${num} font-semibold`}>{euro(d.total_price)}</td>
                           <td className={num}>{sqm(d.price_per_sqm)}</td>
                           <td className={num}>{d.parking_price ? sqm(d.total_per_sqm) : "—"}</td>
-                          <td className={cell}>{d.broker ? d.broker.full_name || d.broker.email : "—"}</td>
+                          <td className={cell}>{d.broker_name}</td>
                           <td className={cell}>{colleague?.name ?? "—"}</td>
                           <td className={cell}>
-                            {d.colleague ? (
-                              <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent-fg">{t.options.closedKind.double}</span>
+                            {d.double_sided || colleagueIsOurs(d, session.organizationName) ? (
+                              <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent-fg">
+                                {d.double_sided ? t.closedDeals.doubleAlone : session.organizationName}
+                              </span>
                             ) : (
-                              (colleague?.agency ?? (d.double_sided ? t.options.closedKind.double : "—"))
+                              (colleague?.agency ?? "—")
                             )}
                           </td>
                         </tr>
@@ -231,9 +232,9 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
                         <span>{formatDate(d.reported_on, lang)}</span>
                         <span>{t.options.closedSide[d.side]}</span>
                         {d.parking_price ? <span>{`${t.closedDeals.parking}: ${euro(d.parking_price)}`}</span> : d.parking ? <span>{t.closedDeals.parkingYes}</span> : null}
-                        <span>{d.broker ? d.broker.full_name || d.broker.email : "—"}</span>
+                        <span>{d.broker_name}</span>
                         {colleague && <span>{[colleague.name, colleague.agency].filter(Boolean).join(" · ")}</span>}
-                        <span className="rounded-md bg-raised px-1.5 text-fg-2">{t.options.closedKind[closedKind(d)]}</span>
+                        <span className="rounded-md bg-raised px-1.5 text-fg-2">{t.options.closedKind[closedKind(d, session.organizationName)]}</span>
                       </p>
                     </>
                   );
@@ -254,7 +255,7 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
           )}
         </>
       ) : (
-        <Stats deals={deals} type={periodType} at={at} t={t} lang={lang} statsHref={statsHref} euro={euro} sqm={sqm} />
+        <Stats deals={deals} agencyName={session.organizationName} type={periodType} at={at} t={t} lang={lang} statsHref={statsHref} euro={euro} sqm={sqm} />
       )}
     </>
   );
@@ -262,6 +263,7 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
 
 function Stats({
   deals,
+  agencyName,
   type,
   at,
   t,
@@ -271,6 +273,7 @@ function Stats({
   sqm,
 }: {
   deals: ClosedDealRow[];
+  agencyName: string;
   type: ClosedPeriod;
   at: string;
   t: Dictionary;
@@ -279,7 +282,7 @@ function Stats({
   euro: (n: number | null) => string | null;
   sqm: (n: number | null) => string;
 }) {
-  const s = closedStats(deals);
+  const s = closedStats(deals, agencyName);
   const periodNames: Record<ClosedPeriod, string> = {
     month: t.closedDeals.periodMonth,
     quarter: t.closedDeals.periodQuarter,

@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { validateClosedDeal, type ClosedDealErrors, type ClosedDealInput } from "@/lib/closed-deal-validation";
+import { closedAddress, validateClosedDeal, type ClosedDealErrors, type ClosedDealInput } from "@/lib/closed-deal-validation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export type ClosedSaveResult = { ok: true } | { ok: false; errors?: ClosedDealErrors; message?: "generic" };
+
+const orNull = (value: string) => value.trim() || null;
 
 /** A manager records (or corrects) a closed deal. */
 export async function saveClosedDeal(input: ClosedDealInput, id?: string): Promise<ClosedSaveResult> {
@@ -15,26 +17,18 @@ export async function saveClosedDeal(input: ClosedDealInput, id?: string): Promi
   const errors = validateClosedDeal(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
-  const supabase = await createClient();
-  const colleagueIsOurs = input.colleague !== "" && input.colleague !== "other";
-
-  // both brokers have to be in the agency
-  const ids = [input.brokerId!, ...(colleagueIsOurs ? [input.colleague] : [])];
-  const { data: members } = await supabase
-    .from("organization_members")
-    .select("profile_id")
-    .eq("organization_id", session.organizationId)
-    .in("profile_id", ids);
-  const found = new Set((members ?? []).map((m) => m.profile_id));
-  if (!found.has(input.brokerId!)) return { ok: false, errors: { brokerId: "invalid" } };
-  if (colleagueIsOurs && !found.has(input.colleague)) return { ok: false, errors: { colleague: "invalid" } };
-
   const row = {
     reported_on: input.reportedOn,
     subtype_id: input.subtypeId,
     settlement_id: input.settlementId,
     neighborhood_id: input.settlementId ? input.neighborhoodId : null,
-    address: input.address.trim() || null,
+    street: orNull(input.street),
+    street_no: orNull(input.streetNo),
+    block: orNull(input.block),
+    entrance: orNull(input.entrance),
+    floor: orNull(input.floor),
+    apartment: orNull(input.apartment),
+    address: closedAddress(input) || null,
     side: input.side,
     conditions: [...new Set(input.conditions)],
     construction: input.construction,
@@ -42,15 +36,16 @@ export async function saveClosedDeal(input: ClosedDealInput, id?: string): Promi
     area: input.area,
     price: input.price,
     parking_price: input.parkingPrice,
-    broker_id: input.brokerId,
-    colleague_id: colleagueIsOurs ? input.colleague : null,
-    colleague_name: input.colleague === "other" ? input.colleagueName.trim() || null : null,
-    colleague_agency: input.colleague === "other" ? input.colleagueAgency.trim() || null : null,
-    double_sided: colleagueIsOurs || (input.colleague === "" && input.doubleSided),
+    broker_name: input.brokerName.trim(),
+    // one broker on both sides: nobody else to name
+    colleague_name: input.doubleSided ? null : orNull(input.colleagueName),
+    colleague_agency: input.doubleSided ? null : orNull(input.colleagueAgency),
+    double_sided: input.doubleSided,
     property_id: input.propertyId,
-    note: input.note.trim() || null,
+    note: orNull(input.note),
   };
 
+  const supabase = await createClient();
   const { error } = id
     ? await supabase.from("closed_deals").update(row).eq("id", id)
     : await supabase.from("closed_deals").insert({ ...row, organization_id: session.organizationId, created_by: session.userId });

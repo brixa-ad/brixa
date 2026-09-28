@@ -8,6 +8,12 @@ export type ClosedDealRow = {
   subtype_id: string;
   settlement_id: string | null;
   neighborhood_id: string | null;
+  street: string | null;
+  street_no: string | null;
+  block: string | null;
+  entrance: string | null;
+  floor: string | null;
+  apartment: string | null;
   address: string | null;
   side: "sale" | "purchase";
   conditions: string[];
@@ -19,8 +25,7 @@ export type ClosedDealRow = {
   total_price: number;
   price_per_sqm: number;
   total_per_sqm: number;
-  broker_id: string | null;
-  colleague_id: string | null;
+  broker_name: string;
   colleague_name: string | null;
   colleague_agency: string | null;
   double_sided: boolean;
@@ -29,18 +34,14 @@ export type ClosedDealRow = {
   subtype: { name: string; name_en: string | null } | null;
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
-  broker: { full_name: string | null; email: string } | null;
-  colleague: { full_name: string | null; email: string } | null;
 };
 
-export const CLOSED_SELECT = `id, reported_on, subtype_id, settlement_id, neighborhood_id, address, side, conditions, construction, parking,
-  area, price, parking_price, total_price, price_per_sqm, total_per_sqm, broker_id, colleague_id, colleague_name,
-  colleague_agency, double_sided, property_id, note,
+export const CLOSED_SELECT = `id, reported_on, subtype_id, settlement_id, neighborhood_id, street, street_no, block, entrance, floor,
+  apartment, address, side, conditions, construction, parking, area, price, parking_price, total_price, price_per_sqm,
+  total_per_sqm, broker_name, colleague_name, colleague_agency, double_sided, property_id, note,
   subtype:property_subtypes(name, name_en),
   settlement:geo_settlements(name, settlement_type),
-  neighborhood:geo_neighborhoods(name),
-  broker:profiles!closed_deals_broker_id_fkey(full_name, email),
-  colleague:profiles!closed_deals_colleague_id_fkey(full_name, email)`;
+  neighborhood:geo_neighborhoods(name)`;
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
@@ -56,10 +57,21 @@ export function toClosedDeals(rows: unknown[] | null): ClosedDealRow[] {
   }));
 }
 
-/** Both sides ours, with another agency, or on our own (the other side had no agent). */
-export function closedKind(d: Pick<ClosedDealRow, "colleague_id" | "double_sided" | "colleague_name" | "colleague_agency">) {
-  if (d.colleague_id || d.double_sided) return "double" as const;
-  if (d.colleague_agency || d.colleague_name) return "partner" as const;
+const same = (a: string | null | undefined, b: string | null | undefined) =>
+  (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+
+/** The colleague on the other side is one of ours: named, with no agency or ours. */
+export function colleagueIsOurs(d: Pick<ClosedDealRow, "colleague_name" | "colleague_agency">, agencyName: string) {
+  return Boolean(d.colleague_name?.trim()) && (!d.colleague_agency?.trim() || same(d.colleague_agency, agencyName));
+}
+
+/**
+ * Both sides ours (one broker alone, or two of our brokers), with another agency,
+ * or on our own (nobody on the other side).
+ */
+export function closedKind(d: Pick<ClosedDealRow, "double_sided" | "colleague_name" | "colleague_agency">, agencyName: string) {
+  if (d.double_sided || colleagueIsOurs(d, agencyName)) return "double" as const;
+  if (d.colleague_agency?.trim() || d.colleague_name?.trim()) return "partner" as const;
   return "single" as const;
 }
 
@@ -140,10 +152,8 @@ export async function getClosedDeals(organizationId: string, bounds?: { from: st
   return toClosedDeals(data);
 }
 
-const personName = (p: { full_name: string | null; email: string } | null) => (p ? p.full_name || p.email : null);
-
 /** Everything the statistics show for a set of deals. */
-export function closedStats(deals: ClosedDealRow[]) {
+export function closedStats(deals: ClosedDealRow[], agencyName: string) {
   const sum = (list: number[]) => list.reduce((a, b) => a + b, 0);
   const avg = (list: number[]) => (list.length ? sum(list) / list.length : null);
   const totalArea = sum(deals.map((d) => d.area));
@@ -156,7 +166,7 @@ export function closedStats(deals: ClosedDealRow[]) {
   const places = new Map<string, { name: string; count: number; sqm: number[]; sqmParking: number[] }>();
 
   for (const d of deals) {
-    const kind = closedKind(d);
+    const kind = closedKind(d, agencyName);
     kinds[kind].count++;
     kinds[kind].volume += d.total_price;
     sides[d.side]++;
@@ -169,15 +179,15 @@ export function closedStats(deals: ClosedDealRow[]) {
       agencies.set(key, row);
     }
     // every one of our brokers on the deal gets a share of it
-    for (const [id, person] of [
-      [d.broker_id, d.broker],
-      [d.colleague_id, d.colleague],
-    ] as const) {
-      if (!id) continue;
-      const row = brokers.get(id) ?? { name: personName(person) ?? "—", count: 0, volume: 0 };
+    const ours = [d.broker_name, colleagueIsOurs(d, agencyName) ? d.colleague_name : null];
+    for (const name of ours) {
+      const clean = name?.trim();
+      if (!clean || clean === "—") continue;
+      const key = clean.toLowerCase();
+      const row = brokers.get(key) ?? { name: clean, count: 0, volume: 0 };
       row.count++;
       row.volume += d.total_price;
-      brokers.set(id, row);
+      brokers.set(key, row);
     }
     const type = types.get(d.subtype_id) ?? { name: d.subtype, count: 0, sqm: [] };
     type.count++;

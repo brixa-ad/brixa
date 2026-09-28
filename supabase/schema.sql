@@ -4042,6 +4042,13 @@ create table public.closed_deals (
   subtype_id uuid not null references public.property_subtypes (id),
   settlement_id uuid references public.geo_settlements (id),
   neighborhood_id uuid references public.geo_neighborhoods (id),
+  -- the address in parts, and put together for lists and search
+  street text check (street is null or char_length(street) <= 120),
+  street_no text check (street_no is null or char_length(street_no) <= 20),
+  block text check (block is null or char_length(block) <= 20),
+  entrance text check (entrance is null or char_length(entrance) <= 10),
+  floor text check (floor is null or char_length(floor) <= 10),
+  apartment text check (apartment is null or char_length(apartment) <= 20),
   address text check (address is null or char_length(address) <= 300),
   -- we sold (the seller's side) or bought (the buyer's side)
   side text not null default 'sale' check (side in ('sale', 'purchase')),
@@ -4060,12 +4067,12 @@ create table public.closed_deals (
   total_price numeric(14, 2) generated always as (price + coalesce(parking_price, 0)) stored,
   price_per_sqm numeric(12, 2) generated always as (round(price / area, 2)) stored,
   total_per_sqm numeric(12, 2) generated always as (round((price + coalesce(parking_price, 0)) / area, 2)) stored,
-  -- our broker; the colleague on the other side: one of ours, or someone at another agency
-  broker_id uuid references public.profiles (id) on delete set null,
-  colleague_id uuid references public.profiles (id) on delete set null,
+  -- names as the office writes them: our broker; the broker on the other side and their agency
+  -- (no agency: a colleague of ours — the deal is double within the agency)
+  broker_name text not null check (char_length(broker_name) <= 120),
   colleague_name text check (colleague_name is null or char_length(colleague_name) <= 120),
   colleague_agency text check (colleague_agency is null or char_length(colleague_agency) <= 120),
-  -- both sides ours (two of our brokers, or one broker on both sides)
+  -- our broker did both sides alone
   double_sided boolean not null default false,
   -- the listing in BRIXA, when there is one
   property_id uuid references public.properties (id) on delete set null,

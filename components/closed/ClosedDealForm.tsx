@@ -14,7 +14,7 @@ import { CLOSED_LIMITS, validateClosedDeal, type ClosedDealErrors, type ClosedDe
 import { formatNumber, formatPrice } from "@/lib/format";
 import { localName } from "@/lib/i18n/dictionaries";
 import { CLOSED_CONDITIONS, CLOSED_SIDES, CONSTRUCTION_TYPES, type ClosedCondition } from "@/lib/options";
-import type { Category, Member, Settlement, Subtype } from "@/lib/types";
+import type { Category, Settlement, Subtype } from "@/lib/types";
 
 export type ClosedListing = {
   id: string;
@@ -22,19 +22,26 @@ export type ClosedListing = {
   subtype_id: string;
   settlement_id: string | null;
   neighborhood_id: string | null;
-  address: string | null;
+  street: string | null;
+  street_no: string | null;
+  block: string | null;
+  entrance: string | null;
+  floor: number | null;
+  apartment: string | null;
   area: number | null;
   construction_type: string | null;
 };
 
 type NumKey = "area" | "price" | "parkingPrice";
 type Draft = Omit<ClosedDealInput, NumKey> & Record<NumKey, string>;
+type AddressKey = "street" | "streetNo" | "block" | "entrance" | "floor" | "apartment";
 
 const text = (n: number | null) => (n === null ? "" : String(n));
 const parse = (value: string) => {
   const v = value.trim().replace(/\s/g, "").replace(",", ".");
   return v === "" ? null : Number(v);
 };
+const onlyNumber = (value: string) => /^[\d\s]*([.,]\d{0,2})?$/.test(value);
 
 /** One deal in the agency's register: what, where, for how much, who did it. */
 export function ClosedDealForm({
@@ -45,7 +52,7 @@ export function ClosedDealForm({
 }: {
   id?: string;
   initial: ClosedDealInput;
-  lookups: { categories: Category[]; subtypes: Subtype[]; settlements: Settlement[]; members: Member[]; listings: ClosedListing[] };
+  lookups: { categories: Category[]; subtypes: Subtype[]; settlements: Settlement[]; listings: ClosedListing[] };
   today: string;
 }) {
   const { t, lang } = useI18n();
@@ -65,7 +72,6 @@ export function ClosedDealForm({
   const input: ClosedDealInput = { ...draft, area: parse(draft.area), price: parse(draft.price), parkingPrice: parse(draft.parkingPrice) };
   const errors: ClosedDealErrors = { ...serverErrors, ...(submitted ? validateClosedDeal(input) : {}) };
   const err = (key: keyof ClosedDealErrors) => (errors[key] ? t.errors[errors[key]!] : undefined);
-  const colleagueIsOurs = draft.colleague !== "" && draft.colleague !== "other";
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -82,7 +88,12 @@ export function ClosedDealForm({
             subtypeId: listing.subtype_id,
             settlementId: listing.settlement_id,
             neighborhoodId: listing.neighborhood_id,
-            address: listing.address ?? d.address,
+            street: listing.street ?? d.street,
+            streetNo: listing.street_no ?? d.streetNo,
+            block: listing.block ?? d.block,
+            entrance: listing.entrance ?? d.entrance,
+            floor: listing.floor !== null ? String(listing.floor) : d.floor,
+            apartment: listing.apartment ?? d.apartment,
             area: listing.area !== null ? String(listing.area) : d.area,
             construction: listing.construction_type ?? d.construction,
           }
@@ -116,16 +127,43 @@ export function ClosedDealForm({
     setFailed(Boolean(result.message));
   }
 
-  const money = (key: NumKey, label: string, required = false) => (
+  const money = (key: "price" | "parkingPrice", label: string, required = false) => (
     <Field label={label} required={required} error={err(key)}>
       {(props) => (
         <input
           {...props}
           inputMode="decimal"
           value={draft[key]}
-          onChange={(e) => {
-            if (/^[\d\s]*([.,]\d{0,2})?$/.test(e.target.value)) set(key, e.target.value);
-          }}
+          onChange={(e) => onlyNumber(e.target.value) && set(key, e.target.value)}
+          className={`${inputClass} max-w-48`}
+        />
+      )}
+    </Field>
+  );
+
+  /** A short part of the address: a box just wide enough for it. */
+  const part = (key: AddressKey, label: string, width: string) => (
+    <label className={`block text-sm font-medium text-fg-2 ${width}`}>
+      {label}
+      <input
+        value={draft[key]}
+        maxLength={CLOSED_LIMITS[key]}
+        aria-invalid={err(key) ? true : undefined}
+        onChange={(e) => set(key, e.target.value)}
+        className={`${inputClass} mt-1.5`}
+      />
+    </label>
+  );
+
+  const text$ = (key: "brokerName" | "colleagueName" | "colleagueAgency", label: string, placeholder: string, extra: { required?: boolean; hint?: string } = {}) => (
+    <Field label={label} required={extra.required} error={err(key)} hint={extra.hint}>
+      {(props) => (
+        <input
+          {...props}
+          value={draft[key]}
+          maxLength={CLOSED_LIMITS.name}
+          placeholder={placeholder}
+          onChange={(e) => set(key, e.target.value)}
           className={inputClass}
         />
       )}
@@ -145,7 +183,7 @@ export function ClosedDealForm({
         <div className="grid gap-4 md:grid-cols-3">
           <Field label={t.closedDeals.date} required error={err("reportedOn")} hint={t.closedDeals.dateHint}>
             {(props) => (
-              <input {...props} type="date" value={draft.reportedOn} max={today} onChange={(e) => set("reportedOn", e.target.value)} className={inputClass} />
+              <input {...props} type="date" value={draft.reportedOn} max={today} onChange={(e) => set("reportedOn", e.target.value)} className={`${inputClass} max-w-48`} />
             )}
           </Field>
           <div>
@@ -214,19 +252,23 @@ export function ClosedDealForm({
             noNeighborhood={t.clients.anyNeighborhood}
           />
         </div>
-        <div className="mt-4">
-          <Field label={t.closedDeals.address} error={err("address")}>
-            {(props) => (
-              <input
-                {...props}
-                value={draft.address}
-                maxLength={CLOSED_LIMITS.address}
-                placeholder={t.closedDeals.addressPlaceholder}
-                onChange={(e) => set("address", e.target.value)}
-                className={inputClass}
-              />
-            )}
-          </Field>
+        {/* the address in parts, as it's written: ул. Шипка 12, бл. 5, вх. А, ет. 3, ап. 7 */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <label className="block min-w-0 flex-1 basis-56 text-sm font-medium text-fg-2">
+            {t.location.street}
+            <input
+              value={draft.street}
+              maxLength={CLOSED_LIMITS.street}
+              placeholder={t.location.streetPlaceholder}
+              onChange={(e) => set("street", e.target.value)}
+              className={`${inputClass} mt-1.5`}
+            />
+          </label>
+          {part("streetNo", t.location.streetNo, "w-20")}
+          {part("block", t.location.block, "w-20")}
+          {part("entrance", t.location.entrance, "w-16")}
+          {part("floor", t.form.floor, "w-16")}
+          {part("apartment", t.location.apartment, "w-24")}
         </div>
       </Card>
 
@@ -253,8 +295,8 @@ export function ClosedDealForm({
               })}
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Field label={t.closedDeals.construction} error={err("construction")}>
+          <div className="flex flex-wrap items-end gap-4">
+            <Field label={t.closedDeals.construction} error={err("construction")} className="w-48">
               {(props) => (
                 <select {...props} value={draft.construction ?? ""} onChange={(e) => set("construction", e.target.value || null)} className={inputClass}>
                   <option value="">{t.form.choose}</option>
@@ -266,14 +308,19 @@ export function ClosedDealForm({
                 </select>
               )}
             </Field>
-            {money("area", t.closedDeals.areaLabel, true)}
-            <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-fg-2">
-              <input
-                type="checkbox"
-                checked={draft.parking}
-                onChange={(e) => set("parking", e.target.checked)}
-                className="size-4 accent-[var(--accent)]"
-              />
+            <Field label={t.closedDeals.areaLabel} required error={err("area")} className="w-28">
+              {(props) => (
+                <input
+                  {...props}
+                  inputMode="decimal"
+                  value={draft.area}
+                  onChange={(e) => onlyNumber(e.target.value) && set("area", e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+            <label className="flex items-center gap-2 pb-2 text-sm font-medium text-fg-2">
+              <input type="checkbox" checked={draft.parking} onChange={(e) => set("parking", e.target.checked)} className="size-4 accent-[var(--accent)]" />
               {t.closedDeals.parkingYes}
             </label>
           </div>
@@ -305,67 +352,25 @@ export function ClosedDealForm({
 
       <Card>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label={t.closedDeals.broker} required error={err("brokerId")}>
-            {(props) => (
-              <select {...props} value={draft.brokerId ?? ""} onChange={(e) => set("brokerId", e.target.value || null)} className={inputClass}>
-                <option value="">{t.form.choose}</option>
-                {lookups.members.map((m) => (
-                  <option key={m.profile_id} value={m.profile_id}>
-                    {m.full_name || m.email}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <Field label={t.closedDeals.colleague} error={err("colleague")}>
-            {(props) => (
-              <select
-                {...props}
-                value={draft.colleague}
-                onChange={(e) => setDraft((d) => ({ ...d, colleague: e.target.value, doubleSided: e.target.value !== "" && e.target.value !== "other" ? true : d.doubleSided }))}
-                className={inputClass}
-              >
-                <option value="">{t.closedDeals.colleagueNone}</option>
-                {lookups.members
-                  .filter((m) => m.profile_id !== draft.brokerId)
-                  .map((m) => (
-                    <option key={m.profile_id} value={m.profile_id}>
-                      {m.full_name || m.email}
-                    </option>
-                  ))}
-                <option value="other">{t.closedDeals.colleagueOther}</option>
-              </select>
-            )}
-          </Field>
-          {draft.colleague === "other" && (
-            <>
-              <Field label={t.closedDeals.colleagueName} error={err("colleagueName")}>
-                {(props) => (
-                  <input {...props} value={draft.colleagueName} maxLength={CLOSED_LIMITS.name} onChange={(e) => set("colleagueName", e.target.value)} className={inputClass} />
-                )}
-              </Field>
-              <Field label={t.closedDeals.colleagueAgency} error={err("colleagueAgency")}>
-                {(props) => (
-                  <input {...props} value={draft.colleagueAgency} maxLength={CLOSED_LIMITS.name} onChange={(e) => set("colleagueAgency", e.target.value)} className={inputClass} />
-                )}
-              </Field>
-            </>
-          )}
+          {text$("brokerName", t.closedDeals.broker, t.closedDeals.brokerPlaceholder, { required: true })}
         </div>
-        {draft.colleague !== "other" && (
-          <label className="mt-4 flex items-start gap-2 text-sm text-fg-2">
-            <input
-              type="checkbox"
-              checked={colleagueIsOurs || draft.doubleSided}
-              disabled={colleagueIsOurs}
-              onChange={(e) => set("doubleSided", e.target.checked)}
-              className="mt-0.5 size-4 accent-[var(--accent)]"
-            />
-            <span>
-              <span className="font-medium">{t.closedDeals.double}</span>
-              <span className="block text-xs text-muted">{t.closedDeals.doubleHint}</span>
-            </span>
-          </label>
+        <label className="mt-4 flex items-start gap-2 text-sm text-fg-2">
+          <input
+            type="checkbox"
+            checked={draft.doubleSided}
+            onChange={(e) => set("doubleSided", e.target.checked)}
+            className="mt-0.5 size-4 accent-[var(--accent)]"
+          />
+          <span>
+            <span className="font-medium">{t.closedDeals.double}</span>
+            <span className="block text-xs text-muted">{t.closedDeals.doubleHint}</span>
+          </span>
+        </label>
+        {!draft.doubleSided && (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {text$("colleagueName", t.closedDeals.colleague, t.closedDeals.colleaguePlaceholder)}
+            {text$("colleagueAgency", t.closedDeals.colleagueAgency, t.closedDeals.agencyPlaceholder, { hint: t.closedDeals.agencyHint })}
+          </div>
         )}
       </Card>
 
