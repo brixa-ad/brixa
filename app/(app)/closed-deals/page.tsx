@@ -307,7 +307,7 @@ function Stats({
           <Link href={statsHref(type, shiftPeriod(type, at, -1))} aria-label={t.closedDeals.prev} className="grid size-9 place-items-center rounded-lg text-muted transition hover:bg-raised hover:text-fg">
             <ChevronLeft className="size-5" />
           </Link>
-          <span className="min-w-40 text-center font-semibold capitalize">{periodLabel(type, at, t, lang)}</span>
+          <span className="min-w-40 text-center font-semibold">{periodLabel(type, at, t, lang)}</span>
           <Link href={statsHref(type, shiftPeriod(type, at, 1))} aria-label={t.closedDeals.next} className="grid size-9 place-items-center rounded-lg text-muted transition hover:bg-raised hover:text-fg">
             <ChevronRight className="size-5" />
           </Link>

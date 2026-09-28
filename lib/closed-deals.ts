@@ -111,13 +111,16 @@ export function shiftPeriod(type: ClosedPeriod, key: string, step: -1 | 1) {
 export function periodLabel(type: ClosedPeriod, key: string, t: Dictionary, lang: Lang) {
   const bounds = periodBounds(type, key)!;
   if (type === "month") {
-    return new Intl.DateTimeFormat(lang === "bg" ? "bg-BG" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+    const label = new Intl.DateTimeFormat(lang === "bg" ? "bg-BG" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(
       new Date(`${bounds.from}T12:00:00Z`)
     );
+    return label.charAt(0).toUpperCase() + label.slice(1);
   }
   const year = key.slice(0, 4);
-  if (type === "quarter") return t.closedDeals.quarterLabel.replace("{n}", key.slice(-1)).replace("{year}", year);
-  if (type === "half") return t.closedDeals.halfLabel.replace("{n}", key.slice(-1)).replace("{year}", year);
+  // "III тримесечие 2026" in Bulgarian, "Q3 2026" in English
+  const n = lang === "bg" ? ["I", "II", "III", "IV"][Number(key.slice(-1)) - 1] : key.slice(-1);
+  if (type === "quarter") return t.closedDeals.quarterLabel.replace("{n}", n).replace("{year}", year);
+  if (type === "half") return t.closedDeals.halfLabel.replace("{n}", n).replace("{year}", year);
   return year;
 }
 
