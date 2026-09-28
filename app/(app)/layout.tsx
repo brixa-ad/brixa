@@ -41,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur print:hidden">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
           <SideMenu
             items={navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}

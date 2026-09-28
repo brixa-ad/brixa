@@ -23,7 +23,7 @@ export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "
 }
 
 /** "PDF / Print" — the browser saves the page as a PDF. */
-export function PrintButton() {
+export function PrintButton({ label }: { label?: string } = {}) {
   const { t } = useI18n();
   return (
     <button
@@ -32,7 +32,7 @@ export function PrintButton() {
       className="no-print inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-fg-2 transition hover:bg-raised"
     >
       <Printer className="size-4" />
-      {t.share.print}
+      {label ?? t.share.print}
     </button>
   );
 }

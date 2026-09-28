@@ -1,74 +1,49 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, Building, Clock, Handshake, Megaphone, Tags, UserRoundPlus } from "lucide-react";
+import { redirect } from "next/navigation";
+import { AlertTriangle, BadgeCheck, Building, Clock, Handshake, Megaphone, Tags, UserRoundPlus } from "lucide-react";
+import { ClosedStatsContent } from "@/components/closed/ClosedStatsContent";
 import { PageHeader } from "@/components/PageHeader";
-import { BrokerPicker } from "@/components/task/BrokerPicker";
+import { MonthsCard } from "@/components/stats/MonthsCard";
+import { Bar, CardTitle, SectionTitle, StatTiles } from "@/components/stats/StatBits";
+import { StatsNav } from "@/components/stats/StatsNav";
 import { Card } from "@/components/ui/form";
+import { getClosedDeals } from "@/lib/closed-deals";
 import { sofiaToday } from "@/lib/dates";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { rangeParams, resolveRange } from "@/lib/period";
 import { getSession } from "@/lib/session";
-import { PERIODS, getStatistics, type Period } from "@/lib/statistics";
-import { createClient } from "@/lib/supabase/server";
+import { getStatistics } from "@/lib/statistics";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
-  return { title: t.stats.title };
+  return { title: t.stats.agencyTitle };
 }
 
-function Bar({ value, max }: { value: number; max: number }) {
-  return (
-    <div className="h-2 overflow-hidden rounded-full bg-raised">
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
-        style={{ width: `${max > 0 ? Math.max(3, (value / max) * 100) : 0}%` }}
-      />
-    </div>
-  );
-}
-
-function CardTitle({ icon: Icon, children }: { icon: typeof Clock; children: React.ReactNode }) {
-  return (
-    <span className="flex items-center gap-2">
-      <Icon className="size-4 text-brand-cyan" />
-      {children}
-    </span>
-  );
-}
-
-export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
+/** The agency as a whole: the deals in BRIXA, the channels clients come from, and the register of closed deals. */
+export default async function AgencyStatsPage({ searchParams }: PageProps<"/stats">) {
   const params = await searchParams;
   const session = (await getSession())!;
-  const period: Period = PERIODS.includes(params.period as Period) ? (params.period as Period) : "year";
-  // Managers see the whole agency (or one colleague); brokers see their own numbers.
-  const broker = session.isManager ? (typeof params.broker === "string" ? params.broker : "all") : session.userId;
   const today = sofiaToday();
+  const range = resolveRange(params, today);
 
-  const supabase = await createClient();
-  const [{ t, lang }, stats, members] = await Promise.all([
+  // brokers see their own numbers (and the market); the agency's belong to the managers
+  if (!session.isManager) {
+    const qs = new URLSearchParams(rangeParams(range)).toString();
+    redirect(qs ? `/stats/broker?${qs}` : "/stats/broker");
+  }
+
+  const [{ t, lang }, stats, register] = await Promise.all([
     getI18n(),
-    getStatistics(session, period, broker, today),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    getStatistics(session, range, "all", today),
+    getClosedDeals(session.organizationId, { from: range.from, to: range.to }),
   ]);
 
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
   const percent = (value: number | null) => (value === null ? "—" : `${formatNumber(value * 100, lang, 1)}%`);
   const days = (value: number | null) => (value === null ? "—" : fmt(t.stats.days, { days: formatNumber(value, lang, 1) ?? "0" }));
-  const periodLabel: Record<Period, string> = {
-    month: t.stats.periodMonth,
-    year: t.stats.periodYear,
-    "12m": t.stats.period12,
-    all: t.stats.periodAll,
-  };
-  const href = (next: Period) => {
-    const qs = new URLSearchParams();
-    if (next !== "year") qs.set("period", next);
-    if (session.isManager && broker !== "all") qs.set("broker", broker);
-    const s = qs.toString();
-    return s ? `/stats?${s}` : "/stats";
-  };
   const stageLabel = (stage: keyof typeof t.options.dealStage) => t.options.dealStage[stage];
 
   const { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, externalBrokers, offerStats } = stats;
@@ -81,46 +56,19 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
   ];
 
   return (
-    <>
-      <PageHeader
-        title={t.stats.title}
-        subtitle={t.stats.subtitle}
-        actions={
-          session.isManager ? (
-            <BrokerPicker
-              value={broker}
-              selfId={session.userId}
-              members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
-              allByDefault
-            />
-          ) : undefined
-        }
-      />
+    <div className="stats-page">
+      <div className="print:hidden">
+        <PageHeader title={t.stats.title} subtitle={t.stats.subtitle} />
+      </div>
+      <StatsNav tab="agency" range={range} title={t.stats.agencyTitle} agencyName={session.organizationName} t={t} lang={lang} />
 
-      <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
-        {PERIODS.map((key) => (
-          <Link
-            key={key}
-            href={href(key)}
-            aria-current={period === key ? "page" : undefined}
-            className={`flex-1 whitespace-nowrap rounded-lg px-3 py-2 text-center text-sm font-medium transition ${
-              period === key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
-            }`}
-          >
-            {periodLabel[key]}
-          </Link>
-        ))}
-      </nav>
-
-      {/* ---- headline numbers ---- */}
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
-        {[
-          { label: t.stats.closedDeals, value: String(summary.won) },
-          {
-            label: t.stats.commission,
-            value: euro(summary.commission),
-            hint: externalBrokers.fees > 0 ? t.stats.netHint : undefined,
-          },
+      {/* ---- the deals in BRIXA ---- */}
+      <SectionTitle icon={Handshake}>{t.stats.sectionBrixa}</SectionTitle>
+      <StatTiles
+        tiles={[
+          { label: t.stats.closedDeals, value: String(summary.won), hint: `${t.stats.wonSales} ${summary.sales} · ${t.stats.wonRentals} ${summary.rentals}` },
+          { label: t.stats.turnover, value: euro(summary.turnover), hint: t.stats.turnoverHint },
+          { label: t.stats.commission, value: euro(summary.commission), hint: externalBrokers.fees > 0 ? t.stats.netHint : undefined },
           { label: t.stats.avgCommission, value: summary.avgCommission === null ? "—" : euro(summary.avgCommission) },
           { label: t.stats.winRate, value: percent(summary.winRate), hint: t.stats.winRateHint },
           { label: t.stats.cycle, value: days(summary.avgCycleDays) },
@@ -129,16 +77,13 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
             value: String(summary.openCount),
             hint: fmt(t.stats.pipelineHint, { count: summary.openCount, amount: euro(summary.openExpected) }),
           },
-        ].map((tile) => (
-          <div key={tile.label} className="rounded-2xl border border-line bg-surface p-4 shadow-xs">
-            <p className="text-xs font-medium text-muted">{tile.label}</p>
-            <p className="mt-1 truncate text-2xl font-bold tracking-tight">{tile.value}</p>
-            {tile.hint && <p className="mt-0.5 truncate text-[11px] text-subtle">{tile.hint}</p>}
-          </div>
-        ))}
-      </div>
+          { label: t.stats.newClients, value: String(summary.newClients) },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <MonthsCard months={stats.byMonth} t={t} lang={lang} className="lg:col-span-2" />
+
         {/* ---- other agencies ---- */}
         <Card title={<CardTitle icon={Building}>{t.stats.partnersTitle}</CardTitle>}>
           <div className="mb-5 grid grid-cols-3 gap-2">
@@ -175,10 +120,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
         </Card>
 
         {/* ---- time between stages ---- */}
-        <Card
-          title={<CardTitle icon={Clock}>{t.stats.timeTitle}</CardTitle>}
-          description={t.stats.timeHint}
-        >
+        <Card title={<CardTitle icon={Clock}>{t.stats.timeTitle}</CardTitle>} description={t.stats.timeHint}>
           {stageTimes.length === 0 ? (
             <p className="text-sm text-muted">{t.stats.noTime}</p>
           ) : (
@@ -202,106 +144,6 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
               <span className="text-sm font-medium">{t.stats.total}</span>
               <span className="text-lg font-bold text-accent-fg">{days(totalTime.avgDays)}</span>
             </div>
-          )}
-        </Card>
-
-        {/* ---- client sources ---- */}
-        <Card title={<CardTitle icon={Megaphone}>{t.stats.sourcesTitle}</CardTitle>}>
-          {clientSources.length === 0 ? (
-            <p className="text-sm text-muted">{t.stats.noSources}</p>
-          ) : (
-            <>
-              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
-                <span />
-                <span className="text-right">{t.stats.newClients}</span>
-                <span className="text-right">{t.stats.wonFrom}</span>
-                <span className="text-right">{t.stats.commission}</span>
-              </div>
-              <ul className="space-y-3">
-                {clientSources.map((row) => (
-                  <li key={row.source ?? "none"}>
-                    <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem_5.5rem] items-baseline gap-2 text-sm">
-                      <span className="truncate text-fg-2">
-                        {row.source
-                          ? (t.options.source[row.source as keyof typeof t.options.source] ?? row.source)
-                          : t.stats.unknownSource}
-                      </span>
-                      <span className="text-right font-semibold tabular-nums">{row.clients}</span>
-                      <span className="text-right tabular-nums">{row.won}</span>
-                      <span className="truncate text-right tabular-nums text-muted">{euro(row.commission)}</span>
-                    </div>
-                    <div className="mt-1">
-                      <Bar value={row.clients} max={maxClients} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </Card>
-
-        {/* ---- external brokers: a channel that costs a share of the commission ---- */}
-        <Card title={<CardTitle icon={UserRoundPlus}>{t.stats.referralsTitle}</CardTitle>} description={t.stats.referralsHint}>
-          {externalBrokers.rows.length === 0 ? (
-            <p className="text-sm text-muted">{t.stats.noReferrals}</p>
-          ) : (
-            <>
-              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
-                <span />
-                <span className="text-right">{t.stats.wonFrom}</span>
-                <span className="text-right">{t.stats.referralFees}</span>
-              </div>
-              <ul className="space-y-2.5">
-                {externalBrokers.rows.map((row) => (
-                  <li
-                    key={row.name ?? "none"}
-                    className="grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] items-baseline gap-2 text-sm"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-fg-2">{row.name ?? t.stats.unknownReferrer}</span>
-                      {row.commission > 0 && (
-                        <span className="block truncate text-[11px] text-subtle">{euro(row.commission)}</span>
-                      )}
-                    </span>
-                    <span className="text-right font-semibold tabular-nums">{row.won}</span>
-                    <span className="truncate text-right tabular-nums text-muted">{euro(row.fees)}</span>
-                  </li>
-                ))}
-              </ul>
-              {externalBrokers.fees > 0 && (
-                <p className="mt-4 border-t border-line-soft pt-3 text-sm text-muted">
-                  {fmt(t.stats.referralsTotal, { amount: euro(externalBrokers.fees) })}
-                </p>
-              )}
-            </>
-          )}
-        </Card>
-
-        {/* ---- stalled deals ---- */}
-        <Card
-          title={<CardTitle icon={AlertTriangle}>{t.stats.staleTitle}</CardTitle>}
-          description={t.stats.staleHint}
-          className="lg:col-span-2"
-        >
-          {stale.length === 0 ? (
-            <p className="text-sm text-muted">{t.stats.noStale}</p>
-          ) : (
-            <ul className="-mx-2 space-y-0.5">
-              {stale.map((d) => {
-                const labels = d.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
-                return (
-                  <li key={d.id}>
-                    <Link href={`/deals/${d.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-raised">
-                      <Handshake className="size-4 shrink-0 text-warning" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.title}</span>
-                      <span className="shrink-0 text-xs font-semibold text-warning">
-                        {fmt(t.stats.staleDays, { days: d.days, stage: labels[d.stage] })}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
           )}
         </Card>
 
@@ -369,7 +211,111 @@ export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
             </>
           )}
         </Card>
+
+        {/* ---- stalled deals (now, whatever the period) ---- */}
+        <Card
+          title={<CardTitle icon={AlertTriangle}>{t.stats.staleTitle}</CardTitle>}
+          description={t.stats.staleHint}
+          className="lg:col-span-2 print:hidden"
+        >
+          {stale.length === 0 ? (
+            <p className="text-sm text-muted">{t.stats.noStale}</p>
+          ) : (
+            <ul className="-mx-2 space-y-0.5">
+              {stale.map((d) => {
+                const labels = d.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
+                return (
+                  <li key={d.id}>
+                    <Link href={`/deals/${d.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-raised">
+                      <Handshake className="size-4 shrink-0 text-warning" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.title}</span>
+                      <span className="shrink-0 text-xs font-semibold text-warning">
+                        {fmt(t.stats.staleDays, { days: d.days, stage: labels[d.stage] })}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
       </div>
-    </>
+
+      {/* ---- where the clients and the deals come from ---- */}
+      <SectionTitle icon={Megaphone}>{t.stats.sectionChannels}</SectionTitle>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card title={<CardTitle icon={Megaphone}>{t.stats.sourcesTitle}</CardTitle>}>
+          {clientSources.length === 0 ? (
+            <p className="text-sm text-muted">{t.stats.noSources}</p>
+          ) : (
+            <>
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+                <span />
+                <span className="text-right">{t.stats.newClients}</span>
+                <span className="text-right">{t.stats.wonFrom}</span>
+                <span className="text-right">{t.stats.commission}</span>
+              </div>
+              <ul className="space-y-3">
+                {clientSources.map((row) => (
+                  <li key={row.source ?? "none"}>
+                    <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem_5.5rem] items-baseline gap-2 text-sm">
+                      <span className="truncate text-fg-2">
+                        {row.source
+                          ? (t.options.source[row.source as keyof typeof t.options.source] ?? row.source)
+                          : t.stats.unknownSource}
+                      </span>
+                      <span className="text-right font-semibold tabular-nums">{row.clients}</span>
+                      <span className="text-right tabular-nums">{row.won}</span>
+                      <span className="truncate text-right tabular-nums text-muted">{euro(row.commission)}</span>
+                    </div>
+                    <div className="mt-1">
+                      <Bar value={row.clients} max={maxClients} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+
+        {/* external brokers: a channel that costs a share of the commission */}
+        <Card title={<CardTitle icon={UserRoundPlus}>{t.stats.referralsTitle}</CardTitle>} description={t.stats.referralsHint}>
+          {externalBrokers.rows.length === 0 ? (
+            <p className="text-sm text-muted">{t.stats.noReferrals}</p>
+          ) : (
+            <>
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] gap-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+                <span />
+                <span className="text-right">{t.stats.wonFrom}</span>
+                <span className="text-right">{t.stats.referralFees}</span>
+              </div>
+              <ul className="space-y-2.5">
+                {externalBrokers.rows.map((row) => (
+                  <li key={row.name ?? "none"} className="grid grid-cols-[minmax(0,1fr)_3.5rem_5.5rem] items-baseline gap-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate text-fg-2">{row.name ?? t.stats.unknownReferrer}</span>
+                      {row.commission > 0 && <span className="block truncate text-[11px] text-subtle">{euro(row.commission)}</span>}
+                    </span>
+                    <span className="text-right font-semibold tabular-nums">{row.won}</span>
+                    <span className="truncate text-right tabular-nums text-muted">{euro(row.fees)}</span>
+                  </li>
+                ))}
+              </ul>
+              {externalBrokers.fees > 0 && (
+                <p className="mt-4 border-t border-line-soft pt-3 text-sm text-muted">
+                  {fmt(t.stats.referralsTotal, { amount: euro(externalBrokers.fees) })}
+                </p>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
+
+      {/* ---- the register of deals actually closed ---- */}
+      <SectionTitle icon={BadgeCheck}>{t.stats.sectionRegister}</SectionTitle>
+      <div className="space-y-6">
+        <ClosedStatsContent deals={register} agencyName={session.organizationName} t={t} lang={lang} />
+      </div>
+    </div>
   );
 }

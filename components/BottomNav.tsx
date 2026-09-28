@@ -17,7 +17,7 @@ export function BottomNav({ items }: { items: NavKey[] }) {
   if (/\/(new|edit)$/.test(pathname) || pathname.startsWith("/team/goals")) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
       <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((key) => {
           const href = NAV_HREF[key];

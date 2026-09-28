@@ -1,11 +1,10 @@
 import "server-only";
-import { addDays, daysBetween, sofiaDay } from "./dates";
+import { toEuro } from "./commission";
+import { daysBetween, sofiaDay } from "./dates";
+import { inRange, type StatRange } from "./period";
 import { dealStages, type DealKind, type DealStage, type DealStatus } from "./options";
 import type { SessionContext } from "./session";
 import { createClient } from "./supabase/server";
-
-export const PERIODS = ["month", "year", "12m", "all"] as const;
-export type Period = (typeof PERIODS)[number];
 
 type DealStat = {
   id: string;
@@ -48,22 +47,13 @@ const STALE_DAYS = 14;
 const average = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
-/** First day of the period (null = all time). */
-function periodStart(period: Period, today: string) {
-  if (period === "month") return `${today.slice(0, 7)}-01`;
-  if (period === "year") return `${today.slice(0, 4)}-01-01`;
-  if (period === "12m") return addDays(today, -365);
-  return null;
-}
-
 /**
  * Everything on the Statistics page. RLS decides what is visible: brokers see their
  * own deals and clients, managers the whole agency (optionally one broker).
  */
-export async function getStatistics(session: SessionContext, period: Period, broker: string, today: string) {
+export async function getStatistics(session: SessionContext, range: StatRange, broker: string, today: string) {
   const supabase = await createClient();
-  const from = periodStart(period, today);
-  const inPeriod = (day: string | null) => Boolean(day) && (!from || day! >= from) && day! <= today;
+  const inPeriod = inRange(range);
 
   let dealQuery = supabase
     .from("deals")
@@ -103,14 +93,24 @@ export async function getStatistics(session: SessionContext, period: Period, bro
   }));
 
   const won = deals.filter((d) => d.status === "won" && inPeriod(d.closed_on));
+  // the price in euro (USD can't be converted — left out)
+  const euroPrice = (d: (typeof deals)[number]) => (d.price === null ? 0 : (toEuro(d.price, d.currency) ?? 0));
   const lost = deals.filter((d) => d.status === "lost" && inPeriod(sofiaDay(d.updated_at)));
   const open = deals.filter((d) => d.status === "open");
   const touched = deals.filter((d) => inPeriod(sofiaDay(d.created_at)) || won.includes(d));
 
   // ---- headline numbers
   const commissionTotal = sum(won.map((d) => d.commission ?? 0));
+  const newClients = (clientsRes.data ?? []).filter((c) => inPeriod(sofiaDay(c.created_at))).length;
   const summary = {
     won: won.length,
+    sales: won.filter((d) => d.kind === "sale").length,
+    rentals: won.filter((d) => d.kind === "rent").length,
+    // the listing was another agency's: we were there for the buyer
+    purchases: won.filter((d) => d.kind === "sale" && d.partner_side === "seller").length,
+    lost: lost.length,
+    newClients,
+    turnover: sum(won.map(euroPrice)),
     commission: commissionTotal,
     avgCommission: won.length ? commissionTotal / won.length : null,
     winRate: won.length + lost.length ? won.length / (won.length + lost.length) : null,
@@ -282,7 +282,31 @@ export async function getStatistics(session: SessionContext, period: Period, bro
     rows: priced.slice(0, 10),
   };
 
-  return { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, externalBrokers, offerStats };
+  // ---- month by month (every month of the range, when it isn't too long)
+  const months = new Map<string, { month: string; count: number; commission: number; turnover: number }>();
+  const monthKeys: string[] = [];
+  let [year, month] = range.from.split("-").map(Number);
+  while (monthKeys.length <= 36) {
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    if (key > range.to.slice(0, 7)) break;
+    monthKeys.push(key);
+    if (++month > 12) {
+      month = 1;
+      year++;
+    }
+  }
+  if (monthKeys.length <= 36) for (const key of monthKeys) months.set(key, { month: key, count: 0, commission: 0, turnover: 0 });
+  for (const d of won) {
+    const key = d.closed_on!.slice(0, 7);
+    const row = months.get(key) ?? { month: key, count: 0, commission: 0, turnover: 0 };
+    row.count++;
+    row.commission += d.commission ?? 0;
+    row.turnover += euroPrice(d);
+    months.set(key, row);
+  }
+  const byMonth = [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
+
+  return { summary, kindOfDeal, partners, stageTimes, totalTime, stale, clientSources, externalBrokers, offerStats, byMonth };
 }
 
 export type Statistics = Awaited<ReturnType<typeof getStatistics>>;

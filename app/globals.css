@@ -189,3 +189,32 @@ input[type="number"] {
     break-inside: avoid;
   }
 }
+
+/* Statistics and the market analysis on paper: the page itself, light, without the app around it. */
+@media print {
+  :root:has(.stats-page) {
+    color-scheme: light;
+    --canvas: #ffffff;
+    --surface: #ffffff;
+    --raised: #eef2f9;
+    --line-soft: #eaeef6;
+    --line: #dde3ee;
+    --line-strong: #c9d2e3;
+    --fg: #0a1330;
+    --fg-2: #334063;
+    --muted: #5d6a8a;
+    --subtle: #66728f;
+    --accent: #1d4ed8;
+    --accent-fg: #1d4ed8;
+    --accent-soft: rgb(37 99 235 / 0.1);
+    --success: #047857;
+    --warning: #b45309;
+  }
+  body:has(.stats-page) {
+    background: #ffffff !important;
+  }
+  .stats-page section,
+  .stats-page tr {
+    break-inside: avoid;
+  }
+}
