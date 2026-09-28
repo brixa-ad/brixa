@@ -23,8 +23,9 @@ export function DealCard({
   const title = dealTitle(deal, t);
   const stageLabels = deal.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
   const amount = formatPrice(deal.net_commission ?? deal.commission, "EUR", lang);
-  // at the offer stage: what the listing costs and what the client offers (the latest offer still standing)
-  const atOffer = deal.status === "open" && deal.stage === "offer";
+  // an open deal shows what the listing costs and what the client offers (the latest offer still standing),
+  // not the expected commission; a closed one shows its commission
+  const atOffer = deal.status === "open";
   const offer = atOffer
     ? [...deal.offers]
         .filter((o) => o.status !== "rejected")
