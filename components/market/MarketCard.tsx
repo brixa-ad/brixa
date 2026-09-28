@@ -131,7 +131,11 @@ export function MarketCard({
               )}
               {facts.sold.count > 0 && (
                 <li>
-                  {fmt(t.market.similarSold, { scope, count: facts.sold.count, sqm: sqm(facts.sold.median_sqm) })}
+                  {fmt(t.market.similarSold, {
+                    scope: facts.sold.scope === "neighborhood" ? t.market.scopeNeighborhood : t.market.scopeCity,
+                    count: facts.sold.count,
+                    sqm: sqm(facts.sold.median_sqm),
+                  })}
                   {facts.sold.avg_days !== null && `, ${fmt(t.market.soldDays, { days: facts.sold.avg_days })}`}
                 </li>
               )}

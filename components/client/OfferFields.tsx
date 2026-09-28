@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
-import { Combobox } from "@/components/ui/Combobox";
 import { inputClass } from "@/components/ui/form";
+import { TownPicker } from "@/components/ui/TownPicker";
 import type { OfferInput } from "@/lib/client-validation";
 import { localName } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, type Currency } from "@/lib/options";
-import { createClient } from "@/lib/supabase/client";
 import type { Category, Settlement, Subtype } from "@/lib/types";
 
 export type OfferNumKey = "area" | "rooms" | "price";
@@ -33,30 +31,6 @@ export function OfferFields({
   error: (key: OfferNumKey) => string | undefined;
 }) {
   const { t, lang } = useI18n();
-  const [hoodCache, setHoodCache] = useState<Record<string, { id: string; name: string }[]>>({});
-  const hoods = offer.settlementId ? hoodCache[offer.settlementId] : undefined;
-
-  useEffect(() => {
-    const id = offer.settlementId;
-    if (!id || hoodCache[id]) return;
-    let ignore = false;
-    createClient()
-      .from("geo_neighborhoods")
-      .select("id, name")
-      .eq("settlement_id", id)
-      .order("name")
-      .then(({ data }) => {
-        if (!ignore) setHoodCache((cache) => ({ ...cache, [id]: data ?? [] }));
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [offer.settlementId, hoodCache]);
-
-  const townOptions = useMemo(
-    () => settlements.map((s) => ({ value: s.id, label: `${s.settlement_type} ${s.name}` })),
-    [settlements]
-  );
 
   const num = (key: OfferNumKey, label: string, decimal = true) => (
     <label className="block text-sm font-medium text-fg-2">
@@ -115,36 +89,18 @@ export function OfferFields({
             ))}
           </select>
         </label>
-        <div>
-          <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.offerTown}</span>
-          <Combobox
-            options={townOptions}
-            value={offer.settlementId}
-            onChange={(id) => {
-              onChange("settlementId", id);
-              onChange("neighborhoodId", null);
-            }}
-            placeholder={t.form.choose}
-            emptyText={t.location.noMatches}
-            aria-label={t.clients.offerTown}
-          />
-        </div>
-        <label className="block text-sm font-medium text-fg-2">
-          {t.clients.offerNeighborhood}
-          <select
-            value={offer.neighborhoodId ?? ""}
-            disabled={!offer.settlementId || !hoods?.length}
-            onChange={(e) => onChange("neighborhoodId", e.target.value || null)}
-            className={`${inputClass} mt-1.5`}
-          >
-            <option value="">{t.clients.anyNeighborhood}</option>
-            {(hoods ?? []).map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TownPicker
+          settlements={settlements}
+          settlementId={offer.settlementId}
+          neighborhoodId={offer.neighborhoodId}
+          onChange={(next) => {
+            onChange("settlementId", next.settlementId);
+            onChange("neighborhoodId", next.neighborhoodId);
+          }}
+          townLabel={t.clients.offerTown}
+          neighborhoodLabel={t.clients.offerNeighborhood}
+          noNeighborhood={t.clients.anyNeighborhood}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

@@ -85,6 +85,23 @@ export const CLIENT_SOURCES = [
   "flyers",
   "banner",
 ] as const;
+/** The register of closed deals. */
+export const CLOSED_SIDES = ["sale", "purchase"] as const;
+export const CLOSED_CONDITIONS = [
+  "needs_renovation",
+  "good",
+  "renovated",
+  "furnished",
+  "unfurnished",
+  "bds",
+  "under_construction",
+  "act14",
+  "act15",
+  "act16",
+  "new",
+] as const;
+export type ClosedSide = (typeof CLOSED_SIDES)[number];
+export type ClosedCondition = (typeof CLOSED_CONDITIONS)[number];
 export const ACTIVITY_OUTCOMES = ["positive", "neutral", "negative"] as const;
 export type ActivityOutcome = (typeof ACTIVITY_OUTCOMES)[number];
 export const CLIENT_STAGES = [

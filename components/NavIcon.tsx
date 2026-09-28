@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BarChart3,
   Bell,
   Building2,
@@ -33,6 +34,7 @@ const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   stats: BarChart3,
   market: TrendingUp,
   partnerSearches: UserSearch,
+  closedDeals: BadgeCheck,
   team: UsersRound,
   goals: Target,
   notifications: Bell,

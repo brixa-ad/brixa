@@ -15,7 +15,8 @@ export type MarketFacts = {
   /** how wide the agency's own comparison is */
   scope: "neighborhood" | "city";
   active: { count: number; median_sqm: number | null };
-  sold: { count: number; median_sqm: number | null; avg_days: number | null };
+  /** sales: the register and BRIXA deals; scope decided on its own */
+  sold: { count: number; median_sqm: number | null; avg_days: number | null; scope: "neighborhood" | "city" };
   /** usual haggling: asking → final, as a fraction */
   discount: number | null;
   benchmark: { sqm: number; basis: "reference" | "listings" } | null;
@@ -66,6 +67,7 @@ export function toMarketFacts(raw: unknown): MarketFacts | null {
     reference: m.reference ? { ...m.reference, sqm: Number(m.reference.sqm) } : null,
     active: { count: Number(m.active?.count ?? 0), median_sqm: num(m.active?.median_sqm) },
     sold: {
+      scope: m.sold?.scope === "neighborhood" ? "neighborhood" : "city",
       count: Number(m.sold?.count ?? 0),
       median_sqm: num(m.sold?.median_sqm),
       avg_days: num(m.sold?.avg_days),
