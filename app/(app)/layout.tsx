@@ -9,6 +9,7 @@ import { PasskeyPrompt } from "@/components/passkey/PasskeyPrompt";
 import { ServiceWorker } from "@/components/push/ServiceWorker";
 import { SideMenu } from "@/components/SideMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DictationProvider } from "@/components/ui/Dictate";
 import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, navKeysFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
@@ -118,7 +119,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">
         <PasskeyPrompt />
         <ServiceWorker />
-        {children}
+        {/* dictation: the server writes recordings when a speech service key is set */}
+        <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
       </main>
 
       <BottomNav items={bottomNavFor(session.bottomNav, session.isManager, Boolean(process.env.ANTHROPIC_API_KEY))} />

@@ -799,6 +799,8 @@ const bg = {
     start: "Диктувай",
     stop: "Спри диктуването",
     listening: "Слушам…",
+    working: "Пиша…",
+    failed: "Не се разпозна, опитайте пак",
   },
   done: {
     title: "Какво стана?",
@@ -2083,6 +2085,8 @@ const en: Dictionary = {
     start: "Dictate",
     stop: "Stop dictating",
     listening: "Listening…",
+    working: "Writing…",
+    failed: "Didn't catch that, try again",
   },
   done: {
     title: "What happened?",
