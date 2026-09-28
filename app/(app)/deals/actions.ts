@@ -202,33 +202,62 @@ export type OfferInput = {
   agency: string;
   offeredOn: string;
   note: string;
+  /** "стоп капаро", euro */
+  holdDeposit: number | null;
 };
+
+function offerOk(input: OfferInput) {
+  const offeredBy = input.offeredBy.trim();
+  return (
+    amountOk(input.amount) &&
+    input.amount !== null &&
+    amountOk(input.holdDeposit) &&
+    isOneOf(CURRENCIES, input.currency) &&
+    Boolean(offeredBy) &&
+    offeredBy.length <= DEAL_LIMITS.name &&
+    input.agency.trim().length <= DEAL_LIMITS.name &&
+    isDay(input.offeredOn) &&
+    input.note.length <= 1000
+  );
+}
+
+const offerRow = (input: OfferInput) => ({
+  amount: input.amount,
+  currency: input.currency,
+  offered_by: input.offeredBy.trim(),
+  agency: input.agency.trim() || null,
+  offered_on: input.offeredOn,
+  note: input.note.trim() || null,
+  hold_deposit: input.holdDeposit,
+});
+
+/** Correct an offer — amount, who, when, the stop deposit (an accepted one updates the agreed price). */
+export async function updateOffer(offerId: string, input: OfferInput): Promise<DealActionResult> {
+  if (!offerOk(input)) return { ok: false, message: "generic" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_offers")
+    .update(offerRow(input))
+    .eq("id", offerId)
+    .select("deal_id, status, amount, currency")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Updating offer failed:", error?.message ?? "no row");
+    return { ok: false, message: "generic" };
+  }
+  if (data.status === "accepted") return update(data.deal_id, { price: data.amount, currency: data.currency });
+  refresh({ id: data.deal_id, property_id: null, client_id: null });
+  return { ok: true };
+}
 
 export async function addOffer(dealId: string, input: OfferInput): Promise<DealActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, message: "generic" };
-  const offeredBy = input.offeredBy.trim();
-  if (
-    !amountOk(input.amount) ||
-    input.amount === null ||
-    !isOneOf(CURRENCIES, input.currency) ||
-    !offeredBy ||
-    offeredBy.length > DEAL_LIMITS.name ||
-    input.agency.trim().length > DEAL_LIMITS.name ||
-    !isDay(input.offeredOn) ||
-    input.note.length > 1000
-  ) {
-    return { ok: false, message: "generic" };
-  }
+  if (!offerOk(input)) return { ok: false, message: "generic" };
   const supabase = await createClient();
   const { error } = await supabase.from("deal_offers").insert({
+    ...offerRow(input),
     deal_id: dealId,
-    amount: input.amount,
-    currency: input.currency,
-    offered_by: offeredBy,
-    agency: input.agency.trim() || null,
-    offered_on: input.offeredOn,
-    note: input.note.trim() || null,
     created_by: session.userId,
   });
   if (error) {

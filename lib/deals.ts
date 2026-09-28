@@ -52,7 +52,8 @@ export type DealRow = {
   client_id: string | null;
   created_at: string;
   updated_at: string;
-  property: { id: string; title: string; status: string } | null;
+  property: { id: string; title: string; status: string; current_price: number | null; currency: string } | null;
+  offers: { amount: number; currency: string; status: string; offered_on: string; hold_deposit: number | null; created_at: string }[];
   /** null when not linked, or when the client isn't visible to this user */
   client: { id: string; full_name: string; phone: string | null } | null;
   broker: Person | null;
@@ -66,7 +67,8 @@ export const DEAL_SELECT = `id, kind, stage, status, price, currency, commission
   deposit_amount, preliminary_bank, preliminary_cash, notary_bank, notary_cash,
   referral_name, referral_percent, referral_paid_on,
   broker_id, created_by, property_id, client_id, created_at, updated_at,
-  property:properties(id, title, status),
+  property:properties(id, title, status, current_price, currency),
+  offers:deal_offers(amount, currency, status, offered_on, hold_deposit, created_at),
   client:clients(id, full_name, phone),
   broker:profiles!deals_broker_id_fkey(full_name, email, avatar_path),
   confirmer:profiles!deals_confirmed_by_fkey(full_name, email)`;
@@ -86,6 +88,8 @@ export function toDeals(rows: unknown[] | null): DealRow[] {
     preliminary_cash: num(row.preliminary_cash),
     notary_bank: num(row.notary_bank),
     notary_cash: num(row.notary_cash),
+    property: row.property ? { ...row.property, current_price: num(row.property.current_price) } : null,
+    offers: (row.offers ?? []).map((o) => ({ ...o, amount: Number(o.amount), hold_deposit: num(o.hold_deposit) })),
   }));
 }
 

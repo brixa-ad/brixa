@@ -23,6 +23,14 @@ export function DealCard({
   const title = dealTitle(deal, t);
   const stageLabels = deal.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
   const amount = formatPrice(deal.net_commission ?? deal.commission, "EUR", lang);
+  // at the offer stage: what the listing costs and what the client offers (the latest offer still standing)
+  const atOffer = deal.status === "open" && deal.stage === "offer";
+  const offer = atOffer
+    ? [...deal.offers]
+        .filter((o) => o.status !== "rejected")
+        .sort((a, b) => b.offered_on.localeCompare(a.offered_on) || b.created_at.localeCompare(a.created_at))[0]
+    : undefined;
+  const asking = deal.property?.current_price != null ? formatPrice(deal.property.current_price, deal.property.currency, lang) : formatPrice(deal.price, deal.currency, lang);
 
   return (
     <Link
@@ -54,9 +62,29 @@ export function DealCard({
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className={`text-sm font-bold ${deal.status === "lost" ? "text-muted line-through" : "text-accent-fg"}`}>
-            {amount ?? t.common.notSet}
-          </p>
+          {atOffer ? (
+            <dl className="space-y-0.5 text-sm">
+              <div className="flex items-baseline gap-1.5">
+                <dt className="text-[11px] text-subtle">{t.deals.askingPrice}</dt>
+                <dd className="font-semibold tabular-nums">{asking ?? t.common.notSet}</dd>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <dt className="text-[11px] text-subtle">{t.deals.clientOffer}</dt>
+                <dd className="font-bold tabular-nums text-accent-fg">
+                  {offer ? formatPrice(offer.amount, offer.currency, lang) : "—"}
+                </dd>
+              </div>
+              {offer?.hold_deposit ? (
+                <p className="text-[11px] font-semibold text-warning">
+                  {fmt(t.deals.holdDepositLine, { amount: formatPrice(offer.hold_deposit, "EUR", lang) ?? "" })}
+                </p>
+              ) : null}
+            </dl>
+          ) : (
+            <p className={`text-sm font-bold ${deal.status === "lost" ? "text-muted line-through" : "text-accent-fg"}`}>
+              {amount ?? t.common.notSet}
+            </p>
+          )}
           <p className="truncate text-[11px] text-subtle">
             {deal.status === "open"
               ? stageLabels[deal.stage]

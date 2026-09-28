@@ -1428,6 +1428,8 @@ create table public.deal_offers (
   agency text check (agency is null or char_length(agency) <= 120),
   offered_on date not null default public.sofia_today(),
   status text not null default 'open' check (status in ('open', 'accepted', 'rejected')),
+  -- what the buyer left to take the property off the market ("стоп капаро")
+  hold_deposit numeric(14, 2) check (hold_deposit is null or hold_deposit >= 0),
   note text check (note is null or char_length(note) <= 1000),
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()

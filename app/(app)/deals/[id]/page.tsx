@@ -31,11 +31,15 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
   const supabase = await createClient();
   const { data: offerRows } = await supabase
     .from("deal_offers")
-    .select("id, amount, currency, offered_by, agency, offered_on, status, note")
+    .select("id, amount, currency, offered_by, agency, offered_on, status, note, hold_deposit")
     .eq("deal_id", id)
     .order("offered_on", { ascending: false })
     .order("created_at", { ascending: false });
-  const offers = ((offerRows ?? []) as OfferRow[]).map((o) => ({ ...o, amount: Number(o.amount) }));
+  const offers = ((offerRows ?? []) as OfferRow[]).map((o) => ({
+    ...o,
+    amount: Number(o.amount),
+    hold_deposit: o.hold_deposit === null ? null : Number(o.hold_deposit),
+  }));
   const today = sofiaToday();
   const back = await memberBack(from, session.organizationId);
 

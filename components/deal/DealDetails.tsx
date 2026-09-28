@@ -8,13 +8,16 @@ import {
   scheduleDealStep,
   saveDealPayments,
   setOfferStatus,
+  updateOffer,
   type DealActionResult,
 } from "@/app/(app)/deals/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
+import { Modal } from "@/components/ui/Modal";
 import { addDays } from "@/lib/dates";
 import { DEAL_LIMITS, isDay, parseAmount } from "@/lib/deal-validation";
 import { formatDate, formatDayMonth, formatPrice } from "@/lib/format";
+import { fmt } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, dealStages, type DealKind, type DealStage, type DealStatus } from "@/lib/options";
 
 function useSave() {
@@ -420,9 +423,91 @@ export type OfferRow = {
   offered_on: string;
   status: "open" | "accepted" | "rejected";
   note: string | null;
+  /** "стоп капаро", euro */
+  hold_deposit: number | null;
 };
 
-/** Offers from the buyer or through other agencies; accepting one sets the agreed price. */
+type OfferForm = { amount: string; currency: string; offeredBy: string; agency: string; offeredOn: string; note: string; holdDeposit: string };
+
+/** The offer's fields — used to add one and to open one and correct it. */
+function OfferFields({ form, onChange }: { form: OfferForm; onChange: (patch: Partial<OfferForm>) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
+        <label className="block text-xs font-medium text-muted">
+          {t.deals.offerAmount}
+          <input inputMode="decimal" value={form.amount} onChange={(e) => onChange({ amount: e.target.value })} className={`${inputClass} mt-1`} />
+        </label>
+        <label className="block text-xs font-medium text-muted">
+          {t.form.currency}
+          <select value={form.currency} onChange={(e) => onChange({ currency: e.target.value })} className={`${inputClass} mt-1`}>
+            {CURRENCIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className="block text-xs font-medium text-muted">
+        {t.deals.holdDeposit} (€)
+        <input
+          inputMode="decimal"
+          value={form.holdDeposit}
+          placeholder="0"
+          onChange={(e) => onChange({ holdDeposit: e.target.value })}
+          className={`${inputClass} mt-1`}
+        />
+        <span className="mt-1 block font-normal text-subtle">{t.deals.holdDepositHint}</span>
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-medium text-muted">
+          {t.deals.offerBy}
+          <input value={form.offeredBy} maxLength={DEAL_LIMITS.name} onChange={(e) => onChange({ offeredBy: e.target.value })} className={`${inputClass} mt-1`} />
+        </label>
+        <label className="block text-xs font-medium text-muted">
+          {t.deals.offerAgency}
+          <input value={form.agency} maxLength={DEAL_LIMITS.name} onChange={(e) => onChange({ agency: e.target.value })} className={`${inputClass} mt-1`} />
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+        <label className="block text-xs font-medium text-muted">
+          {t.deals.offerDate}
+          <input type="date" value={form.offeredOn} onChange={(e) => onChange({ offeredOn: e.target.value })} className={`${inputClass} mt-1`} />
+        </label>
+        <label className="block text-xs font-medium text-muted">
+          {t.deals.offerNote}
+          <input value={form.note} maxLength={1000} onChange={(e) => onChange({ note: e.target.value })} className={`${inputClass} mt-1`} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function toInput(form: OfferForm) {
+  const amount = parseAmount(form.amount);
+  const holdDeposit = parseAmount(form.holdDeposit);
+  const valid =
+    amount !== null &&
+    Number.isFinite(amount) &&
+    amount >= 0 &&
+    (holdDeposit === null || (Number.isFinite(holdDeposit) && holdDeposit >= 0)) &&
+    form.offeredBy.trim() !== "" &&
+    isDay(form.offeredOn);
+  return {
+    valid,
+    input: {
+      amount: amount ?? 0,
+      currency: form.currency,
+      offeredBy: form.offeredBy,
+      agency: form.agency,
+      offeredOn: form.offeredOn,
+      note: form.note,
+      holdDeposit,
+    },
+  };
+}
+
+/** Offers from the buyer or through other agencies; accepting one sets the agreed price. Tap one to open it. */
 export function DealOffers({
   dealId,
   offers,
@@ -438,13 +523,30 @@ export function DealOffers({
 }) {
   const { t, lang } = useI18n();
   const [adding, setAdding] = useState(false);
-  const empty = { amount: "", currency, offeredBy: "", agency: "", offeredOn: today, note: "" };
+  const empty: OfferForm = { amount: "", currency, offeredBy: "", agency: "", offeredOn: today, note: "", holdDeposit: "" };
   const [form, setForm] = useState(empty);
+  const [opened, setOpened] = useState<OfferRow | null>(null);
+  const [editForm, setEditForm] = useState<OfferForm>(empty);
   const { pending, run, message, reset } = useSave();
-
-  const amount = parseAmount(form.amount);
-  const valid = amount !== null && Number.isFinite(amount) && amount >= 0 && form.offeredBy.trim() !== "" && isDay(form.offeredOn);
   const tone = { open: "bg-accent-soft text-accent-fg", accepted: "bg-success/10 text-success", rejected: "bg-raised text-muted" };
+
+  const adding$ = toInput(form);
+  const editing$ = toInput(editForm);
+  const str = (n: number | null) => (n === null ? "" : String(n));
+
+  function open(offer: OfferRow) {
+    setOpened(offer);
+    setEditForm({
+      amount: String(offer.amount),
+      currency: offer.currency,
+      offeredBy: offer.offered_by,
+      agency: offer.agency ?? "",
+      offeredOn: offer.offered_on,
+      note: offer.note ?? "",
+      holdDeposit: str(offer.hold_deposit),
+    });
+    reset();
+  }
 
   return (
     <div className="space-y-4">
@@ -454,17 +556,22 @@ export function DealOffers({
         <ul className="divide-y divide-line-soft rounded-xl border border-line">
           {offers.map((offer) => (
             <li key={offer.id} className="flex flex-wrap items-start gap-x-3 gap-y-2 p-3">
-              <div className="min-w-0 flex-1">
+              <button type="button" onClick={() => open(offer)} className="min-w-0 flex-1 text-left">
                 <p className={`text-base font-bold tabular-nums ${offer.status === "rejected" ? "text-muted line-through" : ""}`}>
                   {formatPrice(offer.amount, offer.currency, lang)}
                 </p>
+                {offer.hold_deposit !== null && offer.hold_deposit > 0 && (
+                  <p className="text-xs font-semibold text-warning">
+                    {fmt(t.deals.holdDepositLine, { amount: formatPrice(offer.hold_deposit, "EUR", lang) ?? "" })}
+                  </p>
+                )}
                 <p className="truncate text-sm">
                   {offer.offered_by}
                   {offer.agency && <span className="text-muted"> · {offer.agency}</span>}
                 </p>
                 <p className="text-xs text-subtle">{formatDate(offer.offered_on, lang)}</p>
                 {offer.note && <p className="mt-1 text-xs text-fg-2">{offer.note}</p>}
-              </div>
+              </button>
               <div className="flex items-center gap-1">
                 <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone[offer.status]}`}>
                   {t.deals.offerStatus[offer.status]}
@@ -519,87 +626,17 @@ export function DealOffers({
       {canEdit &&
         (adding ? (
           <div className="space-y-3 rounded-xl border border-line p-3">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
-              <label className="block text-xs font-medium text-muted">
-                {t.deals.offerAmount}
-                <input
-                  inputMode="decimal"
-                  value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                />
-              </label>
-              <label className="block text-xs font-medium text-muted">
-                {t.form.currency}
-                <select
-                  value={form.currency}
-                  onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-medium text-muted">
-                {t.deals.offerBy}
-                <input
-                  value={form.offeredBy}
-                  maxLength={DEAL_LIMITS.name}
-                  onChange={(e) => setForm((f) => ({ ...f, offeredBy: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                />
-              </label>
-              <label className="block text-xs font-medium text-muted">
-                {t.deals.offerAgency}
-                <input
-                  value={form.agency}
-                  maxLength={DEAL_LIMITS.name}
-                  onChange={(e) => setForm((f) => ({ ...f, agency: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                />
-              </label>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-              <label className="block text-xs font-medium text-muted">
-                {t.deals.offerDate}
-                <input
-                  type="date"
-                  value={form.offeredOn}
-                  onChange={(e) => setForm((f) => ({ ...f, offeredOn: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                />
-              </label>
-              <label className="block text-xs font-medium text-muted">
-                {t.deals.offerNote}
-                <input
-                  value={form.note}
-                  maxLength={1000}
-                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-                  className={`${inputClass} mt-1`}
-                />
-              </label>
-            </div>
+            <OfferFields form={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} />
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setAdding(false)} className={buttonClass.secondary}>
                 {t.common.cancel}
               </button>
               <button
                 type="button"
-                disabled={pending || !valid}
+                disabled={pending || !adding$.valid}
                 onClick={() =>
                   run(
-                    () =>
-                      addOffer(dealId, {
-                        amount: amount!,
-                        currency: form.currency,
-                        offeredBy: form.offeredBy,
-                        agency: form.agency,
-                        offeredOn: form.offeredOn,
-                        note: form.note,
-                      }),
+                    () => addOffer(dealId, adding$.input),
                     () => {
                       setForm(empty);
                       setAdding(false);
@@ -627,6 +664,42 @@ export function DealOffers({
           </button>
         ))}
       {message}
+
+      {opened && (
+        <Modal title={t.deals.editOffer} onClose={() => setOpened(null)}>
+          {canEdit ? (
+            <div className="space-y-4">
+              <OfferFields form={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
+              <button
+                type="button"
+                disabled={pending || !editing$.valid}
+                onClick={() => run(() => updateOffer(opened.id, editing$.input), () => setOpened(null))}
+                className={`${buttonClass.primary} w-full`}
+              >
+                {pending && <Loader2 className="size-4 animate-spin" />}
+                {t.deals.saveOffer}
+              </button>
+              {message}
+            </div>
+          ) : (
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">{t.deals.offerAmount}</dt>
+                <dd className="font-semibold">{formatPrice(opened.amount, opened.currency, lang)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">{t.deals.holdDeposit}</dt>
+                <dd className="font-semibold">{opened.hold_deposit !== null ? formatPrice(opened.hold_deposit, "EUR", lang) : "—"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">{t.deals.offerBy}</dt>
+                <dd>{[opened.offered_by, opened.agency].filter(Boolean).join(" · ")}</dd>
+              </div>
+              {opened.note && <p className="text-fg-2">{opened.note}</p>}
+            </dl>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
