@@ -9,10 +9,13 @@ type Month = { month: string; count: number; commission: number; turnover: numbe
 /** Closed deals, turnover and commission, month by month. */
 export function MonthsCard({ months, t, lang, className = "" }: { months: Month[]; t: Dictionary; lang: Lang; className?: string }) {
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
-  const name = (key: string) =>
-    new Intl.DateTimeFormat(locale(lang), { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`));
+  // "Септември 2026"
+  const name = (key: string) => {
+    const month = new Intl.DateTimeFormat(locale(lang), { month: "long", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`));
+    return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${key.slice(0, 4)}`;
+  };
   const max = Math.max(0, ...months.map((m) => m.commission));
-  const grid = "grid grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-2";
+  const grid = "grid grid-cols-[7.5rem_2.5rem_minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-2";
 
   return (
     <Card title={<CardTitle icon={CalendarRange}>{t.stats.byMonth}</CardTitle>} className={className}>

@@ -132,8 +132,8 @@ export function MarketAnalysis({
               {places.map((g) => {
                 const values = g.rows.map((r) => r.perSqm);
                 return (
-                  <tr key={g.place}>
-                    <td className="py-2 pr-3">{g.place}</td>
+                  <tr key={g.rows[0].placeKey}>
+                    <td className="py-2 pr-3">{g.place || "—"}</td>
                     <td className="py-2 text-right tabular-nums">{g.rows.length}</td>
                     <td className="py-2 text-right font-semibold tabular-nums">{sqm(weighted(g.rows))}</td>
                     <td className="py-2 text-right tabular-nums text-muted">
