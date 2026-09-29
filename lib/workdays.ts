@@ -7,7 +7,7 @@ const utc = (year: number, month: number, day: number) => new Date(Date.UTC(year
 const isWeekend = (d: Date) => d.getUTCDay() === 0 || d.getUTCDay() === 6;
 
 /** Orthodox Easter Sunday (Julian computus, moved to the Gregorian calendar). */
-function orthodoxEaster(year: number) {
+export function orthodoxEaster(year: number) {
   const a = year % 4;
   const b = year % 7;
   const c = year % 19;

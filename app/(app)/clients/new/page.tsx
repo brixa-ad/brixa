@@ -36,6 +36,8 @@ export default async function NewClientPage({ searchParams }: PageProps<"/client
           clientClass: "C",
           source: null,
           referrer: "",
+          birthDay: null,
+          birthMonth: null,
           stage: "new_contact",
           notes: "",
           // "Нов свободен контакт" opens this with ?free=1 (managers)

@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getI18n } from "@/lib/i18n/server";
 import { ACTIVITY_OUTCOMES, ACTIVITY_TYPES, isOneOf } from "@/lib/options";
+import { advanceProgram } from "@/lib/programs-server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { TASK_LIMITS, validateTask, type TaskErrors, type TaskInput } from "@/lib/task-validation";
@@ -85,12 +87,17 @@ export async function setTaskDone(taskId: string, done: boolean, note?: string) 
       completion_note: done ? (note?.trim().slice(0, TASK_LIMITS.note) || null) : null,
     })
     .eq("id", taskId)
-    .select("id, client_id")
+    .select("id, client_id, program_id, program_step")
     .maybeSingle();
 
   if (error || !data) {
     console.error("Updating task failed:", error?.message ?? "no row");
     return { ok: false };
+  }
+  // a step of a contact program: the next one opens
+  if (done && data.program_id && data.program_step !== null) {
+    const [session, { t }] = await Promise.all([getSession(), getI18n()]);
+    if (session) await advanceProgram(supabase, session, t, data.program_id, data.program_step);
   }
   refresh(taskId, data.client_id);
   return { ok: true };

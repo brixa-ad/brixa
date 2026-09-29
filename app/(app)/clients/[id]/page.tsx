@@ -10,6 +10,7 @@ import { ActivityEntry } from "@/components/client/ActivityEntry";
 import { QuickLog } from "@/components/client/QuickLog";
 import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
+import { ProgramCard, type ClientProgram } from "@/components/program/ProgramCard";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
@@ -20,7 +21,7 @@ import { Card, buttonClass } from "@/components/ui/form";
 import { isOffering, isSeeking } from "@/lib/client-validation";
 import { getClient } from "@/lib/clients";
 import { formatDate, formatPrice, settlementLabel } from "@/lib/format";
-import { fmt } from "@/lib/i18n/dictionaries";
+import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
@@ -32,6 +33,8 @@ import { createClient } from "@/lib/supabase/server";
 import { sofiaToday } from "@/lib/dates";
 import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
 import { DEAL_SELECT, toDeals } from "@/lib/deals";
+import { nameDayIn } from "@/lib/namedays";
+import { firstName, suggestProgram } from "@/lib/programs";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const client = await getClient((await params).id);
@@ -57,6 +60,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     { data: dealRows },
     { data: shareRows },
     { data: listingRows },
+    { data: programRows },
   ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
@@ -91,7 +95,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .in("operation_type", ["sale", "rent"])
       .order("updated_at", { ascending: false })
       .limit(500),
+    // contact programs, the current one first
+    supabase
+      .from("contact_programs")
+      .select("id, program, step, round, status, started_on")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
+  const programs = (programRows ?? []) as ClientProgram[];
   const listings = (listingRows ?? []) as { id: string; title: string }[];
   const deals = toDeals(dealRows);
   const sent: ShareRow[] = (
@@ -144,6 +156,12 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   const canEdit = session.isManager || client.responsible_broker_id === session.userId;
   const members = session.isManager ? await getMembers(supabase, session.organizationId) : [];
   const followUpLate = client.follow_up_at !== null && client.follow_up_at <= new Date().toISOString();
+  const activeProgram = programs.find((p) => p.status === "active");
+  const programTask = activeProgram ? openTasks.find((task) => task.program_id === activeProgram.id) : undefined;
+  const year = Number(today.slice(0, 4));
+  const nameDay = nameDayIn(firstName(client.full_name), year);
+  const dayMonth = (day: number, month: number) =>
+    new Intl.DateTimeFormat(locale(lang), { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2000, month - 1, day)));
 
   return (
     <>
@@ -248,6 +266,21 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   )}
                 </dd>
               </div>
+              {client.birth_day !== null && client.birth_month !== null && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.programs.birthdayLabel}</dt>
+                  <dd className="font-medium">{dayMonth(client.birth_day, client.birth_month)}</dd>
+                </div>
+              )}
+              {nameDay && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.programs.nameDayLabel}</dt>
+                  <dd className="text-right font-medium">
+                    {dayMonth(Number(nameDay.day.slice(8)), Number(nameDay.day.slice(5, 7)))}
+                    <span className="block text-xs font-normal text-muted">{nameDay.feast}</span>
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t.clients.lastUpdate}</dt>
                 <dd className="font-medium">{formatDate(client.updated_at, lang, true)}</dd>
@@ -257,6 +290,20 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               {fmt(t.clients.since, { date: formatDate(client.created_at, lang) })}
             </p>
           </Card>
+
+          <ProgramCard
+            programs={programs}
+            openTask={programTask ? { id: programTask.id, due_date: programTask.due_date } : null}
+            canEdit={canEdit}
+            hasBroker={!isFree}
+            clientId={client.id}
+            suggested={suggestProgram(client, {
+              wonDeal: deals.some((d) => d.status === "won"),
+              activeListing: (owned ?? []).some((p) => p.status === "active"),
+            })}
+            t={t}
+            lang={lang}
+          />
 
           <Card title={t.clients.notes}>
             {client.notes ? (

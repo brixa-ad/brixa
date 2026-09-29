@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, Plus, Quote, Target } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, PartyPopper, Plus, Quote, Target } from "lucide-react";
 import { GameIntro } from "@/components/game/GameIntro";
 import { MissionList, missionRows } from "@/components/game/Missions";
 import { PlayerCard } from "@/components/game/PlayerCard";
+import { GreetingsList } from "@/components/program/GreetingsCard";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
@@ -21,6 +22,7 @@ import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
 import { getMissions, getPlanInputs, getPlayers } from "@/lib/game-server";
+import { getGreetings } from "@/lib/greetings-server";
 import { getLeaderboards, getMyNumbers, getUpcomingSteps } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
@@ -58,7 +60,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   ]);
   // the game: my level and streak, today's and this week's missions
   const me = players.get(session.userId);
-  const missionData = await getMissions(session, today, planInputs, me?.streak.today ?? 0);
+  const [missionData, greetings] = await Promise.all([
+    getMissions(session, today, planInputs, me?.streak.today ?? 0),
+    getGreetings(session, today, t),
+  ]);
   // my follow-ups due by the end of today
   const { data: dueRows } = await supabase
     .from("clients")
@@ -172,6 +177,18 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </section>
           )}
 
+          {greetings.length > 0 && (
+            <section>
+              <h3 className={heading}>
+                <PartyPopper className="size-4 text-brand-cyan" />
+                {`${t.programs.greetingsTitle} · ${greetings.length}`}
+              </h3>
+              <div className="pt-1">
+                <GreetingsList greetings={greetings} t={t} />
+              </div>
+            </section>
+          )}
+
           {/* the missions: today's and this week's */}
           <section>
             <h3 className={heading}>
@@ -226,6 +243,20 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </div>
           </Card>
         </div>
+      )}
+
+      {greetings.length > 0 && (
+        <Card
+          title={
+            <span className="flex items-center gap-2">
+              <PartyPopper className="size-4 text-brand-cyan" />
+              {t.programs.greetingsTitle}
+            </span>
+          }
+          description={t.programs.greetingsHint}
+        >
+          <GreetingsList greetings={greetings} t={t} />
+        </Card>
       )}
 
       {brixReady && <MorningBrief initial={brief?.content ?? null} />}

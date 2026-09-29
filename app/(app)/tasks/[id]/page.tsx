@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Building2, CalendarDays, CheckCircle2, Clock, Pencil, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ContactButtons } from "@/components/ContactButtons";
+import { MessageSender } from "@/components/program/MessageSender";
 import { PageHeader } from "@/components/PageHeader";
 import { CompleteTaskPanel, DeleteTaskButton } from "@/components/task/CompleteTaskPanel";
 import { TypeIcon } from "@/components/task/TypeIcon";
@@ -34,6 +35,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
   const carriedDays = done ? 0 : daysBetween(task.due_date, today);
   const canEdit = session.isManager || task.created_by === session.userId;
   const canComplete = task.assigned_to === session.userId || canEdit;
+  const isStep = task.program_id !== null;
 
   return (
     <>
@@ -111,12 +113,28 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
               )}
             </dl>
 
-            {task.description && (
+            {task.description && !isStep && (
               <p className="mt-5 whitespace-pre-line border-t border-line-soft pt-4 text-sm leading-relaxed text-fg-2">
                 {task.description}
               </p>
             )}
           </Card>
+
+          {/* ---- a contact program's step: the ready text (a message to send, or what to say on the call) ---- */}
+          {isStep && task.description && (
+            <Card title={task.type === "call" ? t.programs.callTitle : t.programs.sendTitle} description={done ? undefined : task.type === "call" ? undefined : t.programs.sendHint}>
+              {task.type === "call" || done || !task.client ? (
+                <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{task.description}</p>
+              ) : (
+                <MessageSender
+                  text={task.description}
+                  phone={task.client.phone}
+                  email={task.client.email}
+                  subject={fmt(t.programs.emailSubject, { broker: personName(task.assignee) })}
+                />
+              )}
+            </Card>
+          )}
 
           {/* ---- linked client & property ---- */}
           {task.client || task.property ? (

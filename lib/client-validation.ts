@@ -52,6 +52,9 @@ export type ClientInput = {
   referrer: string;
   stage: ClientStage;
   notes: string;
+  /** a birthday for greetings: both or neither */
+  birthDay: number | null;
+  birthMonth: number | null;
   brokerId: string | null;
   /** only saved when the client is a buyer / tenant / investor */
   search: SearchInput;
@@ -131,6 +134,14 @@ function checkRange(
 
 export function validateClient(input: ClientInput): ClientErrors {
   const errors: ClientErrors = {};
+
+  // a real day of the month (29 February is fine — leap years)
+  const { birthDay: d, birthMonth: m } = input;
+  if ((d === null) !== (m === null)) errors.birthDay = "required";
+  else if (d !== null && m !== null) {
+    const days = new Date(Date.UTC(2000, m, 0)).getUTCDate();
+    if (!Number.isInteger(m) || m < 1 || m > 12 || !Number.isInteger(d) || d < 1 || d > days) errors.birthDay = "invalid";
+  }
 
   const name = input.fullName.trim();
   if (!name) errors.fullName = "required";

@@ -78,7 +78,7 @@ export function ClientForm({
   lookups: ClientFormLookups;
   canAssignBroker: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const [draft, setDraft] = useState(() => toDraft(initial));
   const [submitted, setSubmitted] = useState(false);
@@ -312,6 +312,40 @@ export function ClientForm({
               )}
             </Field>
           </div>
+
+          <Field label={t.programs.birthdayLabel} hint={t.programs.birthdayHint} error={err("birthDay")}>
+            {(props) => (
+              <div className="flex gap-2">
+                <select
+                  {...props}
+                  value={draft.birthDay ?? ""}
+                  onChange={(e) => set("birthDay", e.target.value ? Number(e.target.value) : null)}
+                  className={`${inputClass} w-24`}
+                  aria-label={t.programs.dayPlaceholder}
+                >
+                  <option value="">{t.programs.dayPlaceholder}</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={draft.birthMonth ?? ""}
+                  onChange={(e) => set("birthMonth", e.target.value ? Number(e.target.value) : null)}
+                  className={`${inputClass} min-w-0 flex-1`}
+                  aria-label={t.programs.monthPlaceholder}
+                >
+                  <option value="">{t.programs.monthPlaceholder}</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "bg-BG", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2000, m - 1, 15)))}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </Field>
 
           {draft.source === "referral" && (
             <Field

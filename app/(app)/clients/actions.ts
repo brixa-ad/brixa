@@ -58,6 +58,8 @@ async function prepare(input: ClientInput, clientId: string | null) {
     referrer: hasReferrer(input.source) ? input.referrer.trim() || null : null,
     stage: input.stage,
     notes: input.notes.trim() || null,
+    birth_day: input.birthDay,
+    birth_month: input.birthDay === null ? null : input.birthMonth,
     responsible_broker_id: free ? null : session.isManager ? (input.brokerId ?? session.userId) : session.userId,
   };
 

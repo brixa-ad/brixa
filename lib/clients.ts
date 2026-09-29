@@ -59,6 +59,8 @@ export type ClientDetail = {
   referrer: string | null;
   stage: ClientStage;
   notes: string | null;
+  birth_day: number | null;
+  birth_month: number | null;
   /** when the next contact is due (null: free contact, closed deal or lost) */
   follow_up_at: string | null;
   created_at: string;
@@ -95,7 +97,7 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
     .from("clients")
     .select(
       `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
-      notes, follow_up_at, created_at, updated_at,
+      notes, birth_day, birth_month, follow_up_at, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
       search:client_searches(*),
       offer:client_offers(*)`
