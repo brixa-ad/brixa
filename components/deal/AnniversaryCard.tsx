@@ -36,7 +36,8 @@ export function AnniversaryCard({ card, fileName, shareText }: { card: CardData;
 
   async function image() {
     const { toBlob } = await import("html-to-image");
-    const blob = await toBlob(node.current!, { pixelRatio: 2, cacheBust: true, imagePlaceholder: BLANK, backgroundColor: "#040915" });
+    // the page's own fonts aren't embedded (that takes ages on a phone) — the device's sans-serif reads the same
+    const blob = await toBlob(node.current!, { pixelRatio: 2, skipFonts: true, imagePlaceholder: BLANK, backgroundColor: "#040915" });
     if (!blob) throw new Error("no image");
     return new File([blob], `${fileName}.png`, { type: "image/png" });
   }
