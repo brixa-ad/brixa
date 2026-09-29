@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, Building2, Handshake, Pencil, Phone, User } from "lucide-react";
+import { BadgeCheck, Building2, Gift, Handshake, Pencil, Phone, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { DealActions, DealStageBar, DeleteDealButton } from "@/components/deal/DealControls";
@@ -71,8 +71,15 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
           </span>
         }
         actions={
-          canEdit || canDelete ? (
+          canEdit || canDelete || (deal.status === "won" && deal.kind === "sale") ? (
             <>
+              {/* every year on the day of the purchase: a card for the client */}
+              {deal.status === "won" && deal.kind === "sale" && (
+                <Link href={`/deals/${id}/card`} className={buttonClass.secondary}>
+                  <Gift className="size-4" />
+                  {t.anniversary.cardTitle}
+                </Link>
+              )}
               {canEdit && (
                 <Link href={`/deals/${id}/edit`} className={buttonClass.secondary}>
                   <Pencil className="size-4" />

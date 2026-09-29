@@ -18,6 +18,7 @@ import {
   type ClientInput,
   type SearchInput,
 } from "@/lib/client-validation";
+import { parseEgn } from "@/lib/egn";
 import { fmt } from "@/lib/i18n/dictionaries";
 import {
   CLIENT_CLASSES,
@@ -90,6 +91,15 @@ export function ClientForm({
   const input = toInput(draft);
   const errors: ClientErrors = { ...serverErrors, ...(submitted ? validateClient(input) : {}) };
   const err = (key: keyof ClientErrors) => (errors[key] ? t.errors[errors[key]!] : undefined);
+  // a valid ЕГН shows the birthday it holds (and fills it in)
+  const born = parseEgn(draft.egn);
+  const egnHint = born
+    ? fmt(t.clients.egnBorn, {
+        date: new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
+          new Date(Date.UTC(born.year, born.month - 1, born.day))
+        ),
+      })
+    : t.clients.identityHint;
   const seeking = isSeeking(draft.types);
   const offering = isOffering(draft.types);
   const offerTitle =
@@ -346,6 +356,38 @@ export function ClientForm({
               </div>
             )}
           </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t.clients.egn} error={err("egn")} hint={egnHint}>
+              {(props) => (
+                <input
+                  {...props}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={10}
+                  value={draft.egn}
+                  onChange={(e) => {
+                    const egn = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    const born = parseEgn(egn);
+                    setDraft((d) => ({ ...d, egn, ...(born ? { birthDay: born.day, birthMonth: born.month } : {}) }));
+                  }}
+                  className={`${inputClass} tabular-nums`}
+                />
+              )}
+            </Field>
+            <Field label={t.clients.idCard} error={err("idCard")}>
+              {(props) => (
+                <input
+                  {...props}
+                  autoComplete="off"
+                  maxLength={20}
+                  value={draft.idCard}
+                  onChange={(e) => set("idCard", e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
+                  className={`${inputClass} tabular-nums`}
+                />
+              )}
+            </Field>
+          </div>
 
           {draft.source === "referral" && (
             <Field

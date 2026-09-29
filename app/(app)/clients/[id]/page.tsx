@@ -11,6 +11,7 @@ import { QuickLog } from "@/components/client/QuickLog";
 import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
 import { ProgramCard, type ClientProgram } from "@/components/program/ProgramCard";
+import { SecretValue } from "@/components/client/SecretValue";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
 import { TaskItem } from "@/components/task/TaskItem";
@@ -61,6 +62,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     { data: shareRows },
     { data: listingRows },
     { data: programRows },
+    { data: identity },
   ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
@@ -102,6 +104,8 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .eq("client_id", id)
       .order("created_at", { ascending: false })
       .limit(10),
+    // ЕГН and ID card: only the client's broker and the managers get them back
+    supabase.from("client_identity").select("egn, id_card").eq("client_id", id).maybeSingle(),
   ]);
   const programs = (programRows ?? []) as ClientProgram[];
   const listings = (listingRows ?? []) as { id: string; title: string }[];
@@ -266,6 +270,22 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   )}
                 </dd>
               </div>
+              {identity?.egn && (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted">{t.clients.egn}</dt>
+                  <dd>
+                    <SecretValue value={identity.egn} />
+                  </dd>
+                </div>
+              )}
+              {identity?.id_card && (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted">{t.clients.idCard}</dt>
+                  <dd>
+                    <SecretValue value={identity.id_card} />
+                  </dd>
+                </div>
+              )}
               {client.birth_day !== null && client.birth_month !== null && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted">{t.programs.birthdayLabel}</dt>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarDays, CheckCircle2, Clock, Pencil, User } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Clock, Gift, Pencil, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MessageSender } from "@/components/program/MessageSender";
@@ -35,7 +35,8 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
   const carriedDays = done ? 0 : daysBetween(task.due_date, today);
   const canEdit = session.isManager || task.created_by === session.userId;
   const canComplete = task.assigned_to === session.userId || canEdit;
-  const isStep = task.program_id !== null;
+  // a program's step or a greeting: the ready text comes with send buttons
+  const isStep = task.program_id !== null || task.occasion !== null;
 
   return (
     <>
@@ -123,6 +124,12 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
           {/* ---- a contact program's step: the ready text (a message to send, or what to say on the call) ---- */}
           {isStep && task.description && (
             <Card title={task.type === "call" ? t.programs.callTitle : t.programs.sendTitle} description={done ? undefined : task.type === "call" ? undefined : t.programs.sendHint}>
+              {task.anniversary_of && (
+                <Link href={`/deals/${task.anniversary_of}/card`} className={`${buttonClass.primary} mb-4 w-full sm:w-auto`}>
+                  <Gift className="size-4" />
+                  {t.anniversary.cardTitle}
+                </Link>
+              )}
               {task.type === "call" || done || !task.client ? (
                 <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{task.description}</p>
               ) : (

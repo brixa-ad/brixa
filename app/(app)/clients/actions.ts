@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hasOffer, isOffering, isSeeking, validateClient, type ClientErrors, type ClientInput } from "@/lib/client-validation";
+import { parseEgn } from "@/lib/egn";
 import { CLIENT_STAGES, isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -58,8 +59,9 @@ async function prepare(input: ClientInput, clientId: string | null) {
     referrer: hasReferrer(input.source) ? input.referrer.trim() || null : null,
     stage: input.stage,
     notes: input.notes.trim() || null,
-    birth_day: input.birthDay,
-    birth_month: input.birthDay === null ? null : input.birthMonth,
+    // the ЕГН knows the birthday
+    birth_day: parseEgn(input.egn)?.day ?? input.birthDay,
+    birth_month: parseEgn(input.egn)?.month ?? (input.birthDay === null ? null : input.birthMonth),
     responsible_broker_id: free ? null : session.isManager ? (input.brokerId ?? session.userId) : session.userId,
   };
 
@@ -126,6 +128,31 @@ async function saveOffer(
   }
 }
 
+/** ЕГН and ID card live in their own table: only the client's broker and the managers can read it. */
+async function saveIdentity(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  organizationId: string,
+  userId: string,
+  input: ClientInput
+) {
+  const egn = input.egn.trim() || null;
+  const idCard = input.idCard.trim().toUpperCase() || null;
+  if (!egn && !idCard) {
+    await supabase.from("client_identity").delete().eq("client_id", clientId);
+    return;
+  }
+  const { error } = await supabase.from("client_identity").upsert({
+    client_id: clientId,
+    organization_id: organizationId,
+    egn,
+    id_card: idCard,
+    updated_by: userId,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) console.error("Saving the personal data failed:", error.message);
+}
+
 async function duplicateFromError(
   supabase: Awaited<ReturnType<typeof createClient>>,
   organizationId: string,
@@ -155,7 +182,11 @@ export async function createClientRecord(input: ClientInput): Promise<ClientSave
     return { ok: false, message: "generic" };
   }
 
-  await Promise.all([saveSearch(supabase, data.id, searchRow), saveOffer(supabase, data.id, offerRow)]);
+  await Promise.all([
+    saveSearch(supabase, data.id, searchRow),
+    saveOffer(supabase, data.id, offerRow),
+    saveIdentity(supabase, data.id, session.organizationId, session.userId, input),
+  ]);
   revalidatePath("/clients");
   return { ok: true, id: data.id };
 }
@@ -175,7 +206,11 @@ export async function updateClientRecord(id: string, input: ClientInput): Promis
     return { ok: false, message: error ? "generic" : "notFound" };
   }
 
-  await Promise.all([saveSearch(supabase, id, searchRow), saveOffer(supabase, id, offerRow)]);
+  await Promise.all([
+    saveSearch(supabase, id, searchRow),
+    saveOffer(supabase, id, offerRow),
+    saveIdentity(supabase, id, session.organizationId, session.userId, input),
+  ]);
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
   return { ok: true, id };

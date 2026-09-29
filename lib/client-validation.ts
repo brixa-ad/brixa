@@ -12,6 +12,7 @@ import {
   type ClientType,
   type Currency,
 } from "./options";
+import { isIdCard, parseEgn } from "./egn";
 import { isValidEmail, type ErrorCode } from "./validation";
 
 export type SearchInput = {
@@ -52,9 +53,12 @@ export type ClientInput = {
   referrer: string;
   stage: ClientStage;
   notes: string;
-  /** a birthday for greetings: both or neither */
+  /** a birthday for greetings: both or neither (an ЕГН fills it in) */
   birthDay: number | null;
   birthMonth: number | null;
+  /** for contracts — kept apart, only the broker and the managers see them */
+  egn: string;
+  idCard: string;
   brokerId: string | null;
   /** only saved when the client is a buyer / tenant / investor */
   search: SearchInput;
@@ -134,6 +138,9 @@ function checkRange(
 
 export function validateClient(input: ClientInput): ClientErrors {
   const errors: ClientErrors = {};
+
+  if (input.egn.trim() && !parseEgn(input.egn)) errors.egn = "invalid";
+  if (input.idCard.trim() && !isIdCard(input.idCard)) errors.idCard = "invalid";
 
   // a real day of the month (29 February is fine — leap years)
   const { birthDay: d, birthMonth: m } = input;

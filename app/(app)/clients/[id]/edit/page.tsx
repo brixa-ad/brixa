@@ -6,6 +6,7 @@ import { emptyOffer, emptySearch } from "@/lib/client-validation";
 import { getClient, getClientFormLookups } from "@/lib/clients";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -23,6 +24,8 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
 
   // RLS only returns clients this user may edit (their own, or any for managers).
   if (!client) notFound();
+  const supabase = await createClient();
+  const { data: identity } = await supabase.from("client_identity").select("egn, id_card").eq("client_id", id).maybeSingle();
 
   return (
     <>
@@ -42,6 +45,8 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
           referrer: client.referrer ?? "",
           birthDay: client.birth_day,
           birthMonth: client.birth_month,
+          egn: identity?.egn ?? "",
+          idCard: identity?.id_card ?? "",
           stage: client.stage,
           notes: client.notes ?? "",
           brokerId: client.responsible_broker_id ?? "free",

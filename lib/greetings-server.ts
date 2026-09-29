@@ -37,13 +37,10 @@ export async function getGreetings(session: SessionContext, today: string, t: Di
   for (const c of data ?? []) {
     const first = firstName(c.full_name);
     const vars = { name: first, broker };
-    // 29 February birthdays are greeted on the 28th in other years
+    // birthdays come as tasks every morning (with their greeting); a name day on the birthday isn't repeated
     const birthday =
       c.birth_month === month && (c.birth_day === day || (c.birth_day === 29 && month === 2 && day === 28 && !isLeap(year)));
-    if (birthday) {
-      out.push({ clientId: c.id, name: c.full_name, phone: c.phone, email: c.email, reason: "birthday", feast: null, text: fmt(t.programs.birthdayText, vars) });
-      continue;
-    }
+    if (birthday) continue;
     const feast = nameDayOn(first, today);
     if (feast) {
       out.push({ clientId: c.id, name: c.full_name, phone: c.phone, email: c.email, reason: "nameday", feast, text: fmt(t.programs.nameDayText, vars) });
