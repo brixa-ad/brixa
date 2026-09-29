@@ -3,10 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Mail, MapPin, Pencil, Phone } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { BadgeGrid } from "@/components/game/BadgeGrid";
+import { PlayerCard } from "@/components/game/PlayerCard";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { Card, buttonClass } from "@/components/ui/form";
+import { sofiaToday } from "@/lib/dates";
 import { formatDate, formatPrice, settlementLabel } from "@/lib/format";
+import { getPlayers } from "@/lib/game-server";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -40,7 +44,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
   const supabase = await createClient();
   const isSelf = id === session.userId;
 
-  const [{ t, lang }, { data: membership }, { data: profile }, propertiesRes, { data: statRows }] = await Promise.all([
+  const [{ t, lang }, { data: membership }, { data: profile }, propertiesRes, { data: statRows }, players] = await Promise.all([
     getI18n(),
     supabase
       .from("organization_members")
@@ -62,7 +66,10 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
       .order("updated_at", { ascending: false }),
     // Totals only (no clients) — every colleague may see them.
     supabase.rpc("member_stats", { target_profile: id, period: "year" }),
+    // level, streak and badges — every colleague sees them
+    getPlayers(session.organizationId, sofiaToday()),
   ]);
+  const player = players.get(id);
 
   if (!membership || !profile) notFound();
 
@@ -137,6 +144,15 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
         </Card>
 
         <div className="space-y-6">
+          {player && (
+            <div className="space-y-4">
+              <PlayerCard player={player} t={t} lang={lang} href={isSelf ? "/plan" : undefined} />
+              <Card title={t.game.badges}>
+                <BadgeGrid stats={player.stats} t={t} lang={lang} />
+              </Card>
+            </div>
+          )}
+
           {results && (
             <Card
               title={

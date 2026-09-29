@@ -9,6 +9,7 @@ import {
   Handshake,
   House,
   ListChecks,
+  Rocket,
   Settings,
   Sparkles,
   Target,
@@ -23,6 +24,7 @@ import type { NavKey } from "@/lib/nav";
 
 const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   home: House,
+  plan: Rocket,
   brix: Sparkles,
   tasks: ListChecks,
   calendar: CalendarDays,

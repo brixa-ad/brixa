@@ -46,6 +46,12 @@ export function holidays(year: number) {
   return off;
 }
 
+/** Monday–Friday and not a holiday (YYYY-MM-DD). */
+export function isWorkingDay(day: string) {
+  const date = new Date(`${day}T00:00:00Z`);
+  return !isWeekend(date) && !holidays(date.getUTCFullYear()).has(day);
+}
+
 /** Working days from `from` to `to`, both included (YYYY-MM-DD). */
 export function workingDays(from: string, to: string) {
   let count = 0;

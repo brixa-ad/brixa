@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Gift, Trophy } from "lucide-react";
+import { Flame, Gift, Trophy } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
 import { formatPrice } from "@/lib/format";
@@ -19,6 +19,7 @@ export function Leaderboard({
   viewerId,
   missions,
   points,
+  players = {},
 }: {
   month: BoardRow[];
   year: BoardRow[];
@@ -26,6 +27,8 @@ export function Leaderboard({
   missions: Mission[];
   /** the agency's point values, for the explanation under the activity ranking */
   points: Record<string, number>;
+  /** everyone's level (0-based) and current streak */
+  players?: Record<string, { level: number; streak: number }>;
 }) {
   const { t, lang } = useI18n();
   const [board, setBoard] = useState<"money" | "activity">("money");
@@ -55,7 +58,23 @@ export function Leaderboard({
         <Avatar path={row.avatarPath} name={row.name} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2 text-sm">
-            <span className={`truncate ${you ? "font-bold" : "font-medium"}`}>{row.name}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {players[row.profileId] && (
+                <span
+                  title={t.game.levels[players[row.profileId].level]}
+                  className="grid size-4.5 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-brand-cyan text-[10px] font-black text-white"
+                >
+                  {players[row.profileId].level + 1}
+                </span>
+              )}
+              <span className={`truncate ${you ? "font-bold" : "font-medium"}`}>{row.name}</span>
+              {(players[row.profileId]?.streak ?? 0) >= 2 && (
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-warning">
+                  <Flame className="size-3" />
+                  {players[row.profileId].streak}
+                </span>
+              )}
+            </span>
             <span className="shrink-0 font-semibold tabular-nums">
               {board === "money"
                 ? formatPrice(row.commission, "EUR", lang)

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, Plus, Quote, Target } from "lucide-react";
+import { GameIntro } from "@/components/game/GameIntro";
+import { MissionList, missionRows } from "@/components/game/Missions";
+import { PlayerCard } from "@/components/game/PlayerCard";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
@@ -17,6 +20,7 @@ import { getMembers } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
+import { getMissions, getPlanInputs, getPlayers } from "@/lib/game-server";
 import { getLeaderboards, getMyNumbers, getUpcomingSteps } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
@@ -33,7 +37,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const today = sofiaToday();
   const supabase = await createClient();
 
-  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }, upcoming] = await Promise.all([
+  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }, upcoming, players, planInputs] = await Promise.all([
     getI18n(),
     getMyDay(session.userId, today),
     session.isManager ? getTeamDay(session.organizationId, today) : Promise.resolve(null),
@@ -49,7 +53,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           .is("confirmed_at", null)
       : Promise.resolve({ count: 0 }),
     getUpcomingSteps(session, today),
+    getPlayers(session.organizationId, today),
+    getPlanInputs(session, today),
   ]);
+  // the game: my level and streak, today's and this week's missions
+  const me = players.get(session.userId);
+  const missionData = await getMissions(session, today, planInputs, me?.streak.today ?? 0);
   // my follow-ups due by the end of today
   const { data: dueRows } = await supabase
     .from("clients")
@@ -68,23 +77,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const followUpsToday = (dueRows ?? []).filter((r) => r.follow_up_at! > nowIso && sofiaDay(r.follow_up_at!) === today).length;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
   const { goals } = numbers;
-  const dailyGoals = [
-    {
-      label: t.home.goalCalls,
-      done: numbers.today.calls,
-      goal: goals.dailyCalls,
-    },
-    {
-      label: t.home.goalViewings,
-      done: numbers.today.viewings,
-      goal: goals.dailyViewings,
-    },
-    {
-      label: t.home.goalListings,
-      done: numbers.today.listings,
-      goal: goals.dailyListings,
-    },
-  ];
   const missions = [
     {
       label: t.home.missionMonth,
@@ -113,6 +105,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const done = day.doneToday.length;
   const percent = total === 0 ? 100 : (done / total) * 100;
   const carried = day.open.filter((task) => daysBetween(task.due_date, today) > 0).length;
+  const missionList = missionRows(missionData, { done, total }, t);
 
   const stepsToday = upcoming.filter((step) => step.day === today);
   const heading = "mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-subtle";
@@ -179,31 +172,17 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </section>
           )}
 
-          {/* the daily goals: how far today */}
+          {/* the missions: today's and this week's */}
           <section>
             <h3 className={heading}>
               <Target className="size-4 text-brand-cyan" />
-              {t.home.goalsTitle}
+              {t.game.missionsTitle}
             </h3>
-            <div className="space-y-3 pt-1">
-              {dailyGoals.map((g) => (
-                <div key={g.label}>
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-fg-2">{g.label}</span>
-                    <span className={`font-semibold tabular-nums ${g.goal > 0 && g.done >= g.goal ? "text-success" : ""}`}>
-                      {g.goal > 0 ? `${g.done} / ${g.goal}` : g.done}
-                    </span>
-                  </div>
-                  {g.goal > 0 && (
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
-                        style={{ width: `${Math.min(100, (g.done / g.goal) * 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="pt-1">
+              <div className="space-y-5">
+                <MissionList title={t.game.missionsToday} rows={missionList.today} t={t} />
+                <MissionList title={t.game.missionsWeek} rows={missionList.week} t={t} />
+              </div>
             </div>
           </section>
         </TodayWindow>
@@ -225,6 +204,29 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </div>
         </figure>
       </section>
+
+      {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
+
+      {/* ---- the player: level, streak, badges ---- */}
+      {me && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PlayerCard player={me} t={t} lang={lang} href="/plan" />
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <Target className="size-4 text-brand-cyan" />
+                {t.game.missionsTitle}
+              </span>
+            }
+            className="p-4! sm:p-5!"
+          >
+            <div className="space-y-5">
+              <MissionList title={t.game.missionsToday} rows={missionList.today} t={t} />
+              <MissionList title={t.game.missionsWeek} rows={missionList.week} t={t} />
+            </div>
+          </Card>
+        </div>
+      )}
 
       {brixReady && <MorningBrief initial={brief?.content ?? null} />}
 
@@ -342,6 +344,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             viewerId={session.userId}
             missions={missions}
             points={agency?.points ?? DEFAULT_POINTS}
+            players={Object.fromEntries(
+              [...players.values()].map((p) => [p.profileId, { level: p.level.index, streak: p.streak.current }])
+            )}
           />
         </div>
 
@@ -361,31 +366,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               </div>
             </div>
 
-            <div className="mt-5 space-y-3 border-t border-line-soft pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-subtle">{t.home.goalsTitle}</p>
-              {dailyGoals.map((g) => (
-                <div key={g.label}>
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-fg-2">{g.label}</span>
-                    <span
-                      className={`font-semibold tabular-nums ${g.goal > 0 && g.done >= g.goal ? "text-success" : ""}`}
-                    >
-                      {g.goal > 0 ? `${g.done} / ${g.goal}` : g.done}
-                    </span>
-                  </div>
-                  {g.goal > 0 && (
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
-                        style={{
-                          width: `${Math.min(100, (g.done / g.goal) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           </Card>
 
           {/* ---- clients to get back to ---- */}

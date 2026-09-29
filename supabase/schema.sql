@@ -1922,8 +1922,9 @@ set search_path = public
 as $$
   with span as (
     select
-      date_trunc(unit, day::timestamp)::date as from_day,
-      (date_trunc(unit, day::timestamp) + ('1 ' || unit)::interval)::date as to_day
+      case when period = 'all' then date '2000-01-01' else date_trunc(unit, day::timestamp)::date end as from_day,
+      case when period = 'all' then date '3000-01-01'
+        else (date_trunc(unit, day::timestamp) + ('1 ' || unit)::interval)::date end as to_day
     from (
       select
         case when period = 'year' then 'year' else 'month' end as unit,
@@ -4270,3 +4271,80 @@ $$;
 
 grant execute on function public.market_overview(uuid, text) to authenticated;
 revoke execute on function public.market_overview(uuid, text) from anon;
+
+-- ---------------------------------------------------------------------
+-- Activity points day by day, for everyone in the agency (the streaks)
+--   the same points as the ranking, on the day they were earned
+-- ---------------------------------------------------------------------
+create or replace function public.daily_points(target_org uuid, since date)
+returns table (profile_id uuid, day date, points integer)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with o as (
+    select * from public.organizations where id = target_org
+  ),
+  start as (
+    select since::timestamp at time zone 'Europe/Sofia' as ts
+  ),
+  earned as (
+    select d.broker_id as pid, d.closed_on as day,
+      case when d.double_sided then o.points_deal_double else o.points_deal end as pts
+    from public.deals d, o
+    where d.organization_id = target_org and d.status = 'won' and d.confirmed_at is not null and d.closed_on >= since
+    union all
+    select p.responsible_broker_id, (p.created_at at time zone 'Europe/Sofia')::date,
+      o.points_listing + case when p.exclusive_contract then o.points_exclusive else 0 end
+    from public.properties p, o, start
+    where p.organization_id = target_org and p.operation_type in ('sale', 'rent') and p.created_at >= start.ts
+    union all
+    select a.profile_id, (a.occurred_at at time zone 'Europe/Sofia')::date,
+      case a.type when 'viewing' then o.points_viewing when 'meeting' then o.points_meeting else o.points_call end
+    from public.activities a, o, start
+    where a.organization_id = target_org and a.type in ('viewing', 'meeting', 'call') and a.occurred_at >= start.ts
+    union all
+    select c.responsible_broker_id, (c.created_at at time zone 'Europe/Sofia')::date, o.points_client
+    from public.clients c, o, start
+    where c.organization_id = target_org and c.created_at >= start.ts
+  )
+  select e.pid, e.day, sum(e.pts)::int
+  from earned e
+  join public.organization_members m on m.organization_id = target_org and m.profile_id = e.pid
+  where public.is_org_member(target_org)
+  group by e.pid, e.day
+  order by e.pid, e.day;
+$$;
+
+-- ---------------------------------------------------------------------
+-- The broker's own plan: the goal for the year and the "why"
+--   (the manager's target stays as it is; this is the broker's own)
+-- ---------------------------------------------------------------------
+create table public.broker_plans (
+  profile_id uuid primary key references public.profiles (id) on delete cascade,
+  organization_id uuid not null references public.organizations (id) on delete cascade,
+  -- commission in euro the broker wants to earn this year
+  yearly_goal numeric(12, 2) check (yearly_goal is null or yearly_goal between 0 and 100000000),
+  big_why text check (big_why is null or char_length(big_why) <= 500),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.broker_plans enable row level security;
+
+-- my own plan; managers read the agency's
+create policy "plans: read" on public.broker_plans
+  for select to authenticated
+  using (profile_id = auth.uid() or public.is_org_manager(organization_id));
+
+create policy "plans: create my own" on public.broker_plans
+  for insert to authenticated
+  with check (profile_id = auth.uid() and public.is_org_member(organization_id));
+
+create policy "plans: update my own" on public.broker_plans
+  for update to authenticated
+  using (profile_id = auth.uid())
+  with check (profile_id = auth.uid() and public.is_org_member(organization_id));
+
+grant execute on function public.daily_points(uuid, date) to authenticated;
+revoke execute on function public.daily_points(uuid, date) from anon;
