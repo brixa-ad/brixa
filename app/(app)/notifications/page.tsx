@@ -6,7 +6,7 @@ import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
 import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { notificationText, type NotificationData } from "@/lib/notification-text";
+import { notificationLink, notificationText, type NotificationData } from "@/lib/notification-text";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -107,10 +107,11 @@ export default async function NotificationsPage() {
               </div>
             );
             const contact = contacts.get(n.link?.match(TASK_LINK)?.[1] ?? "");
+            const href = notificationLink(n.type, n.link);
             return (
               <li key={n.id} className="flex items-center">
-                {n.link ? (
-                  <Link href={n.link} className="block min-w-0 flex-1 transition hover:bg-raised">
+                {href ? (
+                  <Link href={href} className="block min-w-0 flex-1 transition hover:bg-raised">
                     {body}
                   </Link>
                 ) : (

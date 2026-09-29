@@ -16,6 +16,11 @@ export type NotificationData = {
   steps?: number;
 };
 
+/** Where tapping a notification leads: the morning brief opens the day's window on the home screen. */
+export function notificationLink(type: string, link: string | null) {
+  return type === "morning_brief" ? "/?today=1" : link;
+}
+
 /**
  * Notifications are stored as type + data; the text is written in the reader's
  * language — on the Notifications page and in the push to the phone.

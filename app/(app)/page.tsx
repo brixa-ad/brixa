@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, Plus, Quote } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, Plus, Quote, Target } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
+import { TodayWindow } from "@/components/home/TodayWindow";
 import { PushBanner } from "@/components/push/PushBanner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { TaskItem } from "@/components/task/TaskItem";
@@ -25,7 +26,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.nav.home };
 }
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: PageProps<"/">) {
+  // the morning notification opens the day in a window
+  const showDay = (await searchParams).today === "1";
   const session = (await getSession())!;
   const today = sofiaToday();
   const supabase = await createClient();
@@ -111,8 +114,101 @@ export default async function HomePage() {
   const percent = total === 0 ? 100 : (done / total) * 100;
   const carried = day.open.filter((task) => daysBetween(task.due_date, today) > 0).length;
 
+  const stepsToday = upcoming.filter((step) => step.day === today);
+  const heading = "mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-subtle";
+
   return (
     <div className="space-y-6">
+      {showDay && (
+        <TodayWindow title={t.home.dayTitle} subtitle={dateLabel} closeLabel={t.home.dayClose} allLabel={t.home.viewAll}>
+          {/* today's tasks, in the same order as on the Tasks page */}
+          <section>
+            <h3 className={heading}>
+              <ListChecks className="size-4 text-brand-cyan" />
+              {`${t.home.dayTasks} · ${day.open.length}`}
+            </h3>
+            {day.open.length === 0 ? (
+              <p className="flex items-center gap-2 py-3 text-sm text-muted">
+                <CheckCircle2 className="size-5 text-success" />
+                {total > 0 ? t.home.allDone : t.home.noTasks}
+              </p>
+            ) : (
+              <ul className="-mx-3">
+                {day.open.map((task) => (
+                  <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} />
+                ))}
+              </ul>
+            )}
+            {day.doneToday.length > 0 && (
+              <>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-subtle">{t.home.doneToday}</p>
+                <ul className="-mx-3">
+                  {day.doneToday.map((task) => (
+                    <TaskItem key={task.id} task={task} today={today} viewerId={session.userId} t={t} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+
+          {stepsToday.length > 0 && (
+            <section>
+              <h3 className={heading}>
+                <CalendarClock className="size-4 text-brand-cyan" />
+                {`${t.home.dayDeals} · ${stepsToday.length}`}
+              </h3>
+              <ul className="-mx-3">
+                {stepsToday.map((step) => {
+                  const stages = step.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
+                  return (
+                    <li key={`${step.dealId}-${step.stage}`}>
+                      <Link href={`/deals/${step.dealId}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-raised">
+                        <span className="w-12 shrink-0 text-xs font-bold text-warning">{step.time ?? t.home.todayLabel}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{stages[step.stage]}</span>
+                          <span className="block truncate text-xs text-muted">
+                            {step.title}
+                            {step.brokerName ? ` · ${step.brokerName}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {/* the daily goals: how far today */}
+          <section>
+            <h3 className={heading}>
+              <Target className="size-4 text-brand-cyan" />
+              {t.home.goalsTitle}
+            </h3>
+            <div className="space-y-3 pt-1">
+              {dailyGoals.map((g) => (
+                <div key={g.label}>
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="text-fg-2">{g.label}</span>
+                    <span className={`font-semibold tabular-nums ${g.goal > 0 && g.done >= g.goal ? "text-success" : ""}`}>
+                      {g.goal > 0 ? `${g.done} / ${g.goal}` : g.done}
+                    </span>
+                  </div>
+                  {g.goal > 0 && (
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-brand-cyan"
+                        style={{ width: `${Math.min(100, (g.done / g.goal) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </TodayWindow>
+      )}
+
       {/* ---- greeting + thought for the day ---- */}
       <section>
         <p className="text-sm font-medium capitalize text-muted">{dateLabel}</p>

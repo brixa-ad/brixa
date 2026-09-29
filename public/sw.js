@@ -11,16 +11,21 @@ self.addEventListener("push", (event) => {
     data = { body: event.data ? event.data.text() : "" };
   }
 
-  event.waitUntil(
+  const work = [
     self.registration.showNotification(data.title || "BRIXA", {
       body: data.body || "",
       icon: "/icon/192",
       tag: data.tag,
+      // stays on screen until it's tapped (Android, computers — the iPhone keeps it in the list)
+      requireInteraction: Boolean(data.requireInteraction),
       // "Call" / "Viber" / "E-mail" buttons where the phone supports them (not on iPhone)
       actions: (data.actions || []).slice(0, (self.Notification && self.Notification.maxActions) || 0),
       data: { url: data.url || "/", links: data.links || {} },
-    })
-  );
+    }),
+  ];
+  // the morning brief: a badge on the app's icon until the day is opened
+  if (data.badge && self.navigator.setAppBadge) work.push(self.navigator.setAppBadge(1).catch(() => {}));
+  event.waitUntil(Promise.all(work));
 });
 
 self.addEventListener("notificationclick", (event) => {

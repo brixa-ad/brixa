@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { dictionaries, isLang } from "@/lib/i18n/dictionaries";
-import { notificationText, type NotificationData } from "@/lib/notification-text";
+import { notificationLink, notificationText, type NotificationData } from "@/lib/notification-text";
 
 /** Who is sending (shown to the browser's push service). */
 const SUBJECT = "https://brixa-yavlena.vercel.app";
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     rows.map(async (row) => {
       const lang = isLang(row.lang) ? row.lang : "bg";
       const t = dictionaries[lang];
-      const url = row.link ?? "/";
+      const url = notificationLink(row.type, row.link) ?? "/";
       // Buttons under the notification (Android / computers): call or Viber the client, or e-mail them.
       const actions = [
         ...(row.phone ? [{ action: "call", title: t.contact.call }, { action: "viber", title: t.contact.viber }] : []),
@@ -69,6 +69,10 @@ export async function POST(request: Request) {
         body: notificationText(row.type, row.data ?? {}, t, lang),
         url,
         tag: id,
+        // on screen until it's tapped (Android, computers; the iPhone keeps it in its list)
+        requireInteraction: true,
+        // a badge on the app's icon until the day is opened
+        badge: row.type === "morning_brief",
         actions,
         links: Object.fromEntries(actions.map((a) => [a.action, `${url}?contact=${a.action}`])),
       });
