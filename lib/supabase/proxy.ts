@@ -20,6 +20,8 @@ const PUBLIC_PATHS = [
   "/r",
   // a client's search shared with colleagues
   "/s",
+  // the open house sign-in (the QR code at the door)
+  "/o",
 ];
 
 export async function updateSession(request: NextRequest) {

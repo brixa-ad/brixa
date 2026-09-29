@@ -84,6 +84,27 @@ export const getOwnerReport = cache(async (token: string): Promise<OwnerReport |
 });
 
 /** Count an opening (called from the page itself, so link previews don't count). */
+export type ReportOpenHouses = {
+  events: number;
+  visitors: number;
+  buyers: number;
+  neighbors: number;
+  price_low: number;
+  price_right: number;
+  price_high: number;
+  rating: number | null;
+  liked: string[];
+};
+
+/** The open houses in the report's period: how many came and what they thought — never who. */
+export const getReportOpenHouses = cache(async (token: string): Promise<ReportOpenHouses | null> => {
+  if (!UUID.test(token)) return null;
+  const { data, error } = await anonymous().rpc("owner_report_open_houses", { report_token: token });
+  if (error || !data) return null;
+  const r = data as ReportOpenHouses;
+  return r.events > 0 ? { ...r, rating: r.rating === null ? null : Number(r.rating) } : null;
+});
+
 export async function markReportViewed(token: string) {
   if (!UUID.test(token)) return;
   await anonymous().rpc("mark_report_viewed", { report_token: token });

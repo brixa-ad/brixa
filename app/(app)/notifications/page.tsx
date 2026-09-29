@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Handshake, Link2, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, DoorOpen, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Handshake, Link2, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -53,6 +53,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   morning_brief: { icon: Sparkles, tone: "bg-accent-soft text-accent-fg" },
   share_viewed: { icon: Link2, tone: "bg-success/10 text-success" },
   report_viewed: { icon: FileBarChart, tone: "bg-success/10 text-success" },
+  open_house_visitor: { icon: DoorOpen, tone: "bg-accent-soft text-accent-fg" },
 };
 
 export default async function NotificationsPage() {

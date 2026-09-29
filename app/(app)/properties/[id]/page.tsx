@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Tag,
+  DoorOpen,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { QuickLog } from "@/components/client/QuickLog";
@@ -48,6 +49,7 @@ import { sofiaDay, sofiaToday } from "@/lib/dates";
 import { getSession } from "@/lib/session";
 import { personName } from "@/lib/tasks";
 import { createClient } from "@/lib/supabase/server";
+import { hhmm, weekdayDate } from "@/lib/open-houses";
 
 export async function generateMetadata({ params }: PageProps<"/properties/[id]">): Promise<Metadata> {
   const property = await getProperty((await params).id);
@@ -178,6 +180,16 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   }));
 
   type Person = { full_name: string | null; email: string } | null;
+  // open houses for this listing (the latest few)
+  const { data: houseRows } = listing
+    ? await supabase
+        .from("open_houses")
+        .select("id, day, starts_at, ends_at, cancelled_at")
+        .eq("property_id", id)
+        .order("day", { ascending: false })
+        .limit(5)
+    : { data: [] as { id: string; day: string; starts_at: string; ends_at: string; cancelled_at: string | null }[] };
+
   const documents: PropertyDocument[] = await Promise.all(
     (
       (documentRows ?? []) as unknown as {
@@ -605,6 +617,44 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
                     <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker />
                   ))}
                 </div>
+              )}
+            </Card>
+          )}
+
+          {listing && (
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <DoorOpen className="size-4 text-brand-cyan" />
+                    {t.openHouses.propertyCard}
+                  </span>
+                  {["active", "reserved"].includes(property.status) && (
+                    <Link
+                      href={`/open-houses/new?property=${property.id}`}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                    >
+                      <Plus className="size-3.5" />
+                      {t.openHouses.organize}
+                    </Link>
+                  )}
+                </span>
+              }
+            >
+              {(houseRows ?? []).length === 0 ? (
+                <p className="text-sm text-muted">{t.openHouses.noneForProperty}</p>
+              ) : (
+                <ul className="-mx-2 space-y-0.5">
+                  {(houseRows ?? []).map((h) => (
+                    <li key={h.id}>
+                      <Link href={`/open-houses/${h.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-raised">
+                        <span className={`min-w-0 flex-1 truncate capitalize ${h.cancelled_at ? "text-muted line-through" : "font-medium"}`}>
+                          {fmt(t.openHouses.when, { day: weekdayDate(h.day, lang), from: hhmm(h.starts_at), to: hhmm(h.ends_at) })}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
             </Card>
           )}

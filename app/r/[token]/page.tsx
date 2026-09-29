@@ -8,7 +8,7 @@ import { daysBetween, sofiaDay, sofiaToday } from "@/lib/dates";
 import { formatDate, formatDayMonth, formatNumber, formatPrice } from "@/lib/format";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getOwnerReport, type OwnerReport } from "@/lib/owner-report";
+import { getOwnerReport, getReportOpenHouses, type OwnerReport } from "@/lib/owner-report";
 
 const periodLabel = (report: OwnerReport["report"], lang: Lang) =>
   `${formatDate(report.period_start, lang)} – ${formatDate(report.period_end, lang)}`;
@@ -32,10 +32,11 @@ export async function generateMetadata({ params }: PageProps<"/r/[token]">): Pro
 /** The owner's report: what happened with their listing over the period — never who the buyers are. */
 export default async function OwnerReportPage({ params }: PageProps<"/r/[token]">) {
   const { token } = await params;
-  const [data, { t, lang }] = await Promise.all([getOwnerReport(token), getI18n()]);
+  const [data, { t, lang }, openHouses] = await Promise.all([getOwnerReport(token), getI18n(), getReportOpenHouses(token)]);
   if (!data) notFound();
 
   const { report, property: p, totals, broker, agency } = data;
+  const opinions = openHouses ? openHouses.price_low + openHouses.price_right + openHouses.price_high : 0;
   const period = periodLabel(report, lang);
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
   const onMarket = daysBetween(sofiaDay(p.listed_at), sofiaToday());
@@ -159,6 +160,42 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
           {data.market.diff !== null && (
             <div className="mt-3">
               <MarketDiffChip diff={data.market.diff} t={t} lang={lang} />
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* ---- open houses: how many came, what they thought of the price ---- */}
+      {openHouses && (
+        <Section title={t.openHouses.ownerTitle}>
+          <p className="text-lg font-bold">
+            {fmt(t.openHouses.ownerVisitors, { visitors: openHouses.visitors })}
+            <span className="ml-2 text-sm font-normal text-muted">{fmt(t.openHouses.ownerEvents, { events: openHouses.events })}</span>
+          </p>
+          {opinions > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs text-muted">{t.openHouses.priceTitle}</p>
+              <div className="flex h-3 overflow-hidden rounded-full bg-raised">
+                <div className="bg-success" style={{ width: `${(openHouses.price_low / opinions) * 100}%` }} />
+                <div className="bg-accent" style={{ width: `${(openHouses.price_right / opinions) * 100}%` }} />
+                <div className="bg-warning" style={{ width: `${(openHouses.price_high / opinions) * 100}%` }} />
+              </div>
+              <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-fg-2">
+                <span>{`${t.openHouses.price.low}: ${openHouses.price_low}`}</span>
+                <span>{`${t.openHouses.price.right}: ${openHouses.price_right}`}</span>
+                <span>{`${t.openHouses.price.high}: ${openHouses.price_high}`}</span>
+                {openHouses.rating !== null && <span>{`${t.openHouses.avgRating}: ${formatNumber(openHouses.rating, lang, 1)} / 5`}</span>}
+              </p>
+            </div>
+          )}
+          {openHouses.liked.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs text-muted">{t.openHouses.ownerLiked}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-sm text-fg-2">
+                {openHouses.liked.slice(0, 8).map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
             </div>
           )}
         </Section>
