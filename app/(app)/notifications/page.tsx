@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Handshake, Link2, Trophy, TrendingUp, Undo2 } from "lucide-react";
+import { AlarmClock, BadgeCheck, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2 } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -52,6 +52,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   follow_ups_today: { icon: CalendarCheck, tone: "bg-accent-soft text-accent-fg" },
   morning_brief: { icon: Sparkles, tone: "bg-accent-soft text-accent-fg" },
   share_viewed: { icon: Link2, tone: "bg-success/10 text-success" },
+  client_hot: { icon: Flame, tone: "bg-danger/10 text-danger" },
   report_viewed: { icon: FileBarChart, tone: "bg-success/10 text-success" },
   open_house_visitor: { icon: DoorOpen, tone: "bg-accent-soft text-accent-fg" },
   site_inquiry: { icon: Globe, tone: "bg-accent-soft text-accent-fg" },
@@ -81,6 +82,15 @@ export default async function NotificationsPage() {
       if (task.client && (task.client.phone || task.client.email)) contacts.set(task.id, task.client);
     }
   }
+  // …and so does "🔥 a hot client"
+  const CLIENT_LINK = /^\/clients\/([0-9a-f-]{36})$/;
+  const hotIds = [
+    ...new Set(rows.filter((n) => n.type === "client_hot").map((n) => n.link?.match(CLIENT_LINK)?.[1]).filter((id): id is string => Boolean(id))),
+  ];
+  if (hotIds.length > 0) {
+    const { data: hot } = await supabase.from("clients").select("id, phone, email").in("id", hotIds);
+    for (const client of hot ?? []) if (client.phone || client.email) contacts.set(client.id, client);
+  }
 
   return (
     <>
@@ -108,7 +118,7 @@ export default async function NotificationsPage() {
                 {!n.read_at && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-fg" aria-hidden />}
               </div>
             );
-            const contact = contacts.get(n.link?.match(TASK_LINK)?.[1] ?? "");
+            const contact = contacts.get(n.link?.match(TASK_LINK)?.[1] ?? (n.type === "client_hot" ? n.link?.match(CLIENT_LINK)?.[1] : null) ?? "");
             const href = notificationLink(n.type, n.link);
             return (
               <li key={n.id} className="flex items-center">

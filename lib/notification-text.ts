@@ -95,6 +95,14 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     }
     case "share_viewed":
       return fmt(data.actor ? t.notifications.share_viewed : t.notifications.share_viewed_anon, vars);
+    case "client_hot":
+      // the listing opened again, or a tap on call / Viber / WhatsApp / e-mail
+      return data.kind === "open" || !data.kind
+        ? fmt(t.notifications.client_hot_open, vars)
+        : fmt(t.notifications.client_hot_tap, {
+            ...vars,
+            button: (t.signals.buttons as Record<string, string>)[data.kind] ?? data.kind,
+          });
     case "report_viewed":
       return fmt(data.actor ? t.notifications.report_viewed : t.notifications.report_viewed_anon, vars);
     case "site_inquiry":

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarCheck, History, ImageIcon, Mail, MapPin, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
+import { Building2, CalendarCheck, Eye, History, ImageIcon, Mail, MapPin, MousePointerClick, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
@@ -36,6 +36,9 @@ import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
 import { DEAL_SELECT, toDeals } from "@/lib/deals";
 import { nameDayIn } from "@/lib/namedays";
 import { firstName, suggestProgram } from "@/lib/programs";
+import { TemperatureBadge } from "@/components/signals/TemperatureBadge";
+import { ago, reasonText, type Reason, type Temperature } from "@/lib/signals";
+import { getClientEvents } from "@/lib/signals-server";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const client = await getClient((await params).id);
@@ -63,6 +66,8 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     { data: listingRows },
     { data: programRows },
     { data: identity },
+    { data: temperature },
+    events,
   ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
@@ -106,6 +111,9 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .limit(10),
     // ЕГН and ID card: only the client's broker and the managers get them back
     supabase.from("client_identity").select("egn, id_card").eq("client_id", id).maybeSingle(),
+    // how the client behaves: the temperature and what they did with the links
+    supabase.from("client_temperatures").select("temperature, reasons").eq("client_id", id).maybeSingle(),
+    getClientEvents(supabase, id),
   ]);
   const programs = (programRows ?? []) as ClientProgram[];
   const listings = (listingRows ?? []) as { id: string; title: string }[];
@@ -310,6 +318,62 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               {fmt(t.clients.since, { date: formatDate(client.created_at, lang) })}
             </p>
           </Card>
+
+          {/* ---- how the client behaves ---- */}
+          {(temperature || events.length > 0) && (
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-2">
+                  {t.signals.behaviour}
+                  {temperature && <TemperatureBadge value={temperature.temperature as Temperature} t={t} />}
+                </span>
+              }
+            >
+              {temperature && (temperature.reasons as Reason[]).length > 0 && (
+                <ul className="mb-4 space-y-1 text-sm text-fg-2">
+                  {(temperature.reasons as Reason[]).map((reason, i) => (
+                    <li key={i}>• {reasonText(reason, t, lang)}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">{t.signals.timeline}</p>
+              {events.length === 0 ? (
+                <p className="text-sm text-muted">{t.signals.timelineNone}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {events.map((event) => {
+                    const title = event.property?.title ?? "—";
+                    return (
+                      <li key={event.id} className="flex items-start gap-2 text-sm">
+                        {event.kind === "open" ? (
+                          <Eye className="mt-0.5 size-3.5 shrink-0 text-brand-cyan" />
+                        ) : (
+                          <MousePointerClick className="mt-0.5 size-3.5 shrink-0 text-danger" />
+                        )}
+                        <span className="min-w-0">
+                          <span className={event.kind === "open" ? "text-fg-2" : "font-semibold text-danger"}>
+                            {event.kind === "open"
+                              ? fmt(t.signals.openedEvent, { title })
+                              : fmt(t.signals.tappedEvent, { button: t.signals.buttons[event.kind], title })}
+                          </span>
+                          <span className="block text-xs text-muted">
+                            {[
+                              ago(event.occurred_at, lang),
+                              event.seconds >= 30 ? fmt(t.signals.minutes, { n: Math.max(1, Math.round(event.seconds / 60)) }) : null,
+                              event.photos > 0 ? fmt(t.signals.photos, { n: event.photos }) : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <p className="mt-4 text-[11px] text-subtle">{t.signals.classHint}</p>
+            </Card>
+          )}
 
           <ProgramCard
             programs={programs}

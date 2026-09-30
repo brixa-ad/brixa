@@ -4,6 +4,7 @@ import { Phone, Plus, UserRound, Users } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientFilters } from "@/components/client/ClientFilters";
+import { TemperatureBadge } from "@/components/signals/TemperatureBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
@@ -12,6 +13,7 @@ import { getMembers } from "@/lib/lookups";
 import { CLIENT_CLASSES, CLIENT_STAGES, CLIENT_TYPES, isOneOf, type ClientStage, type ClientType } from "@/lib/options";
 import { fromQuery, memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
+import { isTemperature, one, type Temperature } from "@/lib/signals";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +32,7 @@ type Row = {
   client_class: string;
   stage: ClientStage;
   updated_at: string;
+  client_temperatures: { temperature: Temperature } | { temperature: Temperature }[] | null;
   broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
 };
 
@@ -48,6 +51,8 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   const cls = isOneOf(CLIENT_CLASSES, params.class) ? params.class : "";
   const type = isOneOf(CLIENT_TYPES, params.type) ? params.type : "";
   const broker = typeof params.broker === "string" ? params.broker : "";
+  const temp = isTemperature(params.temp) ? params.temp : "";
+  const byTemperature = params.sort === "temp";
 
   const session = (await getSession())!;
   const supabase = await createClient();
@@ -59,11 +64,11 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
     .from("clients")
     .select(
       `id, full_name, phone, email, types, client_class, stage, updated_at,
+      client_temperatures${temp ? "!inner" : ""}(temperature),
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path)`
     )
     .eq("organization_id", session.organizationId)
     .not("responsible_broker_id", "is", null) // free contacts have their own page
-    .order("updated_at", { ascending: false })
     .limit(LIMIT);
 
   if (q) {
@@ -76,6 +81,14 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   if (cls) query = query.eq("client_class", cls);
   if (type) query = query.contains("types", [type]);
   if (broker && session.isManager) query = query.eq("responsible_broker_id", broker);
+  // how the client behaves (🔥 hot first)
+  if (temp) query = query.eq("client_temperatures.temperature", temp);
+  if (byTemperature) {
+    query = query
+      .order("client_temperatures(rank)", { ascending: false, nullsFirst: false })
+      .order("client_temperatures(score)", { ascending: false, nullsFirst: false });
+  }
+  query = query.order("updated_at", { ascending: false });
 
   const [{ data, error }, { data: all }, members] = await Promise.all([
     query,
@@ -94,7 +107,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
     if (c.stage === "negotiation" || c.stage === "deposit") counts.active++;
     if (c.stage === "deal") counts.deals++;
   }
-  const filtered = Boolean(q || stage || cls || type || broker);
+  const filtered = Boolean(q || stage || cls || type || broker || temp);
 
   return (
     <>
@@ -183,6 +196,10 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition hover:bg-raised sm:flex-nowrap sm:px-5"
               >
                 <ClassBadge value={c.client_class} />
+                {(() => {
+                  const temperature = one(c.client_temperatures)?.temperature;
+                  return temperature ? <TemperatureBadge value={temperature} t={t} compact /> : <span className="size-7 shrink-0" aria-hidden />;
+                })()}
                 <div className="min-w-0 flex-1 basis-48">
                   <p className="truncate font-medium">{c.full_name}</p>
                   <p className="mt-0.5 flex flex-wrap gap-1">

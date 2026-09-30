@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeCheck, CalendarClock, CalendarDays, CheckCircle2, Clock, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarClock, CalendarDays, CheckCircle2, Clock, Flame, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
 import { GameIntro } from "@/components/game/GameIntro";
 import { MissionList, missionRows } from "@/components/game/Missions";
 import { PlayerCard } from "@/components/game/PlayerCard";
@@ -11,6 +11,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
 import { TodayWindow } from "@/components/home/TodayWindow";
 import { PushBanner } from "@/components/push/PushBanner";
+import { TemperatureItem } from "@/components/signals/SignalRows";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
 import { addDays, sofiaToday, TIME_ZONE } from "@/lib/dates";
@@ -24,6 +25,7 @@ import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
 import { getMissions, getPlanInputs, getPlayers } from "@/lib/game-server";
 import { getGreetings } from "@/lib/greetings-server";
+import { countTemperatures, getTemperatures } from "@/lib/signals-server";
 import { getLeaderboards, getMyNumbers, getStaleDeals, getUpcomingSteps } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { getMyDay, getTeamDay } from "@/lib/tasks";
@@ -62,11 +64,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // the game: my level and streak, today's and this week's missions
   const me = players.get(session.userId);
   const month = monthRange(today);
-  const [missionData, greetings, stale, monthDays] = await Promise.all([
+  const [missionData, greetings, stale, monthDays, hotClients, coolingCount] = await Promise.all([
     getMissions(session, today, planInputs, me?.streak.today ?? 0),
     getGreetings(session, today, t),
     session.isManager && !session.solo ? getStaleDeals(session, today) : Promise.resolve([]),
     getCalendarEntries(supabase, session.userId, month.from, month.to, t),
+    // how my clients behave: the hottest, and how many are cooling down
+    getTemperatures(supabase, session.organizationId, { broker: session.userId, temperatures: ["hot"], limit: 5 }),
+    countTemperatures(supabase, session.organizationId, session.userId, ["cooling", "cold"]),
   ]);
   const agency = await getAgency(session.organizationId);
   // Brix's plan (written on the first visit of the day, when the AI key is set)
@@ -324,8 +329,45 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </footer>
         </Card>
 
-        {/* the level: where I am in the game */}
-        <div>{me && <PlayerCard player={me} t={t} lang={lang} href="/plan" />}</div>
+        <div className="space-y-6">
+          {/* the level: where I am in the game */}
+          {me && <PlayerCard player={me} t={t} lang={lang} href="/plan" />}
+
+          {/* 🔥 the clients to call first */}
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <Flame className="size-4 text-danger" />
+                {t.signals.homeTitle}
+                {hotClients.length > 0 && <span className="text-sm font-normal text-muted">· {hotClients.length}</span>}
+              </span>
+            }
+            className="p-4! sm:p-5!"
+          >
+            {hotClients.length === 0 ? (
+              <p className="text-sm text-muted">{t.signals.homeNone}</p>
+            ) : (
+              <ul className="-my-3 divide-y divide-line-soft">
+                {hotClients.map((row) => (
+                  <TemperatureItem key={row.client.id} row={row} t={t} lang={lang} reasons={1} />
+                ))}
+              </ul>
+            )}
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-line-soft pt-3 text-sm">
+              {coolingCount > 0 ? (
+                <Link href="/signals" className="font-medium text-sky-500 hover:underline">
+                  🧊 {fmt(t.signals.homeCooling, { count: coolingCount })}
+                </Link>
+              ) : (
+                <span />
+              )}
+              <Link href="/signals" className="inline-flex items-center gap-1 font-medium text-accent-fg hover:underline">
+                {t.signals.viewAll}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {greetings.length > 0 && (

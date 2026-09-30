@@ -4,6 +4,7 @@ import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
+import type { Tap } from "./signals";
 
 export type SharedListing = {
   property: {
@@ -78,8 +79,22 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
   };
 });
 
-/** Count an opening (called from the page itself, so link previews don't count). */
-export async function markShareViewed(token: string) {
-  if (!UUID.test(token)) return;
-  await anonymous().rpc("mark_share_viewed", { share_token: token });
+/**
+ * Count an opening (called from the page itself, so link previews don't count). Returns the
+ * opening's id — the page adds its time to it when it's left.
+ */
+export async function markShareViewed(token: string): Promise<string | null> {
+  if (!UUID.test(token)) return null;
+  const { data } = await anonymous().rpc("record_share_event", { share_token: token, event: "open" });
+  return typeof data === "string" ? data : null;
+}
+
+/** A tap on call / Viber / WhatsApp / e-mail on the listing's page. */
+export async function recordShareTap(token: string, tap: Tap) {
+  await anonymous().rpc("record_share_event", { share_token: token, event: tap });
+}
+
+/** How long the page was looked at and how many photos were seen. */
+export async function recordShareTime(token: string, eventId: string, seconds: number, photos: number) {
+  await anonymous().rpc("share_event_time", { share_token: token, event_id: eventId, seen_seconds: seconds, seen_photos: photos });
 }

@@ -6,6 +6,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
 import { CLIENT_CLASSES, CLIENT_STAGES } from "@/lib/options";
+import { TEMPERATURES, TEMP_EMOJI } from "@/lib/signals";
 
 export function ClientFilters({ brokers }: { brokers: { id: string; name: string }[] }) {
   const { t } = useI18n();
@@ -26,7 +27,7 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
   }
 
-  const hasFilters = ["q", "stage", "class", "broker"].some((key) => searchParams.get(key));
+  const hasFilters = ["q", "stage", "class", "broker", "temp", "sort"].some((key) => searchParams.get(key));
   const selectClass = `${inputClass} sm:w-auto`;
 
   return (
@@ -64,6 +65,20 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
             {cls} — {t.options.clientClass[cls]}
           </option>
         ))}
+      </select>
+
+      <select aria-label={t.signals.behaviour} value={searchParams.get("temp") ?? ""} onChange={(e) => update("temp", e.target.value)} className={selectClass}>
+        <option value="">{t.signals.allTemperatures}</option>
+        {TEMPERATURES.map((temp) => (
+          <option key={temp} value={temp}>
+            {TEMP_EMOJI[temp]} {t.signals.temperatures[temp]}
+          </option>
+        ))}
+      </select>
+
+      <select aria-label={t.signals.sortTemperature} value={searchParams.get("sort") ?? ""} onChange={(e) => update("sort", e.target.value)} className={selectClass}>
+        <option value="">{t.signals.sortRecent}</option>
+        <option value="temp">{t.signals.sortTemperature}</option>
       </select>
 
       {brokers.length > 1 && (
