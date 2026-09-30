@@ -27,8 +27,9 @@ export default async function BusinessPage() {
 
   const euro = (n: number) => formatPrice(Math.round(n), "EUR", lang) ?? "0";
   const monthName = (key: string) => {
-    const m = new Intl.DateTimeFormat(locale(lang), { month: "short", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`));
-    return m.charAt(0).toUpperCase() + m.slice(1);
+    // "Яну", "Фев"… (the short form is a number in Bulgarian)
+    const m = new Intl.DateTimeFormat(locale(lang), { month: "long", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`));
+    return m.charAt(0).toUpperCase() + m.slice(1, 3);
   };
   const maxMonth = Math.max(1, ...b.months.map((m) => Math.max(m.income, m.spent)));
   const goal = b.settings.savingsGoal;
