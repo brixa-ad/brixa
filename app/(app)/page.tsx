@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, ListChecks, PartyPopper, Plus, Target, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
 import { GameIntro } from "@/components/game/GameIntro";
 import { MissionList, missionRows } from "@/components/game/Missions";
 import { PlayerCard } from "@/components/game/PlayerCard";
@@ -17,6 +17,7 @@ import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
+import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
 import { getMissions, getPlanInputs, getPlayers } from "@/lib/game-server";
@@ -97,6 +98,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   ];
 
   const firstName = (session.fullName || session.email).split(/[\s@]+/)[0];
+  const quote = quoteOfTheDay(lang);
   const dateLabel = new Intl.DateTimeFormat(locale(lang), {
     weekday: "long",
     day: "numeric",
@@ -201,12 +203,19 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </TodayWindow>
       )}
 
-      {/* ---- a short hello ---- */}
+      {/* ---- greeting + thought for the day ---- */}
       <section>
         <p className="text-sm font-medium capitalize text-muted">{dateLabel}</p>
-        <h1 className="mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
           {fmt(t.home.hello, { name: firstName })} <span aria-hidden>👋</span>
         </h1>
+        <figure className="mt-4 flex gap-3 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur sm:p-5">
+          <Quote className="size-5 shrink-0 text-accent-fg" />
+          <div>
+            <blockquote className="text-[15px] leading-relaxed text-fg-2 italic">{quote.text}</blockquote>
+            <figcaption className="mt-1.5 text-xs font-medium text-subtle">{quote.author ? `— ${quote.author}` : t.home.quoteLabel}</figcaption>
+          </div>
+        </figure>
       </section>
 
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
