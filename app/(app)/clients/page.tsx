@@ -4,7 +4,7 @@ import { Phone, Plus, UserRound, Users } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientFilters } from "@/components/client/ClientFilters";
-import { TemperatureBadge } from "@/components/signals/TemperatureBadge";
+import { CoolingTag } from "@/components/signals/CoolingTag";
 import { PageHeader } from "@/components/PageHeader";
 import { buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
@@ -13,7 +13,7 @@ import { getMembers } from "@/lib/lookups";
 import { CLIENT_CLASSES, CLIENT_STAGES, CLIENT_TYPES, isOneOf, type ClientStage, type ClientType } from "@/lib/options";
 import { fromQuery, memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
-import { isTemperature, one, type Temperature } from "@/lib/signals";
+import { one, type Temperature } from "@/lib/signals";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -51,8 +51,9 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   const cls = isOneOf(CLIENT_CLASSES, params.class) ? params.class : "";
   const type = isOneOf(CLIENT_TYPES, params.type) ? params.type : "";
   const broker = typeof params.broker === "string" ? params.broker : "";
-  const temp = isTemperature(params.temp) ? params.temp : "";
-  const byTemperature = params.sort === "temp";
+  // only the cooling ones; the class first (A, B, C), the most active on top
+  const coolingOnly = params.temp === "cooling";
+  const byClass = params.sort === "class";
 
   const session = (await getSession())!;
   const supabase = await createClient();
@@ -64,7 +65,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
     .from("clients")
     .select(
       `id, full_name, phone, email, types, client_class, stage, updated_at,
-      client_temperatures${temp ? "!inner" : ""}(temperature, rank, score),
+      client_temperatures${coolingOnly ? "!inner" : ""}(temperature, score),
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path)`
     )
     .eq("organization_id", session.organizationId)
@@ -81,12 +82,10 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   if (cls) query = query.eq("client_class", cls);
   if (type) query = query.contains("types", [type]);
   if (broker && session.isManager) query = query.eq("responsible_broker_id", broker);
-  // how the client behaves (🔥 hot first; the order needs rank and score in the select above)
-  if (temp) query = query.eq("client_temperatures.temperature", temp);
-  if (byTemperature) {
-    query = query
-      .order("client_temperatures(rank)", { ascending: false, nullsFirst: false })
-      .order("client_temperatures(score)", { ascending: false, nullsFirst: false });
+  // how the client behaves (the order by the score needs it in the select above)
+  if (coolingOnly) query = query.eq("client_temperatures.temperature", "cooling");
+  if (byClass) {
+    query = query.order("client_class", { ascending: true }).order("client_temperatures(score)", { ascending: false, nullsFirst: false });
   }
   query = query.order("updated_at", { ascending: false });
 
@@ -107,7 +106,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
     if (c.stage === "negotiation" || c.stage === "deposit") counts.active++;
     if (c.stage === "deal") counts.deals++;
   }
-  const filtered = Boolean(q || stage || cls || type || broker || temp);
+  const filtered = Boolean(q || stage || cls || type || broker || coolingOnly);
 
   return (
     <>
@@ -195,13 +194,12 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
                 href={`/clients/${c.id}${fromQuery(back)}`}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition hover:bg-raised sm:flex-nowrap sm:px-5"
               >
-                <ClassBadge value={c.client_class} />
-                {(() => {
-                  const temperature = one(c.client_temperatures)?.temperature;
-                  return temperature ? <TemperatureBadge value={temperature} t={t} compact /> : <span className="size-7 shrink-0" aria-hidden />;
-                })()}
+                <ClassBadge value={c.client_class} title={t.options.clientClass[c.client_class as "A" | "B" | "C"]} />
                 <div className="min-w-0 flex-1 basis-48">
-                  <p className="truncate font-medium">{c.full_name}</p>
+                  <p className="flex items-center gap-2">
+                    <span className="truncate font-medium">{c.full_name}</span>
+                    {one(c.client_temperatures)?.temperature === "cooling" && <CoolingTag t={t} />}
+                  </p>
                   <p className="mt-0.5 flex flex-wrap gap-1">
                     {c.types.map((tp) => (
                       <span key={tp} className="rounded-md bg-raised px-1.5 py-0.5 text-xs text-fg-2">

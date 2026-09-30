@@ -1,10 +1,8 @@
 import { fmt, locale, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 
-/** How a client behaves, worked out by the database (client_temperatures). */
+/** How a client behaves, worked out by the database (client_temperatures); the class A / B / C follows it. */
 export const TEMPERATURES = ["hot", "warm", "cooling", "cold"] as const;
 export type Temperature = (typeof TEMPERATURES)[number];
-
-export const isTemperature = (value: unknown): value is Temperature => TEMPERATURES.includes(value as Temperature);
 
 /** A tap on the shared listing's page. */
 export const TAPS = ["call", "viber", "whatsapp", "email"] as const;
@@ -24,14 +22,6 @@ export type Reason =
   | { code: "negative"; n: number }
   | { code: "unopened"; n: number }
   | { code: "stopped"; at: string };
-
-export const TEMP_EMOJI: Record<Temperature, string> = { hot: "🔥", warm: "🌤️", cooling: "🧊", cold: "❄️" };
-export const TEMP_TONE: Record<Temperature, string> = {
-  hot: "bg-danger/10 text-danger",
-  warm: "bg-warning/10 text-warning",
-  cooling: "bg-sky-500/10 text-sky-500",
-  cold: "bg-raised text-muted",
-};
 
 /** "2 hours ago", "yesterday" — in the reader's language. */
 export function ago(iso: string, lang: Lang) {

@@ -36,8 +36,8 @@ import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
 import { DEAL_SELECT, toDeals } from "@/lib/deals";
 import { nameDayIn } from "@/lib/namedays";
 import { firstName, suggestProgram } from "@/lib/programs";
-import { TemperatureBadge } from "@/components/signals/TemperatureBadge";
-import { ago, reasonText, type Reason, type Temperature } from "@/lib/signals";
+import { CoolingTag } from "@/components/signals/CoolingTag";
+import { ago, reasonText, type Reason } from "@/lib/signals";
 import { getClientEvents } from "@/lib/signals-server";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
@@ -112,7 +112,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     // ЕГН and ID card: only the client's broker and the managers get them back
     supabase.from("client_identity").select("egn, id_card").eq("client_id", id).maybeSingle(),
     // how the client behaves: the temperature and what they did with the links
-    supabase.from("client_temperatures").select("temperature, reasons").eq("client_id", id).maybeSingle(),
+    supabase
+      .from("client_temperatures")
+      .select("temperature, reasons, auto_class_at, auto_class_from, auto_class_reason")
+      .eq("client_id", id)
+      .maybeSingle(),
     getClientEvents(supabase, id),
   ]);
   const programs = (programRows ?? []) as ClientProgram[];
@@ -325,10 +329,30 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               title={
                 <span className="flex items-center justify-between gap-2">
                   {t.signals.behaviour}
-                  {temperature && <TemperatureBadge value={temperature.temperature as Temperature} t={t} />}
+                  {temperature?.temperature === "cooling" && <CoolingTag t={t} />}
                 </span>
               }
             >
+              {/* the class — and when the system moved it, why */}
+              <div className="mb-3 flex items-center gap-3">
+                <ClassBadge value={client.client_class} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {client.client_class} — {t.options.clientClass[client.client_class as "A" | "B" | "C"]}
+                  </p>
+                  {temperature?.auto_class_at && temperature.auto_class_from && temperature.auto_class_from !== client.client_class && (
+                    <p className="text-xs text-muted">
+                      {fmt(t.signals.autoClass, {
+                        from: temperature.auto_class_from,
+                        to: client.client_class,
+                        when: ago(temperature.auto_class_at, lang),
+                      })}
+                      {temperature.auto_class_reason &&
+                        ` · ${(t.signals.autoReasons as Record<string, string>)[temperature.auto_class_reason] ?? ""}`}
+                    </p>
+                  )}
+                </div>
+              </div>
               {temperature && (temperature.reasons as Reason[]).length > 0 && (
                 <ul className="mb-4 space-y-1 text-sm text-fg-2">
                   {(temperature.reasons as Reason[]).map((reason, i) => (

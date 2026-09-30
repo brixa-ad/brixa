@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Eye, MousePointerClick } from "lucide-react";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ContactButtons } from "@/components/ContactButtons";
-import { TemperatureBadge } from "@/components/signals/TemperatureBadge";
+import { CoolingTag } from "@/components/signals/CoolingTag";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { ago, reasonText } from "@/lib/signals";
 import type { LinkActivity, TemperatureRow } from "@/lib/signals-server";
 
-/** A client with their temperature and why — and call / Viber / e-mail right there. */
+/** A client with their class (↓ when cooling) and why — and call / Viber / e-mail right there. */
 export function TemperatureItem({
   row,
   t,
@@ -24,13 +24,13 @@ export function TemperatureItem({
   const { client } = row;
   return (
     <li className="flex items-start gap-3 py-3">
-      <TemperatureBadge value={row.temperature} t={t} compact />
+      <ClassBadge value={client.client_class} title={t.options.clientClass[client.client_class as "A" | "B" | "C"]} />
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <Link href={`/clients/${client.id}`} className="truncate font-medium hover:text-accent-fg">
             {client.full_name}
           </Link>
-          <span className="text-xs font-semibold text-subtle">{client.client_class}</span>
+          {row.temperature === "cooling" && <CoolingTag t={t} />}
           {showBroker && client.brokerName && <span className="truncate text-xs text-muted">· {client.brokerName}</span>}
         </p>
         {row.reasons.length > 0 && (
@@ -57,7 +57,7 @@ export function LinkActivityItem({ item, t, lang, showBroker = false }: { item: 
   return (
     <li className="py-3">
       <div className="flex items-start gap-3">
-        <ClassBadge value={client.client_class} />
+        <ClassBadge value={client.client_class} title={t.options.clientClass[client.client_class as "A" | "B" | "C"]} />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <Link href={`/clients/${client.id}`} className="truncate font-medium hover:text-accent-fg">

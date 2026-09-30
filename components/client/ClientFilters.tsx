@@ -6,7 +6,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
 import { CLIENT_CLASSES, CLIENT_STAGES } from "@/lib/options";
-import { TEMPERATURES, TEMP_EMOJI } from "@/lib/signals";
+import { CLASS_EMOJI } from "@/components/client/ClassBadge";
 
 export function ClientFilters({ brokers }: { brokers: { id: string; name: string }[] }) {
   const { t } = useI18n();
@@ -62,23 +62,19 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
         <option value="">{t.clients.allClasses}</option>
         {CLIENT_CLASSES.map((cls) => (
           <option key={cls} value={cls}>
-            {cls} — {t.options.clientClass[cls]}
+            {CLASS_EMOJI[cls]} {cls} — {t.options.clientClass[cls]}
           </option>
         ))}
       </select>
 
       <select aria-label={t.signals.behaviour} value={searchParams.get("temp") ?? ""} onChange={(e) => update("temp", e.target.value)} className={selectClass}>
-        <option value="">{t.signals.allTemperatures}</option>
-        {TEMPERATURES.map((temp) => (
-          <option key={temp} value={temp}>
-            {TEMP_EMOJI[temp]} {t.signals.temperatures[temp]}
-          </option>
-        ))}
+        <option value="">{t.signals.allSignals}</option>
+        <option value="cooling">↓ {t.signals.coolingOnly}</option>
       </select>
 
-      <select aria-label={t.signals.sortTemperature} value={searchParams.get("sort") ?? ""} onChange={(e) => update("sort", e.target.value)} className={selectClass}>
+      <select aria-label={t.signals.sortClass} value={searchParams.get("sort") ?? ""} onChange={(e) => update("sort", e.target.value)} className={selectClass}>
         <option value="">{t.signals.sortRecent}</option>
-        <option value="temp">{t.signals.sortTemperature}</option>
+        <option value="class">{t.signals.sortClass}</option>
       </select>
 
       {brokers.length > 1 && (

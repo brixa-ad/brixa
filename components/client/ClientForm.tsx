@@ -28,6 +28,7 @@ import {
   type ClientClass,
   type ClientType,
 } from "@/lib/options";
+import { CLASS_ICONS } from "./ClassBadge";
 import { OfferFields, type OfferDraft } from "./OfferFields";
 import { SearchFields } from "./SearchFields";
 
@@ -260,6 +261,7 @@ export function ClientForm({
             <div className="grid grid-cols-3 gap-2" role="radiogroup">
               {CLIENT_CLASSES.map((cls) => {
                 const on = draft.clientClass === cls;
+                const Icon = CLASS_ICONS[cls];
                 return (
                   <button
                     key={cls}
@@ -271,12 +273,16 @@ export function ClientForm({
                       on ? CLASS_STYLES[cls] : "border-line text-muted hover:border-line-strong"
                     }`}
                   >
-                    <span className="block text-lg font-bold leading-tight">{cls}</span>
+                    <span className="flex items-center justify-center gap-1.5 text-lg font-bold leading-tight">
+                      <Icon className="size-4" aria-hidden />
+                      {cls}
+                    </span>
                     <span className="block text-xs font-medium">{t.options.clientClass[cls]}</span>
                   </button>
                 );
               })}
             </div>
+            <p className="mt-1.5 text-xs text-muted">{t.signals.classFormHint}</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
