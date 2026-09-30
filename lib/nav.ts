@@ -54,14 +54,16 @@ export const NAV_HREF: Record<NavKey, string> = {
 export const BOTTOM_NAV_MAX = 5;
 export const DEFAULT_BOTTOM_NAV: NavKey[] = ["home", "tasks", "deals", "properties", "clients"];
 
-/** Sections this person may open (goals are the managers'; Brix only once the AI is connected). */
-export function navKeysFor(isManager: boolean, brix = false): NavKey[] {
-  return NAV_KEYS.filter((key) => (key !== "goals" || isManager) && (key !== "brix" || brix));
+/** Sections this person may open (goals are the managers'; Brix only once the AI is connected; no team parts when working alone). */
+export function navKeysFor(isManager: boolean, brix = false, solo = false): NavKey[] {
+  return NAV_KEYS.filter(
+    (key) => (key !== "goals" || isManager) && (key !== "brix" || brix) && !(solo && (key === "team" || key === "contacts"))
+  );
 }
 
 /** The saved bottom bar, cleaned up; the default when nothing (valid) is saved. */
-export function bottomNavFor(saved: readonly string[] | null | undefined, isManager: boolean, brix = false): NavKey[] {
-  const allowed = navKeysFor(isManager, brix);
+export function bottomNavFor(saved: readonly string[] | null | undefined, isManager: boolean, brix = false, solo = false): NavKey[] {
+  const allowed = navKeysFor(isManager, brix, solo);
   const keys = [...new Set(saved ?? [])].filter((key): key is NavKey => (allowed as string[]).includes(key));
   return keys.length > 0 ? keys.slice(0, BOTTOM_NAV_MAX) : DEFAULT_BOTTOM_NAV;
 }

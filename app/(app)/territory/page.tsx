@@ -50,6 +50,8 @@ export default async function TerritoryPage({ searchParams }: PageProps<"/territ
     <>
       <PageHeader title={t.territory.title} subtitle={t.territory.subtitle} />
 
+      {/* working alone, "the agency" is just me */}
+      {!session.solo && (
       <nav className="mb-4 flex gap-1 rounded-xl border border-line bg-surface p-1 sm:w-80">
         <Link href="/territory" className={tab(!agencyView)} aria-current={!agencyView ? "page" : undefined}>
           {t.territory.me}
@@ -58,6 +60,7 @@ export default async function TerritoryPage({ searchParams }: PageProps<"/territ
           {t.territory.agency}
         </Link>
       </nav>
+      )}
 
       {/* where I stand, and the next step */}
       {!agencyView && strongest && strongestLevel && (

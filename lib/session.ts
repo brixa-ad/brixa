@@ -16,6 +16,8 @@ export type SessionContext = {
   role: Role;
   /** owner or manager — sees and manages everything in the agency */
   isManager: boolean;
+  /** a one-person workspace (a broker on their own): no team parts */
+  solo: boolean;
 };
 
 /**
@@ -45,6 +47,10 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
   if (!membership) return null;
 
   const org = membership.organizations as unknown as { name: string } | null;
+  const { count: members } = await supabase
+    .from("organization_members")
+    .select("profile_id", { count: "exact", head: true })
+    .eq("organization_id", membership.organization_id);
 
   return {
     userId: user.id,
@@ -56,5 +62,6 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     organizationName: org?.name ?? "",
     role: membership.role as Role,
     isManager: membership.role === "owner" || membership.role === "manager",
+    solo: (members ?? 0) <= 1,
   };
 });

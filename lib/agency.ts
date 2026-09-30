@@ -30,6 +30,8 @@ export type Agency = {
   /** an external broker's usual share, % of the commission */
   referralPercent: number;
   points: AgencyPoints;
+  /** the website at /w/<slug> */
+  site: { enabled: boolean; slug: string | null; headline: string | null; about: string | null };
 };
 
 export const DEFAULT_POINTS: AgencyPoints = {
@@ -65,6 +67,12 @@ export const getAgency = cache(async (organizationId: string): Promise<Agency | 
     commissionSalePercent: n(data.commission_sale_percent, 3),
     commissionRentMonths: n(data.commission_rent_months, 1),
     referralPercent: n(data.referral_percent, 10),
+    site: {
+      enabled: Boolean(data.site_enabled),
+      slug: data.site_slug ?? null,
+      headline: data.site_headline ?? null,
+      about: data.site_about ?? null,
+    },
     points: {
       dealDouble: n(data.points_deal_double, DEFAULT_POINTS.dealDouble),
       deal: n(data.points_deal, DEFAULT_POINTS.deal),

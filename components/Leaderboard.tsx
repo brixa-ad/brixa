@@ -20,6 +20,7 @@ export function Leaderboard({
   missions,
   points,
   players = {},
+  records = null,
 }: {
   month: BoardRow[];
   year: BoardRow[];
@@ -29,6 +30,8 @@ export function Leaderboard({
   points: Record<string, number>;
   /** everyone's level (0-based) and current streak */
   players?: Record<string, { level: number; streak: number }>;
+  /** working alone: the missions and my records, no ranking */
+  records?: { label: string; value: string }[] | null;
 }) {
   const { t, lang } = useI18n();
   const [board, setBoard] = useState<"money" | "activity">("money");
@@ -97,9 +100,9 @@ export function Leaderboard({
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <Trophy className="size-4 text-brand-cyan" />
-          {t.home.boardTitle}
+          {records ? t.home.recordsTitle : t.home.boardTitle}
         </h2>
-        <div className="flex gap-2">
+        {!records && <div className="flex gap-2">
           <div className="inline-flex rounded-lg border border-line bg-canvas/40 p-0.5">
             <button type="button" onClick={() => setBoard("money")} className={toggle(board === "money")} aria-pressed={board === "money"}>
               {t.home.boardMoney}
@@ -121,7 +124,7 @@ export function Leaderboard({
               {t.home.boardYear}
             </button>
           </div>
-        </div>
+        </div>}
       </header>
 
       {missions.some((m) => m.target > 0 || m.bonus) && (
@@ -172,7 +175,16 @@ export function Leaderboard({
         </div>
       )}
 
-      {leader === 0 ? (
+      {records ? (
+        <dl className="grid grid-cols-2 gap-3">
+          {records.map((r) => (
+            <div key={r.label} className="rounded-xl bg-raised/60 px-3.5 py-3">
+              <dt className="text-xs text-muted">{r.label}</dt>
+              <dd className="mt-0.5 text-lg font-bold tabular-nums">{r.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : leader === 0 ? (
         <p className="py-4 text-sm text-muted">{t.home.boardEmpty}</p>
       ) : (
         <ol className="space-y-0.5">
@@ -188,7 +200,7 @@ export function Leaderboard({
         </ol>
       )}
 
-      {board === "activity" && <p className="mt-4 text-[11px] leading-relaxed text-subtle">{fmt(t.home.pointsHelp, points)}</p>}
+      {!records && board === "activity" && <p className="mt-4 text-[11px] leading-relaxed text-subtle">{fmt(t.home.pointsHelp, points)}</p>}
     </section>
   );
 }

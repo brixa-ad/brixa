@@ -85,6 +85,7 @@ export const CLIENT_SOURCES = [
   "flyers",
   "banner",
   "open_house",
+  "website",
 ] as const;
 /** The register of closed deals. */
 export const CLOSED_SIDES = ["sale", "purchase"] as const;

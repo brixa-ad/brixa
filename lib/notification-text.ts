@@ -97,6 +97,9 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(data.actor ? t.notifications.share_viewed : t.notifications.share_viewed_anon, vars);
     case "report_viewed":
       return fmt(data.actor ? t.notifications.report_viewed : t.notifications.report_viewed_anon, vars);
+    case "site_inquiry":
+      // about a listing, or a general question
+      return fmt(t.notifications.site_inquiry, { ...vars, title: data.title ? ` — ${data.title}` : "" });
     case "open_house_visitor":
       return fmt(t.notifications.open_house_visitor, vars);
     case "task_reminder":

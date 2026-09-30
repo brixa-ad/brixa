@@ -12,7 +12,7 @@ export async function saveBottomNav(keys: string[] | null): Promise<{ ok: boolea
   if (!session) return { ok: false };
 
   if (keys !== null) {
-    const allowed = navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY)) as string[];
+    const allowed = navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session.solo) as string[];
     const unique = [...new Set(keys)];
     if (unique.length === 0 || unique.length > BOTTOM_NAV_MAX || !unique.every((key) => allowed.includes(key))) {
       return { ok: false };
@@ -129,6 +129,33 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
   if (error) console.error("Saving the agency failed:", error.message);
   revalidatePath("/", "layout");
   return { ok: !error };
+}
+
+/** Managers: the website — on or off, its address, the headline and a few words. */
+export async function saveSite(input: { enabled: boolean; slug: string; headline: string; about: string }): Promise<{ ok: boolean; reason?: "taken" | "invalid" }> {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  const slug = String(input.slug ?? "").trim().toLowerCase();
+  if (slug && !/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug)) return { ok: false, reason: "invalid" };
+  if (input.enabled && !slug) return { ok: false, reason: "invalid" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("organizations")
+    .update({
+      site_enabled: Boolean(input.enabled),
+      site_slug: slug || null,
+      site_headline: String(input.headline ?? "").trim().slice(0, 120) || null,
+      site_about: String(input.about ?? "").trim().slice(0, 2000) || null,
+    })
+    .eq("id", session.organizationId);
+  if (error) {
+    if (error.code === "23505") return { ok: false, reason: "taken" };
+    console.error("Saving the website failed:", error.message);
+    return { ok: false };
+  }
+  revalidatePath("/settings");
+  if (slug) revalidatePath(`/w/${slug}`);
+  return { ok: true };
 }
 
 /** After the browser uploaded a logo (or to remove it: null). */

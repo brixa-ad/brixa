@@ -22,6 +22,8 @@ const PUBLIC_PATHS = [
   "/s",
   // the open house sign-in (the QR code at the door)
   "/o",
+  // the agency's own website
+  "/w",
 ];
 
 export async function updateSession(request: NextRequest) {

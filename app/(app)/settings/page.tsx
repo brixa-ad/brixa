@@ -3,6 +3,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { FollowUpRulesForm } from "@/components/followup/FollowUpRulesForm";
 import { AgencySettingsForm } from "@/components/settings/AgencySettingsForm";
+import { SiteSettingsForm } from "@/components/settings/SiteSettingsForm";
 import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card } from "@/components/ui/form";
@@ -38,8 +39,8 @@ export default async function SettingsPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card title={t.settings.bottomBar} description={t.settings.bottomBarHint}>
           <BottomBarSettings
-            initial={bottomNavFor(session!.bottomNav, session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}
-            all={navKeysFor(session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY))}
+            initial={bottomNavFor(session!.bottomNav, session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo)}
+            all={navKeysFor(session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo)}
           />
         </Card>
 
@@ -64,6 +65,19 @@ export default async function SettingsPage() {
                   commissionRentMonths: agency.commissionRentMonths,
                   referralPercent: agency.referralPercent,
                   points: agency.points,
+                }}
+              />
+            </Card>
+          )}
+
+          {agency && (
+            <Card title={t.site.settingsTitle} description={t.site.settingsHint} id="site">
+              <SiteSettingsForm
+                initial={{
+                  enabled: agency.site.enabled,
+                  slug: agency.site.slug ?? "",
+                  headline: agency.site.headline ?? "",
+                  about: agency.site.about ?? "",
                 }}
               />
             </Card>

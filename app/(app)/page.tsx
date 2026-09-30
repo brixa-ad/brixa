@@ -378,6 +378,16 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             players={Object.fromEntries(
               [...players.values()].map((p) => [p.profileId, { level: p.level.index, streak: p.streak.current }])
             )}
+            records={
+              session.solo && me
+                ? [
+                    { label: t.home.recordDeals, value: String(me.stats.deals) },
+                    { label: t.home.recordCommission, value: euro(me.stats.commission) },
+                    { label: t.home.recordStreak, value: fmt(t.game.streakDays, { n: me.streak.best }) },
+                    { label: t.home.recordLevel, value: t.game.levels[me.level.index] },
+                  ]
+                : null
+            }
           />
         </div>
 
@@ -506,7 +516,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </Card>
 
           {/* ---- managers: everyone's day ---- */}
-          {team && (
+          {team && !session.solo && (
             <Card title={t.home.teamToday}>
               <ul className="space-y-4">
                 {members.map((member) => {
