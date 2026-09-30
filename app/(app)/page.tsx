@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
 import { GameIntro } from "@/components/game/GameIntro";
 import { MissionList, missionRows } from "@/components/game/Missions";
 import { PlayerCard } from "@/components/game/PlayerCard";
@@ -209,13 +209,39 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
           {fmt(t.home.hello, { name: firstName })} <span aria-hidden>👋</span>
         </h1>
-        <figure className="mt-4 flex gap-3 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur sm:p-5">
-          <Quote className="size-5 shrink-0 text-accent-fg" />
-          <div>
-            <blockquote className="text-[15px] leading-relaxed text-fg-2 italic">{quote.text}</blockquote>
-            <figcaption className="mt-1.5 text-xs font-medium text-subtle">{quote.author ? `— ${quote.author}` : t.home.quoteLabel}</figcaption>
-          </div>
-        </figure>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <figure className="flex gap-3 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur sm:p-5">
+            <Quote className="size-5 shrink-0 text-accent-fg" />
+            <div>
+              <blockquote className="text-[15px] leading-relaxed text-fg-2 italic">{quote.text}</blockquote>
+              <figcaption className="mt-1.5 text-xs font-medium text-subtle">{quote.author ? `— ${quote.author}` : t.home.quoteLabel}</figcaption>
+            </div>
+          </figure>
+
+          {/* ---- what my hour is worth (the details are in My business) ---- */}
+          <Link
+            href="/business"
+            className="block rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur transition hover:border-accent/50 sm:p-5"
+          >
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-subtle">
+              <Clock className="size-3.5 text-brand-cyan" />
+              {t.home.hourTitle}
+            </p>
+            {numbers.hourValue === null ? (
+              <p className="mt-2 text-sm text-muted">{t.home.hourNoData}</p>
+            ) : (
+              <>
+                <p className="mt-1.5 text-2xl font-bold tracking-tight text-accent-fg">{fmt(t.home.hourValue, { amount: euro(numbers.hourValue) })}</p>
+                <p className="mt-1.5 text-sm font-medium text-danger">{fmt(t.home.hourLoss, { amount: euro(numbers.hourValue) })}</p>
+              </>
+            )}
+            {numbers.needPerHour !== null && (
+              <p className="mt-1.5 text-xs text-fg-2">
+                {numbers.needPerHour === 0 ? t.home.hourTargetDone : fmt(t.home.hourNeed, { amount: euro(numbers.needPerHour) })}
+              </p>
+            )}
+          </Link>
+        </div>
       </section>
 
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
