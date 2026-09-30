@@ -205,8 +205,13 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const longDay = new Intl.DateTimeFormat(locale(lang), { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE });
   const weekdayName = new Intl.DateTimeFormat(locale(lang), { weekday: "long", timeZone: TIME_ZONE });
   const weekdayShort = new Intl.DateTimeFormat(locale(lang), { weekday: "short", timeZone: "UTC" });
+  const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const title =
-    view === "month" ? monthTitle : view === "week" ? `${formatDayMonth(from, lang)} – ${formatDayMonth(to, lang)}` : longDay.format(new Date(`${date}T12:00:00Z`));
+    view === "month"
+      ? monthTitle
+      : view === "week"
+        ? `${formatDayMonth(from, lang)} – ${formatDayMonth(to, lang)}`
+        : upperFirst(longDay.format(new Date(`${date}T12:00:00Z`)));
 
   const host = requestHeaders.get("host") ?? "brixa-yavlena.vercel.app";
   const protocol = host.startsWith("localhost") ? "http" : "https";
@@ -296,7 +301,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
               </Link>
             </div>
           </div>
-          <h2 className="mb-3 text-lg font-bold capitalize tracking-tight">{title}</h2>
+          <h2 className="mb-3 text-lg font-bold tracking-tight">{title}</h2>
 
           {/* ---- the month: every day, marked when something is on ---- */}
           {view === "month" && (
