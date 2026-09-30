@@ -19,6 +19,7 @@ import {
   UserRound,
   Users,
   UsersRound,
+  Wallet,
   type LucideProps,
 } from "lucide-react";
 import type { NavKey } from "@/lib/nav";
@@ -26,6 +27,7 @@ import type { NavKey } from "@/lib/nav";
 const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   home: House,
   plan: Rocket,
+  business: Wallet,
   brix: Sparkles,
   tasks: ListChecks,
   calendar: CalendarDays,
