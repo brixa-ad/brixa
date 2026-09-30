@@ -6,12 +6,13 @@ import { PageHeader } from "@/components/PageHeader";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { TypeIcon } from "@/components/task/TypeIcon";
 import { Card, buttonClass } from "@/components/ui/form";
+import { MonthGrid, CHIP } from "@/components/calendar/MonthGrid";
 import { TIME_ZONE, addDays, sofiaToday } from "@/lib/dates";
+import { getCalendarEntries, mondayOf, monthRange, shiftMonth, type CalendarEntry } from "@/lib/calendar";
 import { formatDayMonth } from "@/lib/format";
-import { fmt, locale } from "@/lib/i18n/dictionaries";
+import { locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
-import { dealStages, type DealKind, type DealStage } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleCalendarLink } from "./GoogleCalendarLink";
@@ -21,57 +22,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.calendar.title };
 }
 
-type Kind = "task" | "deal" | "openHouse";
-type Entry = {
-  key: string;
-  day: string;
-  time: string | null;
-  title: string;
-  subtitle: string;
-  href: string;
-  done: boolean;
-  kind: Kind;
-  task?: string;
-};
-
 const VIEWS = ["month", "week", "day"] as const;
 type View = (typeof VIEWS)[number];
 
-const STEP_COLUMNS: Record<DealStage, [string, string]> = {
-  viewing: ["viewing_on", "viewing_time"],
-  offer: ["offer_on", "offer_time"],
-  deposit: ["deposit_on", "deposit_time"],
-  preliminary: ["preliminary_on", "preliminary_time"],
-  notary: ["notary_on", "notary_time"],
-};
-
-// the colour of each kind: a task, a deal step, an open house
-const DOT: Record<Kind, string> = { task: "bg-accent", deal: "bg-warning", openHouse: "bg-brand-cyan" };
-const CHIP: Record<Kind, string> = {
-  task: "bg-accent-soft text-accent-fg",
-  deal: "bg-warning/10 text-warning",
-  openHouse: "bg-brand-cyan/15 text-brand-cyan",
-};
-
 const isDay = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
-
-/** Monday of the week the day falls in. */
-function mondayOf(day: string) {
-  const weekday = (new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7;
-  return addDays(day, -weekday);
-}
-
-/** The first day of the month before / after. */
-function shiftMonth(day: string, step: -1 | 1) {
-  const [y, m] = day.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + step, 1));
-  return d.toISOString().slice(0, 10);
-}
-
-const lastOfMonth = (day: string) => {
-  const [y, m] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-};
 
 /** The calendar: the month (days with something marked), a week, a day by the hour. */
 export default async function CalendarPage({ searchParams }: PageProps<"/calendar">) {
@@ -87,101 +41,19 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
 
   // the days on screen
   const monthStart = `${date.slice(0, 7)}-01`;
-  const from = view === "month" ? mondayOf(monthStart) : view === "week" ? mondayOf(date) : date;
-  const to = view === "month" ? addDays(mondayOf(lastOfMonth(date)), 6) : view === "week" ? addDays(mondayOf(date), 6) : date;
+  const month = monthRange(date);
+  const from = view === "month" ? month.from : view === "week" ? mondayOf(date) : date;
+  const to = view === "month" ? month.to : view === "week" ? addDays(mondayOf(date), 6) : date;
 
   const supabase = await createClient();
-  const stepFilter = Object.values(STEP_COLUMNS)
-    .map(([day]) => `and(${day}.gte.${from},${day}.lte.${to})`)
-    .join(",");
-  const [{ t, lang }, tasksRes, dealsRes, housesRes, tokenRes, members, requestHeaders] = await Promise.all([
-    getI18n(),
-    supabase
-      .from("tasks")
-      .select("id, title, type, status, due_date, due_time, client:clients(full_name)")
-      .eq("assigned_to", person)
-      .gte("due_date", from)
-      .lte("due_date", to),
-    supabase
-      .from("deals")
-      .select(
-        `id, kind, stage, status, viewing_on, offer_on, deposit_on, preliminary_on, notary_on,
-        viewing_time, offer_time, deposit_time, preliminary_time, notary_time,
-        property:properties(title), client:clients(full_name)`
-      )
-      .eq("broker_id", person)
-      .neq("status", "lost")
-      .or(stepFilter),
-    supabase
-      .from("open_houses")
-      .select("id, day, starts_at, ends_at, property:properties(title)")
-      .eq("host_id", person)
-      .is("cancelled_at", null)
-      .gte("day", from)
-      .lte("day", to),
+  const i18n = getI18n();
+  const [{ t, lang }, byDay, tokenRes, members, requestHeaders] = await Promise.all([
+    i18n,
+    i18n.then(({ t }) => getCalendarEntries(supabase, person, from, to, t)),
     person === session.userId ? supabase.rpc("my_calendar_token") : Promise.resolve({ data: null }),
     session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
     headers(),
   ]);
-
-  const entries: Entry[] = [];
-  for (const task of (tasksRes.data ?? []) as unknown as {
-    id: string;
-    title: string;
-    type: string;
-    status: string;
-    due_date: string;
-    due_time: string | null;
-    client: { full_name: string } | null;
-  }[]) {
-    entries.push({
-      key: `task-${task.id}`,
-      day: task.due_date,
-      time: task.due_time?.slice(0, 5) ?? null,
-      title: task.title,
-      subtitle: task.client?.full_name ?? t.options.taskType[task.type as keyof typeof t.options.taskType] ?? "",
-      href: `/tasks/${task.id}`,
-      done: task.status === "done",
-      kind: "task",
-      task: task.type,
-    });
-  }
-  for (const deal of (dealsRes.data ?? []) as unknown as Record<string, unknown>[]) {
-    const kind = deal.kind as DealKind;
-    const labels = kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
-    const property = deal.property as { title: string } | null;
-    const client = deal.client as { full_name: string } | null;
-    for (const stage of dealStages(kind)) {
-      const [dayColumn, timeColumn] = STEP_COLUMNS[stage];
-      const day = deal[dayColumn] as string | null;
-      if (!day || day < from || day > to) continue;
-      entries.push({
-        key: `deal-${deal.id}-${stage}`,
-        day,
-        time: (deal[timeColumn] as string | null)?.slice(0, 5) ?? null,
-        title: `${labels[stage]}: ${property?.title ?? client?.full_name ?? t.deals.untitled}`,
-        subtitle: property && client ? client.full_name : t.nav.deals,
-        href: `/deals/${deal.id}`,
-        done: deal.status === "won",
-        kind: "deal",
-      });
-    }
-  }
-  for (const house of (housesRes.data ?? []) as unknown as { id: string; day: string; starts_at: string; ends_at: string; property: { title: string } | null }[]) {
-    entries.push({
-      key: `house-${house.id}`,
-      day: house.day,
-      time: house.starts_at.slice(0, 5),
-      title: `${t.openHouses.title}: ${house.property?.title ?? ""}`,
-      subtitle: `${house.starts_at.slice(0, 5)}–${house.ends_at.slice(0, 5)}`,
-      href: `/open-houses/${house.id}`,
-      done: false,
-      kind: "openHouse",
-    });
-  }
-  entries.sort((a, b) => (a.time ?? "00").localeCompare(b.time ?? "00") || a.title.localeCompare(b.title));
-  const byDay = new Map<string, Entry[]>();
-  for (const e of entries) byDay.set(e.day, [...(byDay.get(e.day) ?? []), e]);
 
   // ---- links: keep the view, the day and whose calendar
   const link = (next: { view?: View; date?: string }) => {
@@ -204,7 +76,6 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   })();
   const longDay = new Intl.DateTimeFormat(locale(lang), { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE });
   const weekdayName = new Intl.DateTimeFormat(locale(lang), { weekday: "long", timeZone: TIME_ZONE });
-  const weekdayShort = new Intl.DateTimeFormat(locale(lang), { weekday: "short", timeZone: "UTC" });
   const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const title =
     view === "month"
@@ -218,7 +89,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const feedUrl = tokenRes.data ? `${protocol}://${host}/api/calendar/${tokenRes.data}.ics` : null;
 
   // one line in a list (the week and the day)
-  const row = (entry: Entry, showTime = true) => (
+  const row = (entry: CalendarEntry, showTime = true) => (
     <li key={entry.key}>
       <Link href={entry.href} className="flex items-center gap-3 rounded-lg px-1 py-2 transition hover:bg-raised">
         {showTime && (
@@ -305,75 +176,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
 
           {/* ---- the month: every day, marked when something is on ---- */}
           {view === "month" && (
-            <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-xs">
-              <div className="grid grid-cols-7 border-b border-line bg-raised/50 text-center text-[11px] font-semibold uppercase tracking-wide text-subtle">
-                {Array.from({ length: 7 }, (_, i) => addDays(from, i)).map((d) => (
-                  <span key={d} className="py-2">
-                    {weekdayShort.format(new Date(`${d}T12:00:00Z`))}
-                  </span>
-                ))}
-              </div>
-              <div className="grid grid-cols-7">
-                {Array.from({ length: Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1 }, (_, i) => addDays(from, i)).map((d, i) => {
-                  const list = byDay.get(d) ?? [];
-                  const inMonth = d.slice(0, 7) === date.slice(0, 7);
-                  const isToday = d === today;
-                  const kinds = [...new Set(list.map((e) => e.kind))];
-                  return (
-                    <Link
-                      key={d}
-                      href={link({ view: "day", date: d })}
-                      className={`group relative flex min-h-16 flex-col gap-1 border-line-soft p-1.5 transition hover:bg-raised sm:min-h-28 sm:p-2 ${
-                        i % 7 !== 6 ? "border-r" : ""
-                      } ${i >= 7 ? "border-t" : ""} ${inMonth ? "" : "bg-canvas/40"}`}
-                    >
-                      <span
-                        className={`grid size-7 place-items-center rounded-full text-xs font-semibold tabular-nums ${
-                          isToday ? "bg-accent text-on-accent" : inMonth ? "text-fg" : "text-faint"
-                        }`}
-                      >
-                        {Number(d.slice(8))}
-                      </span>
-                      {list.length > 0 && (
-                        <>
-                          {/* on the phone: a dot per kind, and how many */}
-                          <span className="flex items-center gap-1 sm:hidden">
-                            {kinds.map((k) => (
-                              <span key={k} className={`size-1.5 rounded-full ${DOT[k]}`} />
-                            ))}
-                            {list.length > 1 && <span className="text-[10px] font-semibold text-muted">{list.length}</span>}
-                          </span>
-                          {/* on a computer: the first few, with their time */}
-                          <ul className="hidden space-y-0.5 sm:block">
-                            {list.slice(0, 3).map((e) => (
-                              <li key={e.key} className={`flex items-center gap-1 truncate rounded px-1 py-0.5 text-[11px] ${CHIP[e.kind]} ${e.done ? "line-through opacity-60" : ""}`}>
-                                {e.time && <span className="shrink-0 font-semibold tabular-nums">{e.time}</span>}
-                                <span className="truncate">{e.title}</span>
-                              </li>
-                            ))}
-                            {list.length > 3 && <li className="px-1 text-[11px] font-medium text-muted">{fmt(t.calendar.more, { n: list.length - 3 })}</li>}
-                          </ul>
-                        </>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-              <p className="flex flex-wrap gap-4 border-t border-line px-3 py-2 text-[11px] text-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className={`size-2 rounded-full ${DOT.task}`} />
-                  {t.nav.tasks}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className={`size-2 rounded-full ${DOT.deal}`} />
-                  {t.nav.deals}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className={`size-2 rounded-full ${DOT.openHouse}`} />
-                  {t.openHouses.title}
-                </span>
-              </p>
-            </div>
+            <MonthGrid from={from} to={to} month={date} today={today} byDay={byDay} dayHref={(d) => link({ view: "day", date: d })} t={t} lang={lang} />
           )}
 
           {/* ---- the week: day by day ---- */}

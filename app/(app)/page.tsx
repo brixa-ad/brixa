@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeCheck, CalendarCheck, CalendarClock, CheckCircle2, Clock, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarClock, CalendarDays, CheckCircle2, Clock, ListChecks, PartyPopper, Plus, Quote, Target, UsersRound } from "lucide-react";
 import { GameIntro } from "@/components/game/GameIntro";
 import { MissionList, missionRows } from "@/components/game/Missions";
 import { PlayerCard } from "@/components/game/PlayerCard";
 import { GreetingsList } from "@/components/program/GreetingsCard";
 import { Avatar } from "@/components/Avatar";
+import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
 import { TodayWindow } from "@/components/home/TodayWindow";
 import { PushBanner } from "@/components/push/PushBanner";
 import { TaskItem } from "@/components/task/TaskItem";
 import { Card, buttonClass } from "@/components/ui/form";
-import { addDays, sofiaDay, sofiaToday, TIME_ZONE } from "@/lib/dates";
+import { addDays, sofiaToday, TIME_ZONE } from "@/lib/dates";
+import { getCalendarEntries, monthRange } from "@/lib/calendar";
 import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
@@ -59,27 +61,19 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   ]);
   // the game: my level and streak, today's and this week's missions
   const me = players.get(session.userId);
-  const [missionData, greetings, stale] = await Promise.all([
+  const month = monthRange(today);
+  const [missionData, greetings, stale, monthDays] = await Promise.all([
     getMissions(session, today, planInputs, me?.streak.today ?? 0),
     getGreetings(session, today, t),
     session.isManager && !session.solo ? getStaleDeals(session, today) : Promise.resolve([]),
+    getCalendarEntries(supabase, session.userId, month.from, month.to, t),
   ]);
-  // my follow-ups due by the end of today
-  const { data: dueRows } = await supabase
-    .from("clients")
-    .select("follow_up_at")
-    .eq("responsible_broker_id", session.userId)
-    .not("follow_up_at", "is", null)
-    .lt("follow_up_at", addDays(today, 2)); // a little past today; narrowed below
-  const nowIso = new Date().toISOString();
   const agency = await getAgency(session.organizationId);
   // Brix's plan (written on the first visit of the day, when the AI key is set)
   const brixReady = Boolean(process.env.ANTHROPIC_API_KEY);
   const { data: brief } = brixReady
     ? await supabase.from("brix_briefs").select("content").eq("profile_id", session.userId).eq("day", today).maybeSingle()
     : { data: null };
-  const followUpsLate = (dueRows ?? []).filter((r) => r.follow_up_at! <= nowIso).length;
-  const followUpsToday = (dueRows ?? []).filter((r) => r.follow_up_at! > nowIso && sofiaDay(r.follow_up_at!) === today).length;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "0";
   const { goals } = numbers;
   const missions = [
@@ -99,6 +93,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
   const firstName = (session.fullName || session.email).split(/[\s@]+/)[0];
   const quote = quoteOfTheDay(lang);
+  const monthTitle = (() => {
+    const s = new Intl.DateTimeFormat(locale(lang), { month: "long", year: "numeric", timeZone: TIME_ZONE }).format(new Date());
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  })();
   const dateLabel = new Intl.DateTimeFormat(locale(lang), {
     weekday: "long",
     day: "numeric",
@@ -326,53 +324,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </footer>
         </Card>
 
-        <div className="space-y-4">
-          <Card
-            title={
-              <span className="flex items-center gap-2">
-                <Target className="size-4 text-brand-cyan" />
-                {t.game.missionsTitle}
-              </span>
-            }
-            className="p-4! sm:p-5!"
-          >
-            <div className="space-y-5">
-              <MissionList title={t.game.missionsToday} rows={missionList.today} t={t} />
-              <MissionList title={t.game.missionsWeek} rows={missionList.week} t={t} />
-            </div>
-          </Card>
-
-          {/* ---- clients to get back to ---- */}
-          <Link
-            href="/follow-up"
-            className={`flex items-center gap-3 rounded-2xl border p-4 shadow-xs transition hover:border-accent/50 ${
-              followUpsLate > 0 ? "border-danger/40 bg-danger/5" : "border-line bg-surface"
-            }`}
-          >
-            <span
-              className={`grid size-10 shrink-0 place-items-center rounded-xl ${
-                followUpsLate > 0 ? "bg-danger/10 text-danger" : "bg-accent-soft text-accent-fg"
-              }`}
-            >
-              <CalendarCheck className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">{t.followUp.homeTitle}</span>
-              <span className="block text-xs text-muted">
-                {followUpsLate === 0 && followUpsToday === 0 ? (
-                  t.followUp.homeNone
-                ) : (
-                  <>
-                    {followUpsLate > 0 && <span className="font-semibold text-danger">{fmt(t.followUp.homeOverdue, { count: followUpsLate })}</span>}
-                    {followUpsLate > 0 && followUpsToday > 0 && " · "}
-                    {followUpsToday > 0 && fmt(t.followUp.homeToday, { count: followUpsToday })}
-                  </>
-                )}
-              </span>
-            </span>
-            <ArrowRight className="size-4 text-muted" />
-          </Link>
-        </div>
+        {/* the level: where I am in the game */}
+        <div>{me && <PlayerCard player={me} t={t} lang={lang} href="/plan" />}</div>
       </div>
 
       {greetings.length > 0 && (
@@ -391,9 +344,24 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       {brixReady && <MorningBrief initial={brief?.content ?? null} />}
 
-      {/* ---- the game: the player, and the ranking with the targets ---- */}
+      {/* ---- the game: today's and this week's missions, and the ranking with the targets ---- */}
       <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-        {me && <PlayerCard player={me} t={t} lang={lang} href="/plan" />}
+        <div>
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <Target className="size-4 text-brand-cyan" />
+                {t.game.missionsTitle}
+              </span>
+            }
+            className="p-4! sm:p-5!"
+          >
+            <div className="space-y-5">
+              <MissionList title={t.game.missionsToday} rows={missionList.today} t={t} />
+              <MissionList title={t.game.missionsWeek} rows={missionList.week} t={t} />
+            </div>
+          </Card>
+        </div>
         <Leaderboard
           month={boards.month}
           year={boards.year}
@@ -550,6 +518,30 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </div>
         </section>
       )}
+
+      {/* ---- this month: every day with something on is marked ---- */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
+            <CalendarDays className="size-5 text-brand-cyan" />
+            {monthTitle}
+          </h2>
+          <Link href="/calendar" className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline">
+            {t.home.openCalendar}
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+        <MonthGrid
+          from={month.from}
+          to={month.to}
+          month={today}
+          today={today}
+          byDay={monthDays}
+          dayHref={(d) => (d === today ? "/calendar?view=day" : `/calendar?view=day&date=${d}`)}
+          t={t}
+          lang={lang}
+        />
+      </section>
     </div>
   );
 }
