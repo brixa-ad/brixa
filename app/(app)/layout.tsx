@@ -11,7 +11,8 @@ import { SideMenu } from "@/components/SideMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DictationProvider } from "@/components/ui/Dictate";
 import { getI18n } from "@/lib/i18n/server";
-import { bottomNavFor, navKeysFor } from "@/lib/nav";
+import { bottomNavFor, menuFor } from "@/lib/nav";
+import { SectionTabs } from "@/components/SectionTabs";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getTheme } from "@/lib/theme-server";
@@ -32,6 +33,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const displayName = session.fullName || session.email;
+  const brixOn = Boolean(process.env.ANTHROPIC_API_KEY);
+  // the eight sections (and their pages) this person may open
+  const menu = menuFor(session.isManager, brixOn, session.solo);
   const supabase = await createClient();
   const { count: unread } = await supabase
     .from("notifications")
@@ -44,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/75 pt-[env(safe-area-inset-top)] backdrop-blur print:hidden">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
           <SideMenu
-            items={navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session.solo)}
+            sections={menu}
             name={displayName}
             subtitle={`${session.organizationName} · ${t.roles[session.role]}`}
             avatarPath={session.avatarPath}
@@ -56,16 +60,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           {/* Phones use the bottom tab bar instead. */}
           <div className="hidden md:block">
-            <NavLinks
-              links={[
-                { href: "/", label: t.nav.home },
-                { href: "/tasks", label: t.nav.tasks },
-                { href: "/deals", label: t.nav.deals },
-                { href: "/properties", label: t.nav.properties },
-                { href: "/clients", label: t.nav.clients },
-                { href: "/team", label: t.nav.team },
-              ]}
-            />
+            <NavLinks sections={menu.filter((m) => ["home", "day", "clients", "properties", "deals", "insights"].includes(m.key))} />
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -120,10 +115,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <PasskeyPrompt />
         <ServiceWorker />
         {/* dictation: the server writes recordings when a speech service key is set */}
+        <SectionTabs sections={menu} />
         <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
       </main>
 
-      <BottomNav items={bottomNavFor(session.bottomNav, session.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session.solo)} />
+      <BottomNav items={bottomNavFor(session.bottomNav, session.isManager, brixOn, session.solo).map((key) => menu.find((s) => s.key === key)!).filter(Boolean)} />
     </div>
   );
 }

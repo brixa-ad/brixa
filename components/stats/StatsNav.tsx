@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BarChart3, MapPinned, UserRound } from "lucide-react";
 import { PrintButton } from "@/components/PublicPageTools";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import type { Dictionary, Lang } from "@/lib/i18n/dictionaries";
@@ -16,7 +15,7 @@ function href(path: string, params: Record<string, string>) {
 }
 
 /**
- * The statistics' header: the three sections, the period (month, 6 months, year, any range
+ * The statistics' header: the period (month, 6 months, year, any range
  * with the calendar) and the PDF document. `keep` carries a tab's own filters along.
  */
 export function StatsNav({
@@ -26,7 +25,6 @@ export function StatsNav({
   title,
   subtitle,
   agencyName,
-  showAgency = true,
   t,
   lang,
 }: {
@@ -47,13 +45,6 @@ export function StatsNav({
     year: t.stats.periodYear,
     custom: t.stats.periodCustom,
   };
-  const tabs = (
-    [
-      ["agency", t.stats.tabAgency, BarChart3],
-      ["market", t.stats.tabMarket, MapPinned],
-      ["broker", t.stats.tabBroker, UserRound],
-    ] as [StatsTab, string, typeof BarChart3][]
-  ).filter(([key]) => showAgency || key !== "agency");
 
   return (
     <>
@@ -66,22 +57,6 @@ export function StatsNav({
       </div>
 
       <div className="mb-5 space-y-3 print:hidden">
-        <nav className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
-          {tabs.map(([key, label, Icon]) => (
-            <Link
-              key={key}
-              href={href(TAB_HREF[key], rangeParams(range))}
-              aria-current={tab === key ? "page" : undefined}
-              className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                tab === key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
-              }`}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          ))}
-        </nav>
-
         <div className="flex flex-wrap items-center gap-2">
           <nav className="flex gap-1 rounded-xl border border-line bg-surface p-1">
             {STAT_PERIODS.filter((p) => p !== "custom").map((key) => (

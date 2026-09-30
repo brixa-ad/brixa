@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getI18n } from "@/lib/i18n/server";
-import { BOTTOM_NAV_MAX, navKeysFor } from "@/lib/nav";
+import { BOTTOM_NAV_MAX, menuFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,7 +12,7 @@ export async function saveBottomNav(keys: string[] | null): Promise<{ ok: boolea
   if (!session) return { ok: false };
 
   if (keys !== null) {
-    const allowed = navKeysFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session.solo) as string[];
+    const allowed = menuFor(session.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session.solo).map((s) => s.key) as string[];
     const unique = [...new Set(keys)];
     if (unique.length === 0 || unique.length > BOTTOM_NAV_MAX || !unique.every((key) => allowed.includes(key))) {
       return { ok: false };

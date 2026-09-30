@@ -2,24 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { sectionActive, sectionHref, type MenuSection } from "@/lib/nav";
+import { useI18n } from "./I18nProvider";
 
-export function NavLinks({ links }: { links: { href: string; label: string }[] }) {
+/** The main sections across the top bar (computers). */
+export function NavLinks({ sections }: { sections: MenuSection[] }) {
+  const { t } = useI18n();
   const pathname = usePathname();
 
   return (
     <nav className="flex items-center gap-1">
-      {links.map((link) => {
-        const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
+      {sections.map((section) => {
+        const active = sectionActive(section, pathname);
         return (
           <Link
-            key={link.href}
-            href={link.href}
+            key={section.key}
+            href={sectionHref(section)}
             aria-current={active ? "page" : undefined}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               active ? "bg-raised text-fg" : "text-muted hover:text-fg"
             }`}
           >
-            {link.label}
+            {t.menu.short[section.key]}
           </Link>
         );
       })}

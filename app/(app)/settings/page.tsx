@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card } from "@/components/ui/form";
 import { getAgency } from "@/lib/agency";
 import { getI18n } from "@/lib/i18n/server";
-import { bottomNavFor, navKeysFor } from "@/lib/nav";
+import { bottomNavFor, menuFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getTheme } from "@/lib/theme-server";
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         <Card title={t.settings.bottomBar} description={t.settings.bottomBarHint}>
           <BottomBarSettings
             initial={bottomNavFor(session!.bottomNav, session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo)}
-            all={navKeysFor(session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo)}
+            all={menuFor(session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo).map((s) => s.key)}
           />
         </Card>
 

@@ -5,11 +5,11 @@ import { ArrowDown, ArrowUp, CheckCircle2, Loader2, Minus, Plus, RotateCcw } fro
 import { useI18n } from "@/components/I18nProvider";
 import { NavIcon } from "@/components/NavIcon";
 import { buttonClass } from "@/components/ui/form";
-import { BOTTOM_NAV_MAX, DEFAULT_BOTTOM_NAV, type NavKey } from "@/lib/nav";
+import { BOTTOM_NAV_MAX, DEFAULT_BOTTOM_NAV, type MenuKey } from "@/lib/nav";
 import { saveBottomNav } from "./actions";
 
 /** Pick up to five sections for the phone's bottom bar and put them in order. */
-export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: NavKey[] }) {
+export function BottomBarSettings({ initial, all }: { initial: MenuKey[]; all: MenuKey[] }) {
   const { t } = useI18n();
   const [items, setItems] = useState(initial);
   const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
@@ -18,7 +18,7 @@ export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: Na
   const others = all.filter((key) => !items.includes(key));
   const full = items.length >= BOTTOM_NAV_MAX;
 
-  function change(next: NavKey[]) {
+  function change(next: MenuKey[]) {
     setItems(next);
     setStatus("idle");
   }
@@ -27,7 +27,7 @@ export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: Na
     [next[index], next[index + by]] = [next[index + by], next[index]];
     change(next);
   }
-  function save(keys: NavKey[] | null) {
+  function save(keys: MenuKey[] | null) {
     startTransition(async () => {
       const result = await saveBottomNav(keys);
       setStatus(result.ok ? "saved" : "failed");
@@ -48,7 +48,7 @@ export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: Na
         {items.map((key) => (
           <span key={key} className="flex flex-col items-center gap-0.5 text-[11px] font-medium text-fg-2">
             <NavIcon name={key} className="size-5" />
-            <span className="max-w-full truncate px-1">{t.nav[key]}</span>
+            <span className="max-w-full truncate px-1">{t.menu.short[key]}</span>
           </span>
         ))}
       </div>
@@ -61,7 +61,7 @@ export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: Na
           {items.map((key, index) => (
             <li key={key} className="flex items-center gap-3 py-1.5 pl-3 pr-1.5">
               <NavIcon name={key} className="size-5 text-accent-fg" />
-              <span className="flex-1 text-sm font-medium">{t.nav[key]}</span>
+              <span className="flex-1 text-sm font-medium">{t.menu.short[key]}</span>
               <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t.settings.moveUp} className={iconButton}>
                 <ArrowUp className="size-4" />
               </button>
@@ -95,7 +95,7 @@ export function BottomBarSettings({ initial, all }: { initial: NavKey[]; all: Na
             {others.map((key) => (
               <li key={key} className="flex items-center gap-3 py-1.5 pl-3 pr-1.5">
                 <NavIcon name={key} className="size-5 text-muted" />
-                <span className="flex-1 text-sm text-fg-2">{t.nav[key]}</span>
+                <span className="flex-1 text-sm text-fg-2">{t.menu.short[key]}</span>
                 <button
                   type="button"
                   onClick={() => change([...items, key])}

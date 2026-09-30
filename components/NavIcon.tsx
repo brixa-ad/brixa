@@ -9,6 +9,7 @@ import {
   Inbox,
   Handshake,
   House,
+  LineChart,
   ListChecks,
   Map as MapIcon,
   Rocket,
@@ -16,16 +17,16 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  UserSearch,
   UserRound,
+  UserSearch,
   Users,
   UsersRound,
   Wallet,
   type LucideProps,
 } from "lucide-react";
-import type { NavKey } from "@/lib/nav";
+import type { MenuKey, NavKey } from "@/lib/nav";
 
-const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
+const ICONS: Record<NavKey | MenuKey, React.ComponentType<LucideProps>> = {
   home: House,
   plan: Rocket,
   business: Wallet,
@@ -40,6 +41,8 @@ const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   followup: CalendarCheck,
   contacts: Inbox,
   stats: BarChart3,
+  statsBroker: UserRound,
+  statsMarket: LineChart,
   market: TrendingUp,
   partnerSearches: UserSearch,
   closedDeals: BadgeCheck,
@@ -48,9 +51,13 @@ const ICONS: Record<NavKey, React.ComponentType<LucideProps>> = {
   notifications: Bell,
   profile: UserRound,
   settings: Settings,
+  // the sections
+  day: CalendarCheck,
+  insights: BarChart3,
+  path: Rocket,
 };
 
-export function NavIcon({ name, ...props }: { name: NavKey } & LucideProps) {
+export function NavIcon({ name, ...props }: { name: NavKey | MenuKey } & LucideProps) {
   const Icon = ICONS[name];
   return <Icon {...props} />;
 }
