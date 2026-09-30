@@ -211,3 +211,46 @@ export async function getLeaderboards(organizationId: string) {
   if (month.error) console.error("Loading the ranking failed:", month.error.message);
   return { month: rows(month.data), year: rows(year.data) };
 }
+
+export type StaleDeal = { id: string; title: string; kind: DealKind; stage: string; days: number; broker: string | null };
+
+/** Managers: open deals with no stage change for over two weeks, the longest first. */
+export async function getStaleDeals(session: SessionContext, today: string, limit = 6): Promise<StaleDeal[]> {
+  const supabase = await createClient();
+  const { data: deals } = await supabase
+    .from("deals")
+    .select("id, kind, stage, created_at, property:properties(title), client:clients(full_name), broker:profiles!deals_broker_id_fkey(full_name, email)")
+    .eq("organization_id", session.organizationId)
+    .eq("status", "open")
+    .limit(500);
+  const rows = (deals ?? []) as unknown as {
+    id: string;
+    kind: DealKind;
+    stage: string;
+    created_at: string;
+    property: { title: string } | null;
+    client: { full_name: string } | null;
+    broker: { full_name: string | null; email: string } | null;
+  }[];
+  if (rows.length === 0) return [];
+  const { data: log } = await supabase
+    .from("deal_stage_log")
+    .select("deal_id, changed_at")
+    .in("deal_id", rows.map((d) => d.id))
+    .order("changed_at", { ascending: false });
+  const last = new Map<string, string>();
+  for (const row of log ?? []) if (!last.has(row.deal_id)) last.set(row.deal_id, row.changed_at);
+  const dayMs = 86_400_000;
+  return rows
+    .map((d) => ({
+      id: d.id,
+      title: d.property?.title ?? d.client?.full_name ?? "",
+      kind: d.kind,
+      stage: d.stage,
+      days: Math.floor((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${sofiaDay(last.get(d.id) ?? d.created_at)}T12:00:00Z`)) / dayMs),
+      broker: d.broker?.full_name || d.broker?.email || null,
+    }))
+    .filter((d) => d.days > 14)
+    .sort((a, b) => b.days - a.days)
+    .slice(0, limit);
+}

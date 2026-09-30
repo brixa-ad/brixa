@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lock, PiggyBank, Receipt, SlidersHorizontal, TrafficCone } from "lucide-react";
+import { Clock, Lock, PiggyBank, Receipt, SlidersHorizontal, TrafficCone } from "lucide-react";
 import { DeleteExpense, ExpenseForm } from "@/components/business/ExpenseForm";
 import { FinanceSettingsForm } from "@/components/business/FinanceSettingsForm";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,6 +7,7 @@ import { CardTitle, StatTiles } from "@/components/stats/StatBits";
 import { Card } from "@/components/ui/form";
 import { EXPENSE_CATEGORIES } from "@/lib/business";
 import { getBusiness } from "@/lib/business-server";
+import { getMyNumbers } from "@/lib/stats";
 import { sofiaToday } from "@/lib/dates";
 import { formatDate, formatNumber, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
@@ -23,7 +24,7 @@ export default async function BusinessPage() {
   const session = (await getSession())!;
   const today = sofiaToday();
   const year = Number(today.slice(0, 4));
-  const [{ t, lang }, b] = await Promise.all([getI18n(), getBusiness(session, year, today)]);
+  const [{ t, lang }, b, numbers] = await Promise.all([getI18n(), getBusiness(session, year, today), getMyNumbers(session, today)]);
 
   const euro = (n: number) => formatPrice(Math.round(n), "EUR", lang) ?? "0";
   const monthName = (key: string) => {
@@ -115,6 +116,26 @@ export default async function BusinessPage() {
                 );
               })}
             </ul>
+          )}
+        </Card>
+
+        {/* ---- what an hour is worth (it used to be on the home screen) ---- */}
+        <Card title={<CardTitle icon={Clock}>{t.home.hourTitle}</CardTitle>} className="lg:col-span-2">
+          {numbers.hourValue === null ? (
+            <p className="text-sm text-muted">{t.home.hourNoData}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+              <div>
+                <p className="text-3xl font-bold tracking-tight text-accent-fg">{fmt(t.home.hourValue, { amount: euro(numbers.hourValue) })}</p>
+                <p className="mt-1 text-xs text-muted">{fmt(t.home.hourValueHint, { hours: numbers.yearHours, days: numbers.yearHours / 8 })}</p>
+              </div>
+              <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{fmt(t.home.hourLoss, { amount: euro(numbers.hourValue) })}</p>
+            </div>
+          )}
+          {numbers.needPerHour !== null && (
+            <p className="mt-3 text-sm text-fg-2">
+              {numbers.needPerHour === 0 ? t.home.hourTargetDone : fmt(t.home.hourNeed, { amount: euro(numbers.needPerHour) })}
+            </p>
           )}
         </Card>
 
