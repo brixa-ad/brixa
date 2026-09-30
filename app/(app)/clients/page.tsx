@@ -64,7 +64,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
     .from("clients")
     .select(
       `id, full_name, phone, email, types, client_class, stage, updated_at,
-      client_temperatures${temp ? "!inner" : ""}(temperature),
+      client_temperatures${temp ? "!inner" : ""}(temperature, rank, score),
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path)`
     )
     .eq("organization_id", session.organizationId)
@@ -81,7 +81,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   if (cls) query = query.eq("client_class", cls);
   if (type) query = query.contains("types", [type]);
   if (broker && session.isManager) query = query.eq("responsible_broker_id", broker);
-  // how the client behaves (🔥 hot first)
+  // how the client behaves (🔥 hot first; the order needs rank and score in the select above)
   if (temp) query = query.eq("client_temperatures.temperature", temp);
   if (byTemperature) {
     query = query
