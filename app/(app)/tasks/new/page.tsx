@@ -19,6 +19,9 @@ export default async function NewTaskPage({ searchParams }: PageProps<"/tasks/ne
   // Opened from a client or property page → pre-link it.
   const clientId = typeof params.client === "string" ? params.client : null;
   const propertyId = typeof params.property === "string" ? params.property : null;
+  // from a day in the calendar
+  const dueDate =
+    typeof params.date === "string" && /^d{4}-d{2}-d{2}$/.test(params.date) && params.date >= sofiaToday() ? params.date : sofiaToday();
   const assignee = typeof params.assignee === "string" && session.isManager ? params.assignee : session.userId;
   const client = lookups.clients.find((c) => c.id === clientId);
 
@@ -35,7 +38,7 @@ export default async function NewTaskPage({ searchParams }: PageProps<"/tasks/ne
           assignedTo: assignee,
           clientId: client ? client.id : null,
           propertyId: lookups.properties.some((p) => p.id === propertyId) ? propertyId : null,
-          dueDate: sofiaToday(),
+          dueDate,
           dueTime: null,
           description: "",
         }}
