@@ -97,7 +97,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
 
   const [{ data, error }, { data: statusRows }, { data: categories }, members] = await Promise.all([
     query,
-    supabase.from("properties").select("status").eq("organization_id", session.organizationId),
+    supabase.from("properties").select("status, responsible_broker_id").eq("organization_id", session.organizationId),
     supabase.from("property_categories").select("id, name, name_en").order("sort_order"),
     getMembers(supabase, session.organizationId),
   ]);
@@ -110,8 +110,11 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
   );
 
+  // the numbers on top follow the tab: my own on my tabs, the whole agency's on the colleagues' (and with no tab)
   const counts = { total: 0, active: 0, reserved: 0, closed: 0 };
+  const own = view !== null && view !== "colleagues";
   for (const row of statusRows ?? []) {
+    if (own && row.responsible_broker_id !== session.userId) continue;
     counts.total++;
     if (row.status === "active") counts.active++;
     if (row.status === "reserved") counts.reserved++;
