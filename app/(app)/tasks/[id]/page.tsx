@@ -64,7 +64,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           {/* ---- who / when ---- */}
           <Card>

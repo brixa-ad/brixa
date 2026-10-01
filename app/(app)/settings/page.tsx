@@ -38,7 +38,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title={t.settings.title} subtitle={t.settings.subtitle} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card title={t.settings.bottomBar} description={t.settings.bottomBarHint}>
           <BottomBarSettings
             initial={bottomNavFor(session!.bottomNav, session!.isManager, Boolean(process.env.ANTHROPIC_API_KEY), session!.solo)}

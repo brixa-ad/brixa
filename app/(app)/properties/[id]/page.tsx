@@ -462,7 +462,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           <PhotoGallery photos={property.photos} />
 

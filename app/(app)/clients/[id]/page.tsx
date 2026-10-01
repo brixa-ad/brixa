@@ -244,7 +244,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6">
           <Card>
             <div className="space-y-2">

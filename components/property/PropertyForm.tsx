@@ -214,7 +214,7 @@ export function PropertyForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="pb-24 lg:pb-0">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           {(serverMessage || (submitted && hasErrors)) && (
             <div

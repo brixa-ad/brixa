@@ -94,7 +94,7 @@ export default async function AnniversaryCardPage({ params }: PageProps<"/deals/
         {anniversary !== today && <span className="text-xs text-muted">{fmt(t.anniversary.preview, { date: formatDate(anniversary, lang) })}</span>}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <AnniversaryCard card={card} fileName={`${t.anniversary.heading.replace(/[^\p{L}\p{N}]+/gu, "-")}${years}`} shareText={message} />
         <aside className="print:hidden">
           <Card title={t.anniversary.textTitle}>

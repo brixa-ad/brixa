@@ -44,7 +44,7 @@ export default async function ProfilePage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className="space-y-6">
           <Card title={t.profile.photo}>
             <AvatarUploader userId={session.userId} avatarPath={profile?.avatar_path ?? null} name={name} />

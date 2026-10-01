@@ -59,7 +59,7 @@ export default async function TeamPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card className="p-0! sm:p-0!">
           <h2 className="px-5 pt-5 text-base font-semibold text-fg sm:px-6 sm:pt-6">
             {t.team.members} <span className="font-normal text-subtle">{members.length}</span>

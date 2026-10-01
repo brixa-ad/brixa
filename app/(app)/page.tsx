@@ -251,7 +251,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <PushBanner />
 
       {/* ---- today: what to do now ---- */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card className="p-0! sm:p-0!">
           <header className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
             <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -387,7 +387,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       {brixReady && <MorningBrief initial={brief?.content ?? null} />}
 
       {/* ---- the game: today's and this week's missions, and the ranking with the targets ---- */}
-      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div>
           <Card
             title={

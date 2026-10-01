@@ -101,7 +101,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
     <>
       <PageHeader backHref="/team" backLabel={t.nav.team} title={name} />
 
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         {/* ---- contact card ---- */}
         <Card className="h-fit">
           <div className="flex flex-col items-center text-center">
