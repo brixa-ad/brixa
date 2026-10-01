@@ -105,6 +105,19 @@ export const getReportOpenHouses = cache(async (token: string): Promise<ReportOp
   return r.events > 0 ? { ...r, rating: r.rating === null ? null : Number(r.rating) } : null;
 });
 
+export type ReportMarketing = {
+  plan: { key: string; label: string | null; weekly: boolean; times: number; last: string | null }[];
+  funnel: { colleagues_shared: number; colleagues_opened: number; buyers_shared: number; buyers_opened: number; colleague_calls: number };
+};
+
+/** What we did for the listing (its marketing plan) and how far it reached — never who. */
+export const getReportMarketing = cache(async (token: string): Promise<ReportMarketing | null> => {
+  if (!UUID.test(token)) return null;
+  const { data, error } = await anonymous().rpc("owner_report_marketing", { report_token: token });
+  if (error || !data) return null;
+  return data as ReportMarketing;
+});
+
 export async function markReportViewed(token: string) {
   if (!UUID.test(token)) return;
   await anonymous().rpc("mark_report_viewed", { report_token: token });

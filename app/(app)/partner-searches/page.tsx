@@ -24,6 +24,7 @@ type Row = {
   id: string;
   broker_name: string;
   agency: string | null;
+  partner_id: string | null;
   phone: string | null;
   email: string | null;
   note: string | null;
@@ -105,7 +106,13 @@ export default async function PartnerSearchesPage({ searchParams }: PageProps<"/
               <li key={row.id} className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-xs">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">{row.broker_name}</p>
+                    {row.partner_id ? (
+                      <Link href={`/partners/${row.partner_id}`} className="block truncate font-semibold hover:text-accent-fg">
+                        {row.broker_name}
+                      </Link>
+                    ) : (
+                      <p className="truncate font-semibold">{row.broker_name}</p>
+                    )}
                     {row.agency && <p className="truncate text-sm text-muted">{row.agency}</p>}
                     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
                       {row.phone && (

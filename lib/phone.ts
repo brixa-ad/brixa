@@ -1,4 +1,13 @@
 /** "0888 123 456" → "+359888123456" (Bulgarian numbers are often written without the country code). */
+/** The digits of a phone the way the database keys it (normalize_phone): +359 / 00359 → 0. */
+export function normalizePhone(raw: string | null | undefined) {
+  const digits = (raw ?? "").replace(/D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("00359")) return "0" + digits.slice(5);
+  if (digits.startsWith("359") && digits.length >= 11) return "0" + digits.slice(3);
+  return digits;
+}
+
 export function internationalPhone(raw: string) {
   const cleaned = raw.replace(/[^\d+]/g, "");
   if (cleaned.startsWith("+")) return cleaned;

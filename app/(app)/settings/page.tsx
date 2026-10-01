@@ -8,6 +8,8 @@ import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card } from "@/components/ui/form";
 import { getAgency } from "@/lib/agency";
+import { TemplateEditor } from "@/components/marketing/TemplateEditor";
+import { cleanTemplate } from "@/lib/marketing";
 import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
@@ -27,7 +29,7 @@ export default async function SettingsPage() {
   const { data: rules } = session!.isManager
     ? await supabase
         .from("organizations")
-        .select("follow_up_first_hours, follow_up_days_a, follow_up_days_b, follow_up_days_c, release_after_days")
+        .select("follow_up_first_hours, follow_up_days_a, follow_up_days_b, follow_up_days_c, release_after_days, marketing_template")
         .eq("id", session!.organizationId)
         .maybeSingle()
     : { data: null };
@@ -80,6 +82,12 @@ export default async function SettingsPage() {
                   about: agency.site.about ?? "",
                 }}
               />
+            </Card>
+          )}
+
+          {rules && (
+            <Card title={t.marketing.templateTitle} description={t.marketing.templateHint} id="marketing">
+              <TemplateEditor initial={cleanTemplate(rules.marketing_template)} />
             </Card>
           )}
 

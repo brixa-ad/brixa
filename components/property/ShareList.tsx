@@ -20,6 +20,8 @@ export type ShareRow = {
   lastViewedAt: string | null;
   revoked: boolean;
   createdAt: string;
+  /** sent to a colleague from another agency */
+  colleague?: boolean;
 };
 
 /** Links sent so far — who opened them and when; copy again or stop one. */

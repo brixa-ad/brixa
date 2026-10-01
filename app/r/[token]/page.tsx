@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Eye, HandCoins, MapPin, MessageSquareQuote, PhoneIncoming, Send, Tag } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, Eye, HandCoins, MapPin, MessageSquareQuote, PhoneIncoming, Send, Tag } from "lucide-react";
 import { MarketDiffChip } from "@/components/market/MarketCard";
 import { AgencyFooter, BrokerCard, PublicHeader } from "@/components/PublicContact";
 import { ViewBeacon } from "@/components/PublicPageTools";
@@ -8,7 +8,8 @@ import { daysBetween, sofiaDay, sofiaToday } from "@/lib/dates";
 import { formatDate, formatDayMonth, formatNumber, formatPrice } from "@/lib/format";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getOwnerReport, getReportOpenHouses, type OwnerReport } from "@/lib/owner-report";
+import { getOwnerReport, getReportMarketing, getReportOpenHouses, type OwnerReport } from "@/lib/owner-report";
+import { pointLabel } from "@/lib/marketing";
 
 const periodLabel = (report: OwnerReport["report"], lang: Lang) =>
   `${formatDate(report.period_start, lang)} – ${formatDate(report.period_end, lang)}`;
@@ -32,7 +33,12 @@ export async function generateMetadata({ params }: PageProps<"/r/[token]">): Pro
 /** The owner's report: what happened with their listing over the period — never who the buyers are. */
 export default async function OwnerReportPage({ params }: PageProps<"/r/[token]">) {
   const { token } = await params;
-  const [data, { t, lang }, openHouses] = await Promise.all([getOwnerReport(token), getI18n(), getReportOpenHouses(token)]);
+  const [data, { t, lang }, openHouses, marketing] = await Promise.all([
+    getOwnerReport(token),
+    getI18n(),
+    getReportOpenHouses(token),
+    getReportMarketing(token),
+  ]);
   if (!data) notFound();
 
   const { report, property: p, totals, broker, agency } = data;
@@ -210,6 +216,56 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
           <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{report.comment}</p>
           {broker && <p className="mt-2 text-sm font-medium">— {broker.name}</p>}
         </section>
+      )}
+
+      {/* ---- what we did: the listing's marketing plan, and how far it reached ---- */}
+      {marketing && marketing.plan.length > 0 && (
+        <Section title={t.marketing.reportTitle}>
+          <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            {marketing.plan.map((point) => {
+              const done = point.weekly ? point.times > 0 : point.last !== null;
+              return (
+                <li key={point.key} className="flex items-start gap-2.5 text-sm">
+                  <span
+                    className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-md ${done ? "bg-success text-white" : "border border-line-strong"}`}
+                    aria-hidden
+                  >
+                    {done && <Check className="size-3.5" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className={done ? "font-medium" : "text-muted"}>{pointLabel({ key: point.key, label: point.label }, t)}</span>
+                    <span className="block text-xs text-subtle">
+                      {done
+                        ? point.weekly || point.times > 1
+                          ? fmt(t.marketing.reportTimes, { n: point.times })
+                          : point.last
+                            ? fmt(t.marketing.reportLast, { date: formatDate(point.last, lang) })
+                            : ""
+                        : t.marketing.reportPending}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {(marketing.funnel.colleagues_shared > 0 || marketing.funnel.buyers_shared > 0 || marketing.funnel.colleague_calls > 0) && (
+            <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-line-soft pt-4 sm:grid-cols-4">
+              {(
+                [
+                  [t.marketing.funnelColleagues, marketing.funnel.colleagues_shared],
+                  [t.marketing.funnelOpened, marketing.funnel.colleagues_opened],
+                  [t.marketing.funnelCalls, marketing.funnel.colleague_calls],
+                  [t.marketing.funnelBuyers, marketing.funnel.buyers_shared],
+                ] as const
+              ).map(([name, value]) => (
+                <div key={name} className="rounded-xl bg-raised/60 px-3 py-2">
+                  <dt className="text-[11px] font-medium text-muted">{name}</dt>
+                  <dd className="text-lg font-bold tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </Section>
       )}
 
       <Section title={t.report.inProgress}>

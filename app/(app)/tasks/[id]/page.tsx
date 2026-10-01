@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarDays, CheckCircle2, Clock, Gift, Pencil, User } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Clock, Contact, Gift, Pencil, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MessageSender } from "@/components/program/MessageSender";
@@ -144,8 +144,25 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
           )}
 
           {/* ---- linked client & property ---- */}
-          {task.client || task.property ? (
+          {task.client || task.partner || task.property ? (
             <div className="grid gap-4 sm:grid-cols-2">
+              {task.partner && (
+                <Card>
+                  <p className="text-xs font-medium text-muted">{t.partners.colleague}</p>
+                  <Link href={`/partners/${task.partner.id}`} className="mt-1 flex items-center gap-2 font-semibold hover:text-accent-fg">
+                    <Contact className="size-4 text-accent-fg" />
+                    {task.partner.full_name}
+                  </Link>
+                  {(task.partner.agency || task.partner.phone) && (
+                    <p className="mt-1 text-sm text-muted">{[task.partner.agency, task.partner.phone].filter(Boolean).join(" · ")}</p>
+                  )}
+                  {task.partner.phone && (
+                    <div className="mt-4">
+                      <ContactButtons phone={task.partner.phone} email={null} />
+                    </div>
+                  )}
+                </Card>
+              )}
               {task.client && (
                 <Card>
                   <p className="text-xs font-medium text-muted">{t.tasks.linkedClient}</p>

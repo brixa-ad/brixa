@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, User } from "lucide-react";
+import { Clock, Contact, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { daysBetween } from "@/lib/dates";
 import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -40,6 +40,13 @@ export function TaskItem({
               <span className="inline-flex items-center gap-1 text-fg-2">
                 <User className="size-3.5" />
                 {task.client.full_name}
+              </span>
+            )}
+            {task.partner && (
+              <span className="inline-flex items-center gap-1 text-fg-2">
+                <Contact className="size-3.5" />
+                {task.partner.full_name}
+                {task.partner.agency && <span className="text-muted">({task.partner.agency})</span>}
               </span>
             )}
             {task.due_time && (

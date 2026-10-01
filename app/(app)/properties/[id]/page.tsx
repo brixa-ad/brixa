@@ -11,6 +11,7 @@ import {
   Flag,
   Handshake,
   MapPin,
+  Megaphone,
   Pencil,
   Plus,
   ShieldCheck,
@@ -26,6 +27,12 @@ import { MarketCard } from "@/components/market/MarketCard";
 import { BuyerMatchesCard, PartnerMatchesCard } from "@/components/property/MatchCards";
 import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
+import { MarketingPlan } from "@/components/marketing/MarketingPlan";
+import { ColleagueLog } from "@/components/partners/ColleagueLog";
+import { LogTabs } from "@/components/partners/LogTabs";
+import type { PartnerOption } from "@/components/partners/PartnerPicker";
+import { ShareWithColleague } from "@/components/partners/ShareWithColleague";
+import { cleanTemplate, listingPlan, type MarketingDone } from "@/lib/marketing";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { TypeIcon } from "@/components/task/TypeIcon";
 import { PageHeader } from "@/components/PageHeader";
@@ -45,7 +52,7 @@ import { findBuyers, findPartnerSearches } from "@/lib/matching";
 import { getProperty } from "@/lib/properties";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
-import { sofiaDay, sofiaToday } from "@/lib/dates";
+import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
 import { getSession } from "@/lib/session";
 import { personName } from "@/lib/tasks";
 import { createClient } from "@/lib/supabase/server";
@@ -80,6 +87,11 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     market,
     buyers,
     partnerMatches,
+    { data: partnerRows },
+    { data: marketingRow },
+    { data: doneRows },
+    { data: orgRow },
+    { count: colleagueCalls },
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -90,7 +102,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // viewings, calls… logged on this property (own; managers: everyone's)
       supabase
         .from("activities")
-        .select("id, type, note, occurred_at, person:profiles(full_name, email)")
+        .select("id, type, note, occurred_at, person:profiles(full_name, email), partner:partners(id, full_name, agency)")
         .eq("property_id", id)
         .order("occurred_at", { ascending: false })
         .limit(50),
@@ -103,7 +115,9 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // links sent to clients (own; managers: everyone's)
       supabase
         .from("property_shares")
-        .select("id, token, views, last_viewed_at, revoked_at, created_at, created_by, client:clients(id, full_name), creator:profiles(full_name, email)")
+        .select(
+          "id, token, views, last_viewed_at, revoked_at, created_at, created_by, client:clients(id, full_name), partner:partners(id, full_name, agency), creator:profiles(full_name, email)"
+        )
         .eq("property_id", id)
         .order("created_at", { ascending: false })
         .limit(50),
@@ -128,6 +142,13 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // who it fits: our buyers (the ones this user may see) and colleagues' searches
       listing ? findBuyers(supabase, id) : Promise.resolve([]),
       listing ? findPartnerSearches(supabase, id) : Promise.resolve([]),
+      // colleagues from other agencies (to log a call with, to share with)
+      supabase.from("partners").select("id, full_name, agency, phone").eq("organization_id", property.organization_id).order("full_name").limit(1000),
+      // the marketing plan: the listing's own changes, what was done, the agency's template
+      supabase.from("properties").select("marketing_hidden, marketing_extra").eq("id", id).maybeSingle(),
+      supabase.from("marketing_done").select("id, key, done_on, auto, done_by").eq("property_id", id).order("done_on", { ascending: false }).limit(500),
+      supabase.from("organizations").select("marketing_template").eq("id", property.organization_id).maybeSingle(),
+      supabase.from("activities").select("id", { count: "exact", head: true }).eq("property_id", id).not("partner_id", "is", null),
     ]);
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
@@ -140,13 +161,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       created_at: string;
       created_by: string | null;
       client: { id: string; full_name: string } | null;
+      partner: { id: string; full_name: string; agency: string | null } | null;
       creator: { full_name: string | null; email: string } | null;
     }[]
   ).map((row) => ({
     id: row.id,
     token: row.token,
-    name: row.client?.full_name ?? null,
-    href: row.client ? `/clients/${row.client.id}` : null,
+    name: row.client?.full_name ?? (row.partner ? `${row.partner.full_name}${row.partner.agency ? ` (${row.partner.agency})` : ""}` : null),
+    href: row.client ? `/clients/${row.client.id}` : row.partner ? `/partners/${row.partner.id}` : null,
+    colleague: Boolean(row.partner),
     sharedBy: row.creator && row.created_by !== session?.userId ? personName(row.creator) : null,
     views: row.views,
     lastViewedAt: row.last_viewed_at,
@@ -154,6 +177,21 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     createdAt: row.created_at,
   }));
   const shareClients = (clientRows ?? []) as ShareClient[];
+  const partners = (partnerRows ?? []) as PartnerOption[];
+
+  // ---- the marketing plan and its funnel
+  const plan = listingPlan(
+    cleanTemplate(orgRow?.marketing_template),
+    (marketingRow?.marketing_hidden ?? []) as string[],
+    cleanTemplate(marketingRow?.marketing_extra)
+  );
+  const done = (doneRows ?? []) as MarketingDone[];
+  const funnel = {
+    colleagues: shares.filter((s) => s.colleague).length,
+    opened: shares.filter((s) => s.colleague && s.views > 0).length,
+    calls: colleagueCalls ?? 0,
+    buyers: shares.filter((s) => !s.colleague && s.href).length,
+  };
   const reports: ShareRow[] = (
     (reportRows ?? []) as unknown as {
       id: string;
@@ -264,12 +302,18 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         note: string | null;
         occurred_at: string;
         person: Person;
+        partner: { id: string; full_name: string; agency: string | null } | null;
       }[]
     ).map((row) => ({
       key: `activity-${row.id}`,
       at: row.occurred_at,
       icon: row.type,
-      text: t.options.activityType[row.type as keyof typeof t.options.activityType] ?? row.type,
+      text: [
+        t.options.activityType[row.type as keyof typeof t.options.activityType] ?? row.type,
+        row.partner ? `${row.partner.full_name}${row.partner.agency ? ` (${row.partner.agency})` : ""}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       who: row.person ? personName(row.person) : null,
       note: row.note,
     })),
@@ -377,6 +421,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           canEdit ? (
             <>
               {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
+              {listing && <ShareWithColleague propertyId={property.id} title={property.title} partners={partners} />}
               <StatusSelect propertyId={property.id} status={property.status} />
               <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
                 <Pencil className="size-4" />
@@ -387,6 +432,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           ) : (
             <>
               {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
+              {listing && <ShareWithColleague propertyId={property.id} title={property.title} partners={partners} />}
               <StatusBadge
                 status={property.status}
                 label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status}
@@ -460,8 +506,53 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             )}
           </Card>
 
+          {listing && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <Megaphone className="size-4 text-brand-cyan" />
+                  {t.marketing.title}
+                </span>
+              }
+              description={t.marketing.hint}
+            >
+              <dl className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(
+                  [
+                    [t.marketing.funnelColleagues, funnel.colleagues],
+                    [t.marketing.funnelOpened, funnel.opened],
+                    [t.marketing.funnelCalls, funnel.calls],
+                    [t.marketing.funnelBuyers, funnel.buyers],
+                  ] as const
+                ).map(([name, value]) => (
+                  <div key={name} className="rounded-xl bg-raised/60 px-3 py-2">
+                    <dt className="text-[11px] font-medium text-muted">{name}</dt>
+                    <dd className="text-lg font-bold tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <MarketingPlan
+                propertyId={property.id}
+                shown={plan.shown}
+                hidden={plan.hidden}
+                extraKeys={cleanTemplate(marketingRow?.marketing_extra).map((p) => p.key)}
+                done={done}
+                today={sofiaToday()}
+                canEdit={canEdit}
+              />
+            </Card>
+          )}
+
           <Card title={t.detail.historyTitle}>
-            <QuickLog propertyId={property.id} />
+            <LogTabs
+              own={<QuickLog propertyId={property.id} />}
+              colleague={
+                <>
+                  <p className="mb-3 text-xs text-muted">{t.partners.colleagueHint}</p>
+                  <ColleagueLog partners={partners} propertyId={property.id} tomorrow={addDays(sofiaToday(), 1)} />
+                </>
+              }
+            />
             <ol className="relative mt-6 space-y-4 border-l border-line pl-5">
               {history.map((entry) => (
                 <li key={entry.key} className="relative">
