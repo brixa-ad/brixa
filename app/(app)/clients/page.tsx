@@ -80,7 +80,9 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   }
   if (stage) query = query.eq("stage", stage);
   if (cls) query = query.eq("client_class", cls);
-  if (type) query = query.contains("types", [type]);
+  // the section's tabs: buyers (and investors), sellers, tenants, landlords
+  if (type === "buyer") query = query.overlaps("types", ["buyer", "investor"]);
+  else if (type) query = query.contains("types", [type]);
   if (broker && session.isManager) query = query.eq("responsible_broker_id", broker);
   // how the client behaves (the order by the score needs it in the select above)
   if (coolingOnly) query = query.eq("client_temperatures.temperature", "cooling");
@@ -98,9 +100,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
 
   const rows = (data ?? []) as unknown as Row[];
   const counts = { total: 0, hot: 0, active: 0, deals: 0 };
-  const byType: Record<string, number> = {};
   for (const c of all ?? []) {
-    for (const tp of (c.types ?? []) as string[]) byType[tp] = (byType[tp] ?? 0) + 1;
     counts.total++;
     if (c.client_class === "A") counts.hot++;
     if (c.stage === "negotiation" || c.stage === "deposit") counts.active++;
@@ -113,7 +113,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
       <PageHeader
         backHref={back?.href}
         backLabel={back?.label}
-        title={t.clients.title}
+        title={{ buyer: t.nav.buyers, seller: t.nav.sellers, tenant: t.nav.tenants, landlord: t.nav.landlords, investor: t.clients.title, "": t.clients.title }[type]}
         subtitle={session.isManager ? t.clients.subtitleManager : t.clients.subtitleBroker}
         actions={
           <Link href="/clients/new" className={buttonClass.primary}>
@@ -136,37 +136,6 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
           </div>
         ))}
       </dl>
-
-      {/* sections by what the client does */}
-      <nav className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
-        {(
-          [
-            ["", t.clients.tabAll, counts.total],
-            ["buyer", t.clients.tabBuyers, byType.buyer ?? 0],
-            ["seller", t.clients.tabSellers, byType.seller ?? 0],
-            ["tenant", t.clients.tabTenants, byType.tenant ?? 0],
-            ["landlord", t.clients.tabLandlords, byType.landlord ?? 0],
-          ] as const
-        ).map(([key, label, count]) => {
-          const qs = new URLSearchParams();
-          for (const [k, v] of Object.entries(params)) if (k !== "type" && typeof v === "string" && v) qs.set(k, v);
-          if (key) qs.set("type", key);
-          const href = qs.toString() ? `/clients?${qs}` : "/clients";
-          return (
-            <Link
-              key={key || "all"}
-              href={href}
-              aria-current={type === key ? "page" : undefined}
-              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                type === key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
-              }`}
-            >
-              {label}
-              <span className={`text-xs tabular-nums ${type === key ? "text-on-accent/80" : "text-subtle"}`}>{count}</span>
-            </Link>
-          );
-        })}
-      </nav>
 
       <ClientFilters brokers={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))} />
 

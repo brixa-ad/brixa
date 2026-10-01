@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, Flame, PhoneCall } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ContactButtons } from "@/components/ContactButtons";
 import { AssignSelect, ContactedButton } from "@/components/followup/FollowUpControls";
 import { PageHeader } from "@/components/PageHeader";
+import { SignalsBoard } from "@/components/signals/SignalsBoard";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
 import { formatDate, formatDayMonth } from "@/lib/format";
-import { fmt, locale } from "@/lib/i18n/dictionaries";
+import { fmt, locale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMembers } from "@/lib/lookups";
 import type { ClientClass } from "@/lib/options";
@@ -33,7 +34,7 @@ type Row = {
   broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
 };
 
-/** Everyone to get back to, soonest first — overdue ones on top. */
+/** Everyone to get back to, soonest first — overdue ones on top; and the signals (how the clients behave). */
 export default async function FollowUpPage({ searchParams }: PageProps<"/follow-up">) {
   const params = await searchParams;
   const session = (await getSession())!;
@@ -43,6 +44,65 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
   const weekEnd = addDays(today, 7);
 
   const supabase = await createClient();
+
+  // two views: who to contact, and the signals
+  const view = params.view === "signals" ? "signals" : "calls";
+  const viewHref = (v: "calls" | "signals") => {
+    const qs = new URLSearchParams();
+    if (v === "signals") qs.set("view", "signals");
+    if (typeof params.broker === "string") qs.set("broker", params.broker);
+    const s = qs.toString();
+    return s ? `/follow-up?${s}` : "/follow-up";
+  };
+  const viewTabs = (t: Dictionary) => (
+    <nav className="mb-5 inline-flex rounded-lg border border-line bg-surface p-0.5">
+      {(
+        [
+          ["calls", PhoneCall, t.followUp.viewCalls],
+          ["signals", Flame, t.followUp.viewSignals],
+        ] as const
+      ).map(([v, Icon, label]) => (
+        <Link
+          key={v}
+          href={viewHref(v)}
+          aria-current={view === v ? "page" : undefined}
+          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+            view === v ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
+          }`}
+        >
+          <Icon className="size-4" />
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+  if (view === "signals") {
+    const [{ t, lang }, members] = await Promise.all([
+      getI18n(),
+      session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    ]);
+    return (
+      <>
+        <PageHeader
+          title={t.followUp.title}
+          subtitle={t.signals.subtitle}
+          actions={
+            session.isManager ? (
+              <BrokerPicker
+                value={broker}
+                selfId={session.userId}
+                members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
+                allByDefault
+              />
+            ) : undefined
+          }
+        />
+        {viewTabs(t)}
+        <SignalsBoard organizationId={session.organizationId} broker={broker === "all" ? null : broker} viewerId={session.userId} t={t} lang={lang} />
+      </>
+    );
+  }
+
   let query = supabase
     .from("clients")
     .select(
@@ -156,6 +216,7 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
           ) : undefined
         }
       />
+      {viewTabs(t)}
 
       <div className="space-y-4">
         {section("overdue", t.followUp.overdue, "text-danger")}

@@ -1,21 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { NAV_HREF, pageFor, type MenuSection, type NavKey } from "@/lib/nav";
+import { usePathname, useSearchParams } from "next/navigation";
+import { NAV_HREF, hrefPath, pageFor, type MenuSection, type NavKey } from "@/lib/nav";
 import { useI18n } from "./I18nProvider";
 import { NavIcon } from "./NavIcon";
 
 /**
- * The tabs of a section on top of its pages (Tasks | Calendar | Follow-up…). Only on the pages
+ * The tabs of a section on top of its pages (Buyers | Sellers | … | Follow-up). Only on the pages
  * themselves — not on a task, a client or a form inside them.
  */
 export function SectionTabs({ sections }: { sections: MenuSection[] }) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const section = sections.find((s) => s.pages.length > 1 && s.pages.some((page) => NAV_HREF[page] === pathname));
+  const searchParams = useSearchParams();
+  const section = sections.find((s) => s.pages.length > 1 && s.pages.some((page) => hrefPath(page) === pathname));
   if (!section) return null;
-  const current = pageFor(pathname, section.pages);
+  const current = pageFor(pathname, section.pages, searchParams);
   const label = (page: NavKey) => (t.menu.tabs as Partial<Record<NavKey, string>>)[page] ?? t.nav[page];
 
   return (

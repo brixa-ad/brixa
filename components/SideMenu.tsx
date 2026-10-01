@@ -6,13 +6,13 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { signOut } from "@/app/login/actions";
-import { MENU_EXTRAS, NAV_HREF, pageFor, sectionActive, sectionHref, type MenuSection } from "@/lib/nav";
+import { MENU_EXTRAS, sectionActive, sectionHref, type MenuSection } from "@/lib/nav";
 import { Avatar } from "./Avatar";
 import { useI18n } from "./I18nProvider";
 import { Logo } from "./Logo";
 import { NavIcon } from "./NavIcon";
 
-/** ☰ — the eight sections (with their pages underneath) in a panel that slides in from the left. */
+/** ☰ — the sections in a panel that slides in from the left (their pages are the tabs on top of each page). */
 export function SideMenu({
   sections,
   name,
@@ -107,7 +107,6 @@ export function SideMenu({
                   <ul key={g} className={g === 1 ? "mt-2 space-y-0.5 border-t border-line pt-2" : "space-y-0.5"}>
                     {group.map((section) => {
                       const active = sectionActive(section, pathname);
-                      const page = pageFor(pathname, section.pages);
                       return (
                         <li key={section.key}>
                           <Link
@@ -126,21 +125,6 @@ export function SideMenu({
                               </span>
                             )}
                           </Link>
-                          {/* the section's pages, one tap away */}
-                          {section.pages.length > 1 && (
-                            <div className="mb-1 ml-11 flex flex-wrap gap-x-3 gap-y-1 pb-1">
-                              {section.pages.map((p) => (
-                                <Link
-                                  key={p}
-                                  href={NAV_HREF[p]}
-                                  onClick={() => setOpen(false)}
-                                  className={`text-xs transition ${p === page ? "font-semibold text-accent-fg" : "text-muted hover:text-fg"}`}
-                                >
-                                  {(t.menu.tabs as Partial<Record<string, string>>)[p] ?? t.nav[p]}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
                         </li>
                       );
                     })}

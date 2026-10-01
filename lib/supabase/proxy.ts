@@ -24,6 +24,8 @@ const PUBLIC_PATHS = [
   "/o",
   // the agency's own website
   "/w",
+  // Google Forms send their answers (the form's token is the key)
+  "/api/forms",
 ];
 
 export async function updateSession(request: NextRequest) {

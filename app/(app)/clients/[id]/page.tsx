@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarCheck, Eye, History, ImageIcon, Mail, MapPin, MousePointerClick, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
+import { Building2, CalendarCheck, ClipboardList, Eye, History, ImageIcon, Mail, MapPin, MousePointerClick, Pencil, Phone, Plus, SearchX, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientStageSelect } from "@/components/client/ClientStageSelect";
@@ -37,7 +37,7 @@ import { DEAL_SELECT, toDeals } from "@/lib/deals";
 import { nameDayIn } from "@/lib/namedays";
 import { firstName, suggestProgram } from "@/lib/programs";
 import { CoolingTag } from "@/components/signals/CoolingTag";
-import { ago, reasonText, type Reason } from "@/lib/signals";
+import { ago, one, reasonText, type Reason } from "@/lib/signals";
 import { getClientEvents } from "@/lib/signals-server";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
@@ -68,6 +68,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     { data: identity },
     { data: temperature },
     events,
+    { data: formAnswers },
   ] = await Promise.all([
     seeking ? findMatches(supabase, session.organizationId, client.search!) : Promise.resolve([]),
     seeking ? describeSearch(client.search!, t, lang) : Promise.resolve([]),
@@ -118,6 +119,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .eq("client_id", id)
       .maybeSingle(),
     getClientEvents(supabase, id),
+    // what they answered in a survey (Google Form)
+    supabase
+      .from("lead_form_responses")
+      .select("id, answers, received_at, form:lead_forms(name)")
+      .eq("client_id", id)
+      .order("received_at", { ascending: false })
+      .limit(5),
   ]);
   const programs = (programRows ?? []) as ClientProgram[];
   const listings = (listingRows ?? []) as { id: string; title: string }[];
@@ -396,6 +404,43 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                 </ul>
               )}
               <p className="mt-4 text-[11px] text-subtle">{t.signals.classHint}</p>
+            </Card>
+          )}
+
+          {/* ---- what they answered in a survey ---- */}
+          {(formAnswers ?? []).length > 0 && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <ClipboardList className="size-4 text-brand-cyan" />
+                  {t.leads.answers}
+                </span>
+              }
+            >
+              <div className="space-y-4">
+                {(
+                  formAnswers as unknown as {
+                    id: string;
+                    answers: { q: string; a: string }[];
+                    received_at: string;
+                    form: { name: string } | { name: string }[] | null;
+                  }[]
+                ).map((response) => (
+                  <div key={response.id}>
+                    <p className="mb-1.5 text-xs font-semibold text-subtle">
+                      {one(response.form)?.name ?? "—"} · {formatDate(response.received_at, lang, true)}
+                    </p>
+                    <dl className="space-y-1.5 text-sm">
+                      {response.answers.map((item, i) => (
+                        <div key={i}>
+                          <dt className="text-xs text-muted">{item.q}</dt>
+                          <dd className="whitespace-pre-line font-medium text-fg-2">{item.a || "—"}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
 

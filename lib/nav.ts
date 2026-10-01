@@ -11,6 +11,11 @@ export const NAV_KEYS = [
   "properties",
   "openHouses",
   "clients",
+  "buyers",
+  "sellers",
+  "tenants",
+  "landlords",
+  "coldContacts",
   "signals",
   "followup",
   "contacts",
@@ -41,7 +46,13 @@ export const NAV_HREF: Record<NavKey, string> = {
   properties: "/properties",
   openHouses: "/open-houses",
   clients: "/clients",
-  signals: "/signals",
+  // the clients by what they do (one list, filtered)
+  buyers: "/clients?type=buyer",
+  sellers: "/clients?type=seller",
+  tenants: "/clients?type=tenant",
+  landlords: "/clients?type=landlord",
+  coldContacts: "/cold-contacts",
+  signals: "/follow-up?view=signals",
   followup: "/follow-up",
   contacts: "/contacts",
   stats: "/stats",
@@ -66,8 +77,8 @@ export type MenuKey = (typeof MENU_KEYS)[number];
 
 export const MENU_PAGES: Record<MenuKey, NavKey[]> = {
   home: ["home"],
-  day: ["tasks", "calendar", "followup"],
-  clients: ["clients", "signals", "contacts", "partnerSearches"],
+  day: ["tasks", "calendar"],
+  clients: ["buyers", "sellers", "tenants", "landlords", "coldContacts", "contacts", "followup", "partnerSearches"],
   properties: ["properties", "openHouses"],
   deals: ["deals", "closedDeals"],
   insights: ["stats", "statsBroker", "statsMarket", "market"],
@@ -108,16 +119,32 @@ export function menuFor(isManager: boolean, brix = false, solo = false): MenuSec
 
 export const sectionHref = (section: MenuSection) => NAV_HREF[section.pages[0]];
 
-/** The page (of a list) the address belongs to — the longest matching address wins (/stats vs /stats/market). */
-export function pageFor(pathname: string, pages: readonly NavKey[]): NavKey | null {
+/**
+ * The page (of a list) the address belongs to — the longest matching address wins (/stats vs
+ * /stats/market). A page with a query (/clients?type=seller) needs it too, when the query is given.
+ */
+export function pageFor(pathname: string, pages: readonly NavKey[], search?: URLSearchParams | null): NavKey | null {
   let best: NavKey | null = null;
+  let bestScore = -1;
   for (const page of pages) {
-    const href = NAV_HREF[page];
-    const match = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
-    if (match && (!best || href.length > NAV_HREF[best].length)) best = page;
+    const [path, query] = NAV_HREF[page].split("?");
+    const match = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
+    if (!match) continue;
+    let score = path.length * 2;
+    if (search && query) {
+      if (![...new URLSearchParams(query)].every(([key, value]) => search.get(key) === value)) continue;
+      score += 1;
+    }
+    if (score > bestScore) {
+      best = page;
+      bestScore = score;
+    }
   }
   return best;
 }
+
+/** The address of a page without its query. */
+export const hrefPath = (page: NavKey) => NAV_HREF[page].split("?")[0];
 
 /** Is a section open: the address is one of its pages (or below one). */
 export const sectionActive = (section: MenuSection, pathname: string) => pageFor(pathname, section.pages) !== null;

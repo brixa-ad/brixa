@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
@@ -115,7 +116,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <PasskeyPrompt />
         <ServiceWorker />
         {/* dictation: the server writes recordings when a speech service key is set */}
-        <SectionTabs sections={menu} />
+        {/* the tabs read the address's query (/clients?type=seller) */}
+        <Suspense>
+          <SectionTabs sections={menu} />
+        </Suspense>
         <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
       </main>
 

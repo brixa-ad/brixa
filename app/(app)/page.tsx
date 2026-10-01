@@ -355,13 +355,13 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             )}
             <div className="mt-3 flex items-center justify-between gap-3 border-t border-line-soft pt-3 text-sm">
               {coolingCount > 0 ? (
-                <Link href="/signals" className="font-medium text-sky-500 hover:underline">
+                <Link href="/follow-up?view=signals" className="font-medium text-sky-500 hover:underline">
                   🧊 {fmt(t.signals.homeCooling, { count: coolingCount })}
                 </Link>
               ) : (
                 <span />
               )}
-              <Link href="/signals" className="inline-flex items-center gap-1 font-medium text-accent-fg hover:underline">
+              <Link href="/follow-up?view=signals" className="inline-flex items-center gap-1 font-medium text-accent-fg hover:underline">
                 {t.signals.viewAll}
                 <ArrowRight className="size-3.5" />
               </Link>
