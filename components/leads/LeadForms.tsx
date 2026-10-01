@@ -23,6 +23,7 @@ function ScriptSteps({ url, formName }: { url: string; formName: string }) {
         <li>{t.leads.step4}</li>
         <li>{t.leads.step5}</li>
       </ol>
+      <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">{t.leads.step6}</p>
       <button
         type="button"
         onClick={() => {
