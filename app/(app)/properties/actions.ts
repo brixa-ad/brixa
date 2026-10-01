@@ -140,6 +140,7 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     responsible_broker_id: session.isManager ? (input.brokerId ?? session.userId) : session.userId,
     owner_client_id: input.ownerClientId,
     exclusive_contract: input.exclusiveContract,
+    off_market: input.offMarket,
     description: input.description.trim() || null,
   };
 

@@ -43,6 +43,8 @@ export type PropertyInput = {
   brokerId: string | null;
   ownerClientId: string | null;
   exclusiveContract: boolean;
+  /** "from the sleeve": not advertised, never on the website */
+  offMarket: boolean;
   description: string;
   featureIds: string[];
 };

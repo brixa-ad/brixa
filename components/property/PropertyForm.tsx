@@ -542,6 +542,20 @@ export function PropertyForm({
                     <span className="block text-xs text-muted">{t.form.exclusiveHint}</span>
                   </span>
                 </label>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={values.offMarket}
+                    onChange={(e) => set("offMarket", e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition peer-checked:bg-accent peer-focus-visible:ring-3 peer-focus-visible:ring-accent/35 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow after:transition peer-checked:after:translate-x-4" />
+                  <span>
+                    <span className="block text-sm font-medium text-fg">{t.form.offMarket}</span>
+                    <span className="block text-xs text-muted">{t.form.offMarketHint}</span>
+                  </span>
+                </label>
               </div>
 
               <Field label={t.clients.owner} error={errorText("ownerClientId")} hint={t.clients.ownerHint}>

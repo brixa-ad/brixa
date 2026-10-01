@@ -32,6 +32,7 @@ export type PropertyFormValues = {
   brokerId: string;
   ownerClientId: string | null;
   exclusiveContract: boolean;
+  offMarket: boolean;
   description: string;
   featureIds: string[];
 };
@@ -66,6 +67,7 @@ export function emptyFormValues(userId: string, currency: Currency = "EUR"): Pro
     brokerId: userId,
     ownerClientId: null,
     exclusiveContract: false,
+    offMarket: false,
     description: "",
     featureIds: [],
   };

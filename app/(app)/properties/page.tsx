@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ImageIcon, MapPin, Plus, UserRound } from "lucide-react";
+import { Building2, EyeOff, ImageIcon, MapPin, Plus, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyFilters } from "@/components/property/PropertyFilters";
 import { StatusBadge } from "@/components/property/StatusBadge";
@@ -28,6 +28,8 @@ const VIEWS = {
   sold: ["sold", "rented"],
   withdrawn: ["withdrawn", "sold_elsewhere"],
   colleagues: ["active", "reserved"],
+  // "from the sleeve": not advertised — the whole agency's
+  offmarket: ["active", "reserved"],
 } as const;
 type View = keyof typeof VIEWS;
 
@@ -41,6 +43,7 @@ type ListRow = {
   floor: number | null;
   current_price: number | null;
   currency: string;
+  off_market: boolean;
   subtype: { name: string; name_en: string | null } | null;
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
@@ -68,7 +71,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   let query = supabase
     .from("properties")
     .select(
-      `id, title, status, operation_type, area, rooms, floor, current_price, currency,
+      `id, title, status, operation_type, area, rooms, floor, current_price, currency, off_market,
       subtype:property_subtypes(name, name_en),
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
@@ -87,7 +90,10 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   if (view) {
     // mine (on the market, sold, off the market), or the colleagues' on the market
     query = query.in("status", [...VIEWS[view]]);
-    if (view !== "colleagues") query = query.eq("responsible_broker_id", session.userId);
+    if (view === "offmarket") {
+      query = query.eq("off_market", true);
+      if (broker) query = query.eq("responsible_broker_id", broker);
+    } else if (view !== "colleagues") query = query.eq("responsible_broker_id", session.userId);
     else if (broker && broker !== session.userId) query = query.eq("responsible_broker_id", broker);
     else query = query.neq("responsible_broker_id", session.userId);
   } else {
@@ -112,7 +118,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
 
   // the numbers on top follow the tab: my own on my tabs, the whole agency's on the colleagues' (and with no tab)
   const counts = { total: 0, active: 0, reserved: 0, closed: 0 };
-  const own = view !== null && view !== "colleagues";
+  const own = view === "mine" || view === "sold" || view === "withdrawn";
   for (const row of statusRows ?? []) {
     if (own && row.responsible_broker_id !== session.userId) continue;
     counts.total++;
@@ -121,9 +127,15 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     if (row.status === "sold" || row.status === "rented") counts.closed++;
   }
 
-  const filtered = Boolean(q || op || cat || (!view && (status || broker)) || (view === "colleagues" && broker));
+  const filtered = Boolean(q || op || cat || (!view && (status || broker)) || ((view === "colleagues" || view === "offmarket") && broker));
   const title = view
-    ? { mine: t.nav.myProperties, sold: t.nav.soldProperties, withdrawn: t.nav.withdrawnProperties, colleagues: t.nav.colleaguesProperties }[view]
+    ? {
+        mine: t.nav.myProperties,
+        sold: t.nav.soldProperties,
+        withdrawn: t.nav.withdrawnProperties,
+        colleagues: t.nav.colleaguesProperties,
+        offmarket: t.nav.offMarketProperties,
+      }[view]
     : t.list.title;
 
   return (
@@ -209,6 +221,12 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                         status={row.status}
                         label={t.options.status[row.status as keyof typeof t.options.status] ?? row.status}
                       />
+                      {row.off_market && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
+                          <EyeOff className="size-3" />
+                          {t.menu.tabs.offMarketProperties}
+                        </span>
+                      )}
                     </div>
                     <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
                       {t.options.operation[row.operation_type as keyof typeof t.options.operation] ??

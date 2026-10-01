@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Check,
   Eye,
+  EyeOff,
   FileText,
   Flag,
   Handshake,
@@ -622,10 +623,20 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               </p>
             )}
 
-            {property.exclusive_contract && (
-              <p className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-fg">
-                <ShieldCheck className="size-3.5" />
-                {t.detail.exclusive}
+            {(property.exclusive_contract || property.off_market) && (
+              <p className="mt-4 flex flex-wrap gap-1.5">
+                {property.exclusive_contract && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-fg">
+                    <ShieldCheck className="size-3.5" />
+                    {t.detail.exclusive}
+                  </span>
+                )}
+                {property.off_market && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-raised px-2.5 py-1 text-xs font-semibold text-fg-2" title={t.form.offMarketHint}>
+                    <EyeOff className="size-3.5" />
+                    {t.form.offMarket}
+                  </span>
+                )}
               </p>
             )}
 

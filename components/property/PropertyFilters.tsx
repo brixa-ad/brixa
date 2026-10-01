@@ -122,7 +122,7 @@ export function PropertyFilters({
         </button>
       )}
 
-      {brokers.length > 1 && (!view || view === "colleagues") && (
+      {brokers.length > 1 && (!view || view === "colleagues" || view === "offmarket") && (
         <select
           aria-label={t.form.broker}
           value={brokerValue}

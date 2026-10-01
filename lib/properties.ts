@@ -44,6 +44,7 @@ export type PropertyDetail = {
   /** sale: %, rent: months; null = agency default */
   commission_rate: number | null;
   exclusive_contract: boolean;
+  off_market: boolean;
   description: string | null;
   responsible_broker_id: string | null;
   created_at: string;

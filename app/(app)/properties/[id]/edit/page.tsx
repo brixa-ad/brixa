@@ -50,6 +50,7 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     brokerId: property.responsible_broker_id ?? "",
     ownerClientId: property.owner_client_id,
     exclusiveContract: property.exclusive_contract,
+    offMarket: property.off_market,
     description: property.description ?? "",
     featureIds: property.features.map((feature) => feature.id),
   };
