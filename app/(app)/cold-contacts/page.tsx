@@ -235,7 +235,8 @@ export default async function ColdContactsPage({ searchParams }: PageProps<"/col
                       ) : (
                         <span className="inline-flex items-center gap-1 font-semibold text-warning">
                           <Clock className="size-3.5" />
-                          {t.leads.waiting}
+                          {/* Make sends no "connected": a Facebook folder shows it with the first lead */}
+                          {form.source === "facebook" || form.source === "instagram" ? t.leads.waitingLead : t.leads.waiting}
                         </span>
                       )}
                       <span>· {broker ? personName(broker) : t.leads.noBroker}</span>

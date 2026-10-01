@@ -34,6 +34,12 @@ export async function POST(request: Request, ctx: RouteContext<"/api/forms/[toke
   const answers = readAnswers(body);
   const respondent = Array.isArray(body.answers) && typeof body.email === "string" ? body.email.trim() : null;
   const { name, phone, email } = readContact(answers, respondent);
+  if (!name && !phone && !email) {
+    return Response.json(
+      { ok: false, reason: "Няма име, телефон или имейл. Провери полетата (Name: Име, Телефон, Имейл; Value: полето от Facebook)." },
+      { status: 422 }
+    );
+  }
   const { data, error } = await supabase.rpc("submit_lead_form", {
     form_token: token,
     lead_name: name,
@@ -42,5 +48,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/forms/[toke
     answers,
   });
   if (error) console.error("A form answer failed:", error.message);
-  return Response.json({ ok: Boolean(data) }, { status: data ? 200 : 404 });
+  if (!data) return Response.json({ ok: false, reason: "Няма такава папка или е архивирана. Копирай адреса наново от BRIXA." }, { status: 404 });
+  return Response.json({ ok: true });
 }
