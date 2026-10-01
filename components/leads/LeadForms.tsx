@@ -42,8 +42,69 @@ function ScriptSteps({ url, formName }: { url: string; formName: string }) {
   );
 }
 
-/** "Connect a Google Form" for a folder. */
-export function ConnectFormButton({ url, formName }: { url: string; formName: string }) {
+/** A Facebook ad's form (instant form), through Make: its steps and the folder's address. */
+function MakeSteps({ url }: { url: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-sm text-fg-2">
+        <li>{t.leads.fb1}</li>
+        <li>{t.leads.fb2}</li>
+        <li>{t.leads.fb3}</li>
+        <li>{t.leads.fb4}</li>
+        <li>{t.leads.fb5}</li>
+        <li>{t.leads.fb6}</li>
+      </ol>
+      <button
+        type="button"
+        onClick={() => {
+          void navigator.clipboard.writeText(url).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        }}
+        className={`${buttonClass.primary} mb-3 w-full`}
+      >
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+        {copied ? t.leads.copied : t.leads.copyUrl}
+      </button>
+      <p className="break-all rounded-lg border border-line bg-raised/60 p-3 font-mono text-[11px] text-fg-2">{url}</p>
+    </div>
+  );
+}
+
+/** Connecting a folder: a Google Form (its script), or a Facebook ad (through Make). */
+function ConnectSteps({ url, formName, facebook }: { url: string; formName: string; facebook: boolean }) {
+  const { t } = useI18n();
+  const [via, setVia] = useState<"google" | "facebook">(facebook ? "facebook" : "google");
+  return (
+    <div>
+      <nav className="mb-4 flex gap-1 rounded-lg border border-line bg-surface p-0.5">
+        {(
+          [
+            ["google", t.leads.viaGoogle],
+            ["facebook", t.leads.viaFacebook],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setVia(key)}
+            aria-pressed={via === key}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${via === key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      {via === "google" ? <ScriptSteps url={url} formName={formName} /> : <MakeSteps url={url} />}
+    </div>
+  );
+}
+
+/** "Connect" a folder to its form. */
+export function ConnectFormButton({ url, formName, facebook = false }: { url: string; formName: string; facebook?: boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
@@ -54,7 +115,7 @@ export function ConnectFormButton({ url, formName }: { url: string; formName: st
       </button>
       {open && (
         <Modal title={t.leads.scriptTitle} onClose={() => setOpen(false)} wide>
-          <ScriptSteps url={url} formName={formName} />
+          <ConnectSteps url={url} formName={formName} facebook={facebook} />
         </Modal>
       )}
     </>
@@ -81,7 +142,7 @@ export function NewLeadFormButton({
   const [broker, setBroker] = useState(selfId);
   const [clientType, setClientType] = useState<string>("buyer");
   const [source, setSource] = useState<string>("facebook");
-  const [created, setCreated] = useState<{ url: string; name: string } | null>(null);
+  const [created, setCreated] = useState<{ url: string; name: string; facebook: boolean } | null>(null);
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -103,7 +164,7 @@ export function NewLeadFormButton({
         setFailed(true);
         return;
       }
-      setCreated({ url: `${baseUrl}/${result.token}`, name: name.trim() });
+      setCreated({ url: `${baseUrl}/${result.token}`, name: name.trim(), facebook: source === "facebook" || source === "instagram" });
       router.refresh();
     });
   }
@@ -118,7 +179,7 @@ export function NewLeadFormButton({
       {open && (
         <Modal title={created ? t.leads.scriptTitle : t.leads.newForm} onClose={() => setOpen(false)} wide={Boolean(created)}>
           {created ? (
-            <ScriptSteps url={created.url} formName={created.name} />
+            <ConnectSteps url={created.url} formName={created.name} facebook={created.facebook} />
           ) : (
             <div className="space-y-4">
               <div>

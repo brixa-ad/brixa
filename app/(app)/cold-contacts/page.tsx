@@ -38,6 +38,7 @@ type Form = {
   name: string;
   token: string;
   broker_id: string | null;
+  source: string;
   connected_at: string | null;
   last_response_at: string | null;
   archived_at: string | null;
@@ -68,7 +69,7 @@ export default async function ColdContactsPage({ searchParams }: PageProps<"/col
   // every folder (for the names); the managers look after all of them, a broker after their own
   const formsQuery = supabase
     .from("lead_forms")
-    .select("id, name, token, broker_id, connected_at, last_response_at, archived_at, broker:profiles!lead_forms_broker_id_fkey(full_name, email)")
+    .select("id, name, token, broker_id, source, connected_at, last_response_at, archived_at, broker:profiles!lead_forms_broker_id_fkey(full_name, email)")
     .eq("organization_id", session.organizationId)
     .order("created_at", { ascending: false });
 
@@ -242,7 +243,7 @@ export default async function ColdContactsPage({ searchParams }: PageProps<"/col
                       {form.last_response_at && <span>· {fmt(t.leads.lastResponse, { when: ago(form.last_response_at, lang) })}</span>}
                     </p>
                   </div>
-                  <ConnectFormButton url={`${baseUrl}/${form.token}`} formName={form.name} />
+                  <ConnectFormButton url={`${baseUrl}/${form.token}`} formName={form.name} facebook={form.source === "facebook" || form.source === "instagram"} />
                   <ArchiveFormButton id={form.id} />
                 </li>
               );
