@@ -22,6 +22,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const LIMIT = 200;
 
+// the section's tabs: whose listings, and where they are
+const VIEWS = {
+  mine: ["active", "reserved"],
+  sold: ["sold", "rented"],
+  withdrawn: ["withdrawn", "sold_elsewhere"],
+  colleagues: ["active", "reserved"],
+} as const;
+type View = keyof typeof VIEWS;
+
 type ListRow = {
   id: string;
   title: string;
@@ -46,6 +55,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   const status = isOneOf(STATUSES, params.status) ? params.status : "";
   const cat = typeof params.cat === "string" ? params.cat : "";
   const brokerParam = typeof params.broker === "string" ? params.broker : "";
+  const view = typeof params.view === "string" && params.view in VIEWS ? (params.view as View) : null;
 
   const session = (await getSession())!;
   const supabase = await createClient();
@@ -73,9 +83,17 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
 
   if (q) query = query.or(`title.ilike.%${q}%,address.ilike.%${q}%`);
   if (op) query = query.eq("operation_type", op);
-  if (status) query = query.eq("status", status);
   if (cat) query = query.eq("category_id", cat);
-  if (broker) query = query.eq("responsible_broker_id", broker);
+  if (view) {
+    // mine (on the market, sold, off the market), or the colleagues' on the market
+    query = query.in("status", [...VIEWS[view]]);
+    if (view !== "colleagues") query = query.eq("responsible_broker_id", session.userId);
+    else if (broker && broker !== session.userId) query = query.eq("responsible_broker_id", broker);
+    else query = query.neq("responsible_broker_id", session.userId);
+  } else {
+    if (status) query = query.eq("status", status);
+    if (broker) query = query.eq("responsible_broker_id", broker);
+  }
 
   const [{ data, error }, { data: statusRows }, { data: categories }, members] = await Promise.all([
     query,
@@ -100,14 +118,17 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     if (row.status === "sold" || row.status === "rented") counts.closed++;
   }
 
-  const filtered = Boolean(q || op || status || cat || broker);
+  const filtered = Boolean(q || op || cat || (!view && (status || broker)) || (view === "colleagues" && broker));
+  const title = view
+    ? { mine: t.nav.myProperties, sold: t.nav.soldProperties, withdrawn: t.nav.withdrawnProperties, colleagues: t.nav.colleaguesProperties }[view]
+    : t.list.title;
 
   return (
     <>
       <PageHeader
         backHref={back?.href}
         backLabel={back?.label}
-        title={t.list.title}
+        title={title}
         subtitle={t.list.subtitle}
         actions={
           <Link href="/properties/new" className={buttonClass.primary}>
@@ -142,6 +163,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
           <Building2 className="mx-auto size-10 text-faint" />
           {filtered ? (
             <p className="mt-3 text-sm text-muted">{t.list.noResults}</p>
+          ) : view && view !== "mine" ? (
+            <p className="mt-3 text-sm text-muted">{t.list.emptyView}</p>
           ) : (
             <>
               <p className="mt-3 font-semibold">{t.list.emptyTitle}</p>

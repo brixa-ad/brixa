@@ -41,6 +41,8 @@ export function PropertyFilters({
   }
 
   const hasFilters = ["q", "op", "status", "cat", "broker"].some((key) => searchParams.get(key));
+  // a tab of the section (mine, sold, withdrawn, colleagues'): it decides the status and whose
+  const view = searchParams.get("view");
   const brokerParam = searchParams.get("broker") ?? "";
   const brokerValue = brokerParam === "me" ? currentUserId : brokerParam;
   const onlyMine = brokerValue === currentUserId;
@@ -74,19 +76,21 @@ export function PropertyFilters({
         ))}
       </select>
 
-      <select
-        aria-label={t.detail.status}
-        value={searchParams.get("status") ?? ""}
-        onChange={(event) => update("status", event.target.value)}
-        className={selectClass}
-      >
-        <option value="">{t.list.allStatuses}</option>
-        {STATUSES.map((code) => (
-          <option key={code} value={code}>
-            {t.options.status[code]}
-          </option>
-        ))}
-      </select>
+      {!view && (
+        <select
+          aria-label={t.detail.status}
+          value={searchParams.get("status") ?? ""}
+          onChange={(event) => update("status", event.target.value)}
+          className={selectClass}
+        >
+          <option value="">{t.list.allStatuses}</option>
+          {STATUSES.map((code) => (
+            <option key={code} value={code}>
+              {t.options.status[code]}
+            </option>
+          ))}
+        </select>
+      )}
 
       <select
         aria-label={t.form.category}
@@ -102,21 +106,23 @@ export function PropertyFilters({
         ))}
       </select>
 
-      <button
-        type="button"
-        aria-pressed={onlyMine}
-        onClick={() => update("broker", onlyMine ? "" : "me")}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-          onlyMine
-            ? "border-accent bg-accent-soft text-accent-fg"
-            : "border-line-strong bg-raised text-fg-2 hover:bg-overlay"
-        }`}
-      >
-        <UserRound className="size-4" />
-        {t.list.onlyMine}
-      </button>
+      {!view && (
+        <button
+          type="button"
+          aria-pressed={onlyMine}
+          onClick={() => update("broker", onlyMine ? "" : "me")}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            onlyMine
+              ? "border-accent bg-accent-soft text-accent-fg"
+              : "border-line-strong bg-raised text-fg-2 hover:bg-overlay"
+          }`}
+        >
+          <UserRound className="size-4" />
+          {t.list.onlyMine}
+        </button>
+      )}
 
-      {brokers.length > 1 && (
+      {brokers.length > 1 && (!view || view === "colleagues") && (
         <select
           aria-label={t.form.broker}
           value={brokerValue}
@@ -139,7 +145,7 @@ export function PropertyFilters({
           type="button"
           onClick={() => {
             setQ("");
-            startTransition(() => router.replace(pathname, { scroll: false }));
+            startTransition(() => router.replace(view ? `${pathname}?view=${view}` : pathname, { scroll: false }));
           }}
           className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-muted hover:text-fg"
         >

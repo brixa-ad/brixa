@@ -95,7 +95,9 @@ export function ClientFilters({ brokers }: { brokers: { id: string; name: string
           type="button"
           onClick={() => {
             setQ("");
-            startTransition(() => router.replace(pathname, { scroll: false }));
+            // the section's tab (?type=) stays
+            const type = searchParams.get("type");
+            startTransition(() => router.replace(type ? `${pathname}?type=${type}` : pathname, { scroll: false }));
           }}
           className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-muted hover:text-fg"
         >

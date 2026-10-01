@@ -9,6 +9,10 @@ export const NAV_KEYS = [
   "calendar",
   "deals",
   "properties",
+  "myProperties",
+  "soldProperties",
+  "withdrawnProperties",
+  "colleaguesProperties",
   "openHouses",
   "clients",
   "buyers",
@@ -44,6 +48,11 @@ export const NAV_HREF: Record<NavKey, string> = {
   calendar: "/calendar",
   deals: "/deals",
   properties: "/properties",
+  // the listings by whose and where they are (one list, filtered)
+  myProperties: "/properties?view=mine",
+  soldProperties: "/properties?view=sold",
+  withdrawnProperties: "/properties?view=withdrawn",
+  colleaguesProperties: "/properties?view=colleagues",
   openHouses: "/open-houses",
   clients: "/clients",
   // the clients by what they do (one list, filtered)
@@ -79,7 +88,7 @@ export const MENU_PAGES: Record<MenuKey, NavKey[]> = {
   home: ["home"],
   day: ["tasks", "calendar"],
   clients: ["buyers", "sellers", "tenants", "landlords", "coldContacts", "contacts", "followup", "partnerSearches"],
-  properties: ["properties", "openHouses"],
+  properties: ["myProperties", "soldProperties", "withdrawnProperties", "colleaguesProperties", "openHouses"],
   deals: ["deals", "closedDeals"],
   insights: ["stats", "statsBroker", "statsMarket", "market"],
   path: ["plan", "business", "territory"],
@@ -105,7 +114,7 @@ export function navKeysFor(isManager: boolean, brix = false, solo = false): NavK
     (key) =>
       ((key !== "goals" && key !== "stats") || isManager) &&
       (key !== "brix" || brix) &&
-      !(solo && (key === "team" || key === "contacts"))
+      !(solo && (key === "team" || key === "contacts" || key === "colleaguesProperties"))
   );
 }
 
