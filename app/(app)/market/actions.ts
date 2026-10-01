@@ -44,3 +44,17 @@ export async function saveMarketPrices(input: MarketPricesInput): Promise<{ ok: 
   revalidatePath("/market");
   return { ok: true };
 }
+
+/** A manager works today's market out again now (after entering many listings, say). */
+export async function refreshMarketToday(): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("refresh_market_today", { target_org: session.organizationId });
+  if (error) {
+    console.error("Refreshing the market failed:", error.message);
+    return { ok: false };
+  }
+  revalidatePath("/market");
+  return { ok: true };
+}
