@@ -26,6 +26,7 @@ export function PriceBlock({
   place,
   specs,
   t,
+  badge,
   children,
 }: {
   price: string;
@@ -34,6 +35,8 @@ export function PriceBlock({
   place: string | null;
   specs: string[];
   t: Dictionary;
+  /** under the price: how it stands on the market (the stars) */
+  badge?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
@@ -42,6 +45,7 @@ export function PriceBlock({
         {price}
         {perMonth && <span className="ml-1.5 text-lg font-medium text-muted">{t.listing.perMonth}</span>}
       </p>
+      {badge && <div className="mt-2">{badge}</div>}
       <h1 className="mt-3 text-xl font-semibold leading-snug">{title}</h1>
       {place && <p className="mt-1 text-lg text-muted">{place}</p>}
       {specs.length > 0 && <p className="mt-1 text-lg text-fg-2">{specs.join(" · ")}</p>}

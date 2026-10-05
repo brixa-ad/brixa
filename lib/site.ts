@@ -3,7 +3,7 @@ import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
-import { anonymous, type SharedListing } from "./share";
+import { anonymous, goodStars, type SharedListing } from "./share";
 import { parseEstimate } from "./yield";
 
 export const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -79,7 +79,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
   const { data, error } = await supabase.rpc("site_listing", { site: slug.toLowerCase(), target_property: id });
   if (error || !data) return null;
   const raw = data as {
-    property: Omit<SharedListing["property"], "rent_estimate"> & { photos: string[]; rent_estimate: unknown };
+    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null };
   };
@@ -98,6 +98,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
       features: property.features ?? [],
       expected_rent: property.expected_rent === null || property.expected_rent === undefined ? null : Number(property.expected_rent),
       rent_estimate: parseEstimate(property.rent_estimate),
+      stars: goodStars(raw.property.rating),
     },
     photos,
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,

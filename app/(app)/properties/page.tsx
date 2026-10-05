@@ -14,6 +14,7 @@ import { OPERATION_TYPES, STATUSES, isOneOf } from "@/lib/options";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { fromQuery, memberBack } from "@/lib/member-back";
 import { sofiaToday } from "@/lib/dates";
+import { toStars } from "@/lib/rating";
 import { getSession } from "@/lib/session";
 import { ago } from "@/lib/signals";
 import { createClient } from "@/lib/supabase/server";
@@ -122,9 +123,17 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   if (error) console.error("Loading properties failed:", error);
 
   const rows = (data ?? []) as unknown as ListRow[];
-  const photoUrls = await signPhotoUrls(
-    supabase,
-    rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
+  // the stars of the listings on the market
+  const ratedIds = rows.filter((row) => row.status === "active" || row.status === "reserved").map((row) => row.id).slice(0, 300);
+  const [photoUrls, { data: ratingRows }] = await Promise.all([
+    signPhotoUrls(
+      supabase,
+      rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
+    ),
+    ratedIds.length > 0 ? supabase.rpc("listing_ratings", { ids: ratedIds }) : Promise.resolve({ data: [] }),
+  ]);
+  const starsById = new Map(
+    ((ratingRows ?? []) as { property_id: string; stars: number | null }[]).map((r) => [r.property_id, toStars(r.stars)])
   );
 
   // the numbers on top follow the tab: my own on my tabs, the whole agency's on the colleagues' (and with no tab)
@@ -239,6 +248,10 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                       : null,
                     age: ago(row.created_at, lang),
                     phone,
+                    rating: (() => {
+                      const stars = starsById.get(row.id);
+                      return stars ? { stars, label: t.rating.labels[stars], title: fmt(t.rating.stars, { n: stars }) } : null;
+                    })(),
                   }}
                 />
               </li>

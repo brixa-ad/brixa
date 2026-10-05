@@ -82,6 +82,9 @@ import { getProperty } from "@/lib/properties";
 import { parseEstimate, rentalYield } from "@/lib/yield";
 import { YieldPanel } from "@/components/listing/YieldPanel";
 import { RentEditor } from "@/components/property/RentEditor";
+import { AnalysisPanel } from "@/components/property/AnalysisPanel";
+import { StarRating } from "@/components/listing/StarRating";
+import { getAnalysis } from "@/lib/analysis";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
 import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
@@ -129,6 +132,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     players,
     agency,
     { data: rentRow },
+    analysis,
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -210,6 +214,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       getAgency(property.organization_id),
       // a listing for sale: what it would rent for (from the agency's market)
       kind === "sale" && listing ? supabase.rpc("property_rent_estimate", { target_property: id }) : Promise.resolve({ data: null }),
+      // how it stands on the market: the stars, the comparables
+      listing ? getAnalysis(id) : Promise.resolve(null),
     ]);
   const rentEstimate = parseEstimate(rentRow);
   const investment = kind === "sale" && listing ? rentalYield(property.current_price, property.currency, property.expected_rent, rentEstimate) : null;
@@ -565,6 +571,17 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             place={placeLine}
             specs={headline}
             t={t}
+            badge={
+              analysis?.rating ? (
+                <a href="#analysis">
+                  <StarRating
+                    stars={analysis.rating.stars}
+                    label={t.rating.labels[analysis.rating.stars]}
+                    title={fmt(t.rating.stars, { n: analysis.rating.stars })}
+                  />
+                </a>
+              ) : undefined
+            }
           >
             {mapQuery && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`} icon={MapPinned} label={t.listing.map} external />}
             {market && <QuickAction href="#market" icon={LineChart} label={t.listing.market} />}
@@ -608,6 +625,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               {canEdit && <RentEditor propertyId={property.id} initial={property.expected_rent} />}
             </YieldPanel>
           )}
+
+          {analysis && <AnalysisPanel analysis={analysis} propertyId={property.id} canEdit={canEdit} t={t} lang={lang} />}
 
           <Panel title={t.listing.description}>
             {property.description ? (

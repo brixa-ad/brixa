@@ -5,6 +5,7 @@ import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
 import { AgencyPanel, AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { YieldPanel } from "@/components/listing/YieldPanel";
+import { StarRating } from "@/components/listing/StarRating";
 import { rentalYield } from "@/lib/yield";
 import { AgencyFooter, PublicHeader } from "@/components/PublicContact";
 import { PrintButton, ViewBeacon } from "@/components/PublicPageTools";
@@ -96,6 +97,9 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
           place={place || null}
           specs={headline}
           t={t}
+          badge={
+            p.stars ? <StarRating stars={p.stars} label={t.rating.labels[p.stars]} title={fmt(t.rating.stars, { n: p.stars })} /> : undefined
+          }
         >
           {place && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} icon={MapPinned} label={t.listing.map} external />}
         </PriceBlock>

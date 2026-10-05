@@ -6,6 +6,7 @@ import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
 import type { Tap } from "./signals";
 import { parseEstimate, type RentEstimate } from "./yield";
+import { toStars, type Stars } from "./rating";
 
 export type SharedListing = {
   property: {
@@ -33,6 +34,8 @@ export type SharedListing = {
     /** for sale: the broker's rent and BRIXA's estimate */
     expected_rent: number | null;
     rent_estimate: RentEstimate | null;
+    /** the stars against the market — only 4 or 5 ever come */
+    stars: Stars | null;
   };
   photos: string[];
   broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
@@ -40,6 +43,12 @@ export type SharedListing = {
 };
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The stars a client may see: 4 or 5. */
+export function goodStars(rating: { stars?: unknown } | null | undefined): Stars | null {
+  const stars = toStars(rating?.stars);
+  return stars !== null && stars >= 4 ? stars : null;
+}
 
 /** Anyone's view: no session — the link's token is the only key. */
 export function anonymous() {
@@ -56,7 +65,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
   if (error || !data) return null;
 
   const raw = data as {
-    property: Omit<SharedListing["property"], "rent_estimate"> & { photos: string[]; rent_estimate: unknown };
+    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null } | null;
   };
@@ -78,6 +87,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
       features: property.features ?? [],
       expected_rent: property.expected_rent === null || property.expected_rent === undefined ? null : Number(property.expected_rent),
       rent_estimate: parseEstimate(property.rent_estimate),
+      stars: goodStars(raw.property.rating),
     },
     photos,
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,

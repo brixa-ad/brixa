@@ -4,7 +4,9 @@ import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { telHref, whatsappHref } from "@/lib/phone";
+import type { Stars } from "@/lib/rating";
 import { CardPhotos } from "./CardPhotos";
+import { StarRating } from "./StarRating";
 
 export type ListingCardData = {
   href: string;
@@ -25,6 +27,8 @@ export type ListingCardData = {
   age?: string | null;
   /** whom the two buttons reach (the broker; on my own listings, the owner) */
   phone: string | null;
+  /** how the price stands on the market */
+  rating?: { stars: Stars; label: string; title: string } | null;
 };
 
 /** A listing, the way the portals show it: the photos with the broker on them, the price, what it is, call / WhatsApp. */
@@ -72,6 +76,7 @@ export function ListingCard({ data, t }: { data: ListingCardData; t: Dictionary 
             {data.price}
             {data.perMonth && <span className="ml-1 text-sm font-medium text-muted">{t.listing.perMonth}</span>}
           </p>
+          {data.rating && <StarRating stars={data.rating.stars} label={data.rating.label} title={data.rating.title} size="sm" className="mt-1" />}
           <p className="mt-1 truncate font-semibold">
             {data.title}
             {data.place && <span className="font-normal text-muted"> | {data.place}</span>}
