@@ -5,6 +5,7 @@ import { buttonClass } from "@/components/ui/form";
 import type { Analysis } from "@/lib/analysis";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
+import { AiComparables } from "./AiComparables";
 import { ComparablesEditor } from "./ComparablesEditor";
 
 /** "8% над пазара" / "12% под пазара" / "В рамките на пазара". */
@@ -86,6 +87,7 @@ export function AnalysisPanel({
         <h3 className="text-base font-semibold">{t.rating.compsTitle}</h3>
         {canEdit && <p className="mt-0.5 mb-3 text-sm text-muted">{t.rating.compsHint}</p>}
         <ComparablesEditor propertyId={propertyId} items={analysis.added} canEdit={canEdit} />
+        {canEdit && <AiComparables propertyId={propertyId} ready={Boolean(process.env.ANTHROPIC_API_KEY)} />}
       </div>
 
       {rating && (

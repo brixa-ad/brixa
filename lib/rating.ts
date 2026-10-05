@@ -51,3 +51,6 @@ export function portalOf(url: string | null): string | null {
     return null;
   }
 }
+
+/** A listing Brix found on a portal, waiting for the broker to add it. */
+export type FoundComparable = { url: string; source: string | null; title: string; priceEur: number; area: number; floor: number | null };
