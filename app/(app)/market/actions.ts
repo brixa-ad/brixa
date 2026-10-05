@@ -58,3 +58,20 @@ export async function refreshMarketToday(): Promise<{ ok: boolean }> {
   revalidatePath("/market");
   return { ok: true };
 }
+
+/** The owner or an office manager: the neighbourhoods a pasted table has and the town doesn't (villages stay out). */
+export async function addNeighborhoods(settlementId: string, names: string[]): Promise<{ ok: boolean; hoods: { id: string; name: string }[] }> {
+  const session = await getSession();
+  if (!session?.isLeader || !Array.isArray(names) || names.length === 0) return { ok: false, hoods: [] };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("add_neighborhoods", {
+    target_settlement: settlementId,
+    names: names.filter((n) => typeof n === "string").slice(0, 80),
+  });
+  if (error) {
+    console.error("Adding neighbourhoods failed:", error.message);
+    return { ok: false, hoods: [] };
+  }
+  revalidatePath("/market");
+  return { ok: true, hoods: (data ?? []) as { id: string; name: string }[] };
+}

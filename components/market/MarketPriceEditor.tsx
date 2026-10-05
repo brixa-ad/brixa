@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, ClipboardPaste, Loader2 } from "lucide-react";
-import { saveMarketPrices } from "@/app/(app)/market/actions";
+import { addNeighborhoods, saveMarketPrices } from "@/app/(app)/market/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
@@ -43,12 +43,20 @@ export function MarketPriceEditor({
   const [source, setSource] = useState(latest(firstWithPrices?.id ?? "")?.source ?? "");
   const [asOf, setAsOf] = useState(today);
   const [pasted, setPasted] = useState("");
-  const [pasteNote, setPasteNote] = useState<{ matched: number; missed: string[] } | null>(null);
+  const [pasteNote, setPasteNote] = useState<{ matched: number; added: number; missed: string[] } | null>(null);
+  // neighbourhoods added from a pasted table, by town (until the page reloads with them)
+  const [added, setAdded] = useState<Record<string, { id: string; name: string }[]>>({});
   const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
   const [pending, startTransition] = useTransition();
 
   const town = towns.find((x) => x.id === townId);
-  const rows = town ? [{ id: TOWN_ROW, name: t.market.wholeTown }, ...town.neighborhoods] : [];
+  const hoodsOf = (id: string) => {
+    const base = towns.find((x) => x.id === id)?.neighborhoods ?? [];
+    const extra = (added[id] ?? []).filter((h) => !base.some((b) => b.id === h.id));
+    return [...base, ...extra].sort((a, b) => a.name.localeCompare(b.name, "bg"));
+  };
+  const rowsOf = (id: string) => [{ id: TOWN_ROW, name: t.market.wholeTown }, ...hoodsOf(id)];
+  const rows = town ? rowsOf(town.id) : [];
   const valid = Object.values(values).every((v) => {
     const n = parse(v);
     return n === null || (Number.isFinite(n) && n > 0);
@@ -62,18 +70,42 @@ export function MarketPriceEditor({
     setStatus("idle");
   }
 
+  /** The pasted table: the town's missing neighbourhoods are added, the prices filled in and saved. */
   function applyPaste() {
     if (!town) return;
     // a price per m²: a sale 100–20 000 €, a month's rent 1–60 €
     const range = operation === "rent" ? { min: 1, max: 60 } : { min: 100, max: 20000 };
-    const result = parseMarketPaste(pasted, town.neighborhoods, range);
-    setValues((v) => {
-      const next = { ...v };
-      for (const [id, price] of result.prices) next[id] = String(price);
-      return next;
-    });
-    setPasteNote({ matched: result.prices.size, missed: result.missed });
     setStatus("idle");
+    startTransition(async () => {
+      let hoods = hoodsOf(town.id);
+      let result = parseMarketPaste(pasted, hoods, range);
+      let newOnes = 0;
+      if (result.missed.length > 0) {
+        const response = await addNeighborhoods(town.id, result.missed);
+        const fresh = response.hoods.filter((h) => !hoods.some((x) => x.id === h.id));
+        newOnes = fresh.length;
+        if (fresh.length > 0) {
+          setAdded((current) => ({ ...current, [town.id]: [...(current[town.id] ?? []), ...fresh] }));
+          hoods = [...hoods, ...fresh];
+          result = parseMarketPaste(pasted, hoods, range);
+        }
+      }
+      const next = { ...values };
+      for (const [id, price] of result.prices) next[id] = String(price);
+      setValues(next);
+      setPasteNote({ matched: result.prices.size, added: newOnes, missed: result.missed });
+      if (result.prices.size > 0) {
+        const allRows = [{ id: TOWN_ROW }, ...hoods];
+        const saved = await saveMarketPrices({
+          operation,
+          settlementId: town.id,
+          prices: allRows.map((row) => ({ neighborhoodId: row.id === TOWN_ROW ? null : row.id, price: parse(next[row.id] ?? "") })),
+          source,
+          asOf,
+        });
+        setStatus(saved.ok ? "saved" : "failed");
+      }
+    });
   }
 
   function save() {
@@ -136,12 +168,14 @@ export function MarketPriceEditor({
           className={`${inputClass} font-mono text-xs`}
         />
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={applyPaste} disabled={!pasted.trim()} className={buttonClass.secondary}>
+          <button type="button" onClick={applyPaste} disabled={!pasted.trim() || pending} className={buttonClass.primary}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             {t.market.pasteApply}
           </button>
           {pasteNote && (
             <span className="text-sm text-fg-2">
               {fmt(t.market.pasteResult, { matched: pasteNote.matched })}
+              {pasteNote.added > 0 && <span className="block text-xs text-success">{fmt(t.market.pasteAdded, { n: pasteNote.added })}</span>}
               {pasteNote.missed.length > 0 && (
                 <span className="block text-xs text-muted">{fmt(t.market.pasteMissed, { names: pasteNote.missed.join(", ") })}</span>
               )}
