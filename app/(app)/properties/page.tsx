@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, EyeOff, ImageIcon, MapPin, Plus, UserRound } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyFilters } from "@/components/property/PropertyFilters";
 import { StatusBadge } from "@/components/property/StatusBadge";
@@ -48,7 +49,7 @@ type ListRow = {
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
   photos: { storage_path: string }[];
-  broker: { full_name: string | null; email: string } | null;
+  broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
 };
 
 export default async function PropertiesPage({ searchParams }: PageProps<"/properties">) {
@@ -76,7 +77,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
       photos:property_photos(storage_path),
-      broker:profiles!properties_responsible_broker_id_fkey(full_name, email)`
+      broker:profiles!properties_responsible_broker_id_fkey(full_name, email, avatar_path)`
     )
     .eq("organization_id", session.organizationId)
     .order("created_at", { ascending: false })
@@ -228,6 +229,15 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                         </span>
                       )}
                     </div>
+                    {/* who offers it: the broker's face */}
+                    {row.broker && (
+                      <Avatar
+                        path={row.broker.avatar_path}
+                        name={row.broker.full_name || row.broker.email}
+                        size="md"
+                        className="absolute bottom-3 left-3 shadow-lg ring-2! ring-white"
+                      />
+                    )}
                     <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
                       {t.options.operation[row.operation_type as keyof typeof t.options.operation] ??
                         row.operation_type}
