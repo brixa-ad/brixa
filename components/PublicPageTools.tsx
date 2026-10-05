@@ -88,7 +88,7 @@ export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "
             },
             { threshold: 0.6 }
           );
-    document.querySelectorAll(".shared-photos img").forEach((img) => observer?.observe(img));
+    document.querySelectorAll(".listing-photo, .shared-photos img").forEach((img) => observer?.observe(img));
 
     const report = () => {
       if (since !== null) {

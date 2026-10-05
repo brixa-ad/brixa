@@ -6,7 +6,7 @@ import { useI18n } from "@/components/I18nProvider";
 import type { Photo } from "@/lib/types";
 
 /** The photos on full screen: swipe through them, whole (not cut), on black. */
-function FullScreen({ photos, startAt, onClose }: { photos: Photo[]; startAt: number; onClose: () => void }) {
+export function FullScreen({ photos, startAt, onClose }: { photos: Photo[]; startAt: number; onClose: () => void }) {
   const { t } = useI18n();
   const strip = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(startAt);

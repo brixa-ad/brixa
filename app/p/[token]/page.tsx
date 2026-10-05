@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Check, MapPin } from "lucide-react";
-import { AgencyFooter, BrokerCard, PublicHeader } from "@/components/PublicContact";
-import { ViewBeacon } from "@/components/PublicPageTools";
+import { BedDouble, BrickWall, Building2, Compass, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
+import { ClampText } from "@/components/listing/ClampText";
+import { ListingHero } from "@/components/listing/ListingHero";
+import { AgencyPanel, AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
+import { AgencyFooter, PublicHeader } from "@/components/PublicContact";
+import { PrintButton, ViewBeacon } from "@/components/PublicPageTools";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
@@ -48,81 +51,101 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
     [t.form.furnishing, label("furnishing", p.furnishing)],
     [t.form.heating, label("heating", p.heating)],
   ];
-  const shown = facts.filter(([, value]) => value);
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
 
+  const headline = [
+    p.subtype ? localName(p.subtype, lang) : null,
+    p.rooms ? (p.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: p.rooms })) : null,
+    p.bedrooms ? (p.bedrooms === 1 ? t.listing.oneBedroom : fmt(t.listing.bedrooms, { n: p.bedrooms })) : null,
+    p.area ? `${formatNumber(p.area, lang)} ${t.units.sqm}` : null,
+  ].filter((x): x is string => Boolean(x));
+  const ICONS = [Ruler, LayoutGrid, BedDouble, Layers, BrickWall, Hammer, Compass, Sofa, Flame];
+  const rows = [
+    ...(p.subtype ? [{ icon: Building2, label: t.listing.type, value: localName(p.subtype, lang) }] : []),
+    ...facts
+      .map(([name, value], i) => ({ icon: ICONS[i] ?? Building2, label: name, value }))
+      .filter((row): row is { icon: typeof Building2; label: string; value: string } => Boolean(row.value)),
+  ];
+
   return (
-    <main className="shared-page mx-auto max-w-3xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
+    <main className="shared-page mx-auto max-w-3xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
       <ViewBeacon token={token} kind="listing" />
 
       <PublicHeader agency={agency} />
 
-      {/* photos: swipe on the phone, a grid on paper */}
-      {photos.length > 0 && (
-        <div className="shared-photos -mx-4 mb-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          {photos.map((url, i) => (
-            <img
-              key={url}
-              src={url}
-              alt={`${p.title} ${i + 1}`}
-              loading={i === 0 ? "eager" : "lazy"}
-              className="aspect-[4/3] w-[88%] shrink-0 snap-center rounded-2xl object-cover sm:w-[70%]"
-            />
-          ))}
+      {/* the photos, edge to edge on the phone (swipe; tap: full screen) — a grid on paper */}
+      <div className="no-print">
+        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} photoClass="listing-photo" />
+      </div>
+      <div className="shared-photos hidden">
+        {photos.map((url, i) => (
+          <img key={url} src={url} alt={`${p.title} ${i + 1}`} loading="lazy" />
+        ))}
+      </div>
+
+      <div className="mt-5 space-y-5">
+        <PriceBlock
+          price={formatPrice(p.price, p.currency, lang) ?? "—"}
+          perMonth={p.operation === "rent" && p.price !== null}
+          title={p.title}
+          place={place || null}
+          specs={headline}
+          t={t}
+        >
+          {place && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} icon={MapPinned} label={t.listing.map} external />}
+        </PriceBlock>
+
+        {rows.length > 0 && (
+          <Panel title={t.listing.details}>
+            <DetailRows rows={rows} />
+          </Panel>
+        )}
+
+        {p.description && (
+          <Panel title={t.listing.description}>
+            <ClampText text={p.description} more={t.listing.more} less={t.listing.less} />
+          </Panel>
+        )}
+
+        {p.features.length > 0 && (
+          <Panel title={t.listing.amenities}>
+            <AmenityChips names={p.features.map((f) => localName(f, lang))} />
+          </Panel>
+        )}
+
+        {broker && (
+          <BrokerPanel
+            person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
+            level={broker.job_title}
+            rows={[
+              ...(broker.phone ? [{ icon: Phone, label: t.partners.phone, value: broker.phone }] : []),
+              { icon: Mail, label: t.partners.email, value: broker.email },
+            ]}
+          />
+        )}
+
+        {agency && (
+          <AgencyPanel
+            name={agency.name}
+            logoUrl={agency.logoUrl}
+            href={agency.website ?? undefined}
+            linkLabel={agency.website ? t.listing.agencyListings : undefined}
+          />
+        )}
+
+        <div className="no-print flex justify-center">
+          <PrintButton />
         </div>
-      )}
 
-      <p className="text-sm font-medium text-muted">
-        {[p.subtype && localName(p.subtype, lang), label("operation", p.operation)].filter(Boolean).join(" · ")}
-      </p>
-      <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{p.title}</h1>
-      {place && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-fg-2">
-          <MapPin className="size-4 text-accent-fg" />
-          {place}
-        </p>
-      )}
-      <p className="mt-4 text-3xl font-bold text-accent-fg">
-        {formatPrice(p.price, p.currency, lang) ?? "—"}
-        {p.operation === "rent" && p.price !== null && <span className="ml-1.5 text-base font-medium text-muted">{t.share.perMonth}</span>}
-      </p>
-
-      {shown.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.details}</h2>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-            {shown.map(([name, value]) => (
-              <div key={name}>
-                <dt className="text-xs text-muted">{name}</dt>
-                <dd className="font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
-
-      {p.features.length > 0 && (
-        <section className="mt-4 rounded-2xl border border-line bg-surface p-5">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.features}</h2>
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {p.features.map((f) => (
-              <li key={f.name} className="flex items-center gap-2 text-sm text-fg-2">
-                <Check className="size-4 text-success" />
-                {localName(f, lang)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {p.description && (
-        <section className="mt-4 rounded-2xl border border-line bg-surface p-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.description}</h2>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{p.description}</p>
-        </section>
-      )}
-
-      {broker && <BrokerCard broker={broker} subject={p.title} t={t} />}
+        {broker && (
+          <ContactBar
+            person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
+            sub={broker.job_title ?? agency?.name ?? null}
+            phone={broker.phone}
+            t={t}
+          />
+        )}
+      </div>
 
       {agency && <AgencyFooter agency={agency} />}
     </main>

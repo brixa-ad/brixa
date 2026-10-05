@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, EyeOff, ImageIcon, MapPin, Plus, UserRound } from "lucide-react";
-import { Avatar } from "@/components/Avatar";
+import { Building2, Plus } from "lucide-react";
+import { ListingCard } from "@/components/listing/ListingCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyFilters } from "@/components/property/PropertyFilters";
-import { StatusBadge } from "@/components/property/StatusBadge";
 import { buttonClass } from "@/components/ui/form";
 import { formatNumber, formatPrice, settlementLabel } from "@/lib/format";
-import { localName } from "@/lib/i18n/dictionaries";
+import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { getPlayers } from "@/lib/game-server";
 import { getMembers } from "@/lib/lookups";
 import { OPERATION_TYPES, STATUSES, isOneOf } from "@/lib/options";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { fromQuery, memberBack } from "@/lib/member-back";
+import { sofiaToday } from "@/lib/dates";
 import { getSession } from "@/lib/session";
+import { ago } from "@/lib/signals";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,15 +43,20 @@ type ListRow = {
   operation_type: string;
   area: number | null;
   rooms: number | null;
+  bedrooms: number | null;
   floor: number | null;
   current_price: number | null;
   currency: string;
   off_market: boolean;
+  exclusive_contract: boolean;
+  created_at: string;
+  responsible_broker_id: string | null;
+  owner: { phone: string | null } | null;
   subtype: { name: string; name_en: string | null } | null;
   settlement: { name: string; settlement_type: string } | null;
   neighborhood: { name: string } | null;
   photos: { storage_path: string }[];
-  broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
+  broker: { full_name: string | null; email: string; avatar_path: string | null; phone: string | null } | null;
 };
 
 export default async function PropertiesPage({ searchParams }: PageProps<"/properties">) {
@@ -72,17 +79,18 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   let query = supabase
     .from("properties")
     .select(
-      `id, title, status, operation_type, area, rooms, floor, current_price, currency, off_market,
+      `id, title, status, operation_type, area, rooms, bedrooms, floor, current_price, currency, off_market, exclusive_contract,
+      created_at, responsible_broker_id, owner:clients!properties_owner_client_id_fkey(phone),
       subtype:property_subtypes(name, name_en),
       settlement:geo_settlements(name, settlement_type),
       neighborhood:geo_neighborhoods(name),
       photos:property_photos(storage_path),
-      broker:profiles!properties_responsible_broker_id_fkey(full_name, email, avatar_path)`
+      broker:profiles!properties_responsible_broker_id_fkey(full_name, email, avatar_path, phone)`
     )
     .eq("organization_id", session.organizationId)
     .order("created_at", { ascending: false })
     .order("position", { referencedTable: "property_photos" })
-    .limit(1, { referencedTable: "property_photos" })
+    .limit(5, { referencedTable: "property_photos" })
     .limit(LIMIT);
 
   if (q) query = query.or(`title.ilike.%${q}%,address.ilike.%${q}%`);
@@ -102,17 +110,19 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
     if (broker) query = query.eq("responsible_broker_id", broker);
   }
 
-  const [{ data, error }, { data: statusRows }, { data: categories }, members] = await Promise.all([
+  const [{ data, error }, { data: statusRows }, { data: categories }, members, players] = await Promise.all([
     query,
     supabase.from("properties").select("status, responsible_broker_id").eq("organization_id", session.organizationId),
     supabase.from("property_categories").select("id, name, name_en").order("sort_order"),
     getMembers(supabase, session.organizationId),
+    // each broker's level (shown on their listings)
+    getPlayers(session.organizationId, sofiaToday()),
   ]);
 
   if (error) console.error("Loading properties failed:", error);
 
   const rows = (data ?? []) as unknown as ListRow[];
-  const coverUrls = await signPhotoUrls(
+  const photoUrls = await signPhotoUrls(
     supabase,
     rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
   );
@@ -193,89 +203,44 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
           )}
         </div>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((row) => {
-            const cover = row.photos[0] ? coverUrls.get(row.photos[0].storage_path) : undefined;
-            const location = [row.settlement && settlementLabel(row.settlement), row.neighborhood?.name]
-              .filter(Boolean)
-              .join(", ");
+            const brokerName = row.broker ? row.broker.full_name || row.broker.email : null;
+            const level = row.responsible_broker_id ? players.get(row.responsible_broker_id)?.level.index : undefined;
             const specs = [
-              row.area && `${formatNumber(Number(row.area), lang)} ${t.units.sqm}`,
-              row.rooms !== null && `${row.rooms} ${t.form.rooms.toLowerCase()}`,
-              row.floor !== null && `${t.form.floor.toLowerCase()} ${row.floor}`,
-            ].filter(Boolean);
-
+              row.subtype ? localName(row.subtype, lang) : null,
+              row.rooms ? (row.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: row.rooms })) : null,
+              row.bedrooms ? (row.bedrooms === 1 ? t.listing.oneBedroom : fmt(t.listing.bedrooms, { n: row.bedrooms })) : null,
+              row.area ? `${formatNumber(Number(row.area), lang)} ${t.units.sqm}` : null,
+            ].filter((x): x is string => Boolean(x));
+            // the buttons: my own listing → its owner; a colleague's → the colleague
+            const mine = row.responsible_broker_id === session.userId;
+            const phone = mine ? (row.owner?.phone ?? null) : (row.broker?.phone ?? null);
             return (
               <li key={row.id}>
-                <Link
-                  href={`/properties/${row.id}${fromQuery(back)}`}
-                  className="group block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg hover:shadow-black/40"
-                >
-                  <div className="relative grid aspect-[16/10] place-items-center bg-raised">
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="size-full object-cover" />
-                    ) : (
-                      <ImageIcon className="size-8 text-faint" />
-                    )}
-                    <div className="absolute left-3 top-3 flex gap-1.5">
-                      <StatusBadge
-                        status={row.status}
-                        label={t.options.status[row.status as keyof typeof t.options.status] ?? row.status}
-                      />
-                      {row.off_market && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                          <EyeOff className="size-3" />
-                          {t.menu.tabs.offMarketProperties}
-                        </span>
-                      )}
-                    </div>
-                    {/* who offers it: the broker's face */}
-                    {row.broker && (
-                      <Avatar
-                        path={row.broker.avatar_path}
-                        name={row.broker.full_name || row.broker.email}
-                        size="md"
-                        className="absolute bottom-3 left-3 shadow-lg ring-2! ring-white"
-                      />
-                    )}
-                    <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                      {t.options.operation[row.operation_type as keyof typeof t.options.operation] ??
-                        row.operation_type}
-                    </span>
-                  </div>
-
-                  <div className="p-4">
-                    <p className="text-lg font-bold tracking-tight">
-                      {formatPrice(row.current_price === null ? null : Number(row.current_price), row.currency, lang) ??
-                        t.common.notSet}
-                    </p>
-                    <p className="mt-0.5 line-clamp-1 font-medium text-fg group-hover:text-accent-fg">
-                      {row.title}
-                    </p>
-                    {location && (
-                      <p className="mt-1 flex items-center gap-1 text-sm text-muted">
-                        <MapPin className="size-3.5 shrink-0" />
-                        <span className="truncate">{location}</span>
-                      </p>
-                    )}
-                    {row.broker && (
-                      <p className="mt-1 flex items-center gap-1 text-sm text-muted">
-                        <UserRound className="size-3.5 shrink-0" />
-                        <span className="truncate">{row.broker.full_name || row.broker.email}</span>
-                      </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-fg-2">
-                      {row.subtype && (
-                        <span className="rounded-md bg-raised px-2 py-0.5">{localName(row.subtype, lang)}</span>
-                      )}
-                      {specs.map((spec) => (
-                        <span key={spec as string} className="rounded-md bg-raised px-2 py-0.5">
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </Link>
+                <ListingCard
+                  t={t}
+                  data={{
+                    href: `/properties/${row.id}${fromQuery(back)}`,
+                    photos: row.photos.map((p) => photoUrls.get(p.storage_path)).filter((u): u is string => Boolean(u)),
+                    title: row.title,
+                    place: [row.neighborhood?.name, row.settlement && settlementLabel(row.settlement)].filter(Boolean).join(", ") || null,
+                    price: formatPrice(row.current_price === null ? null : Number(row.current_price), row.currency, lang) ?? t.common.notSet,
+                    perMonth: row.operation_type === "rent" && row.current_price !== null,
+                    specs,
+                    status:
+                      row.status === "active"
+                        ? null
+                        : { code: row.status, label: t.options.status[row.status as keyof typeof t.options.status] ?? row.status },
+                    exclusive: row.exclusive_contract,
+                    offMarket: row.off_market,
+                    broker: brokerName
+                      ? { name: brokerName, avatarPath: row.broker?.avatar_path, level: level !== undefined ? t.game.levels[level] : null }
+                      : null,
+                    age: ago(row.created_at, lang),
+                    phone,
+                  }}
+                />
               </li>
             );
           })}

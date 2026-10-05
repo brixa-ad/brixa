@@ -4,14 +4,28 @@ import { notFound } from "next/navigation";
 import {
   AlertTriangle,
   ArrowDownRight,
+  ArrowLeft,
   ArrowUpRight,
-  Check,
+  BadgeCheck,
+  BedDouble,
+  BrickWall,
+  Building2,
+  Compass,
+  Flame,
+  Hammer,
+  History,
+  Layers,
+  LayoutGrid,
+  LineChart,
+  MapPinned,
+  Phone,
+  Ruler,
+  Sofa,
   Eye,
   EyeOff,
   FileText,
   Flag,
   Handshake,
-  MapPin,
   Megaphone,
   Pencil,
   Plus,
@@ -21,6 +35,22 @@ import {
   DoorOpen,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { ClampText } from "@/components/listing/ClampText";
+import { ListingHero } from "@/components/listing/ListingHero";
+import {
+  AgencyPanel,
+  AmenityChips,
+  BrokerPanel,
+  ContactBar,
+  DetailRows,
+  Panel,
+  PriceBlock,
+  QuickAction,
+  SimilarDeals,
+  floatingButton,
+} from "@/components/listing/ListingParts";
+import { getAgency } from "@/lib/agency";
+import { getPlayers } from "@/lib/game-server";
 import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
@@ -36,9 +66,7 @@ import { ShareWithColleague } from "@/components/partners/ShareWithColleague";
 import { cleanTemplate, listingPlan, type MarketingDone } from "@/lib/marketing";
 import { ShareList, type ShareRow } from "@/components/property/ShareList";
 import { TypeIcon } from "@/components/task/TypeIcon";
-import { PageHeader } from "@/components/PageHeader";
 import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
-import { PhotoGallery } from "@/components/property/PhotoGallery";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { StatusSelect } from "@/components/property/StatusSelect";
 import { Card, buttonClass } from "@/components/ui/form";
@@ -93,6 +121,10 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: doneRows },
     { data: orgRow },
     { count: colleagueCalls },
+    { data: similarRows },
+    { count: brokerListings },
+    players,
+    agency,
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -150,6 +182,28 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       supabase.from("marketing_done").select("id, key, done_on, auto, done_by").eq("property_id", id).order("done_on", { ascending: false }).limit(500),
       supabase.from("organizations").select("marketing_template").eq("id", property.organization_id).maybeSingle(),
       supabase.from("activities").select("id", { count: "exact", head: true }).eq("property_id", id).not("partner_id", "is", null),
+      // deals on similar properties nearby (the register: same type, same neighbourhood — else town — the last year)
+      listing && property.subtype_id && (property.neighborhood_id || property.settlement_id)
+        ? supabase
+            .from("closed_deals")
+            .select("reported_on, price, area, price_per_sqm")
+            .eq("organization_id", property.organization_id)
+            .eq("subtype_id", property.subtype_id)
+            .eq(property.neighborhood_id ? "neighborhood_id" : "settlement_id", (property.neighborhood_id ?? property.settlement_id)!)
+            .gte("reported_on", addDays(sofiaToday(), -365))
+            .order("reported_on", { ascending: false })
+            .limit(8)
+        : Promise.resolve({ data: [] }),
+      // the broker's live listings, level and deals
+      property.responsible_broker_id
+        ? supabase
+            .from("properties")
+            .select("id", { count: "exact", head: true })
+            .eq("responsible_broker_id", property.responsible_broker_id)
+            .in("status", ["active", "reserved"])
+        : Promise.resolve({ count: 0 }),
+      getPlayers(property.organization_id, sofiaToday()),
+      getAgency(property.organization_id),
     ]);
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
@@ -395,120 +449,172 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     [t.form.furnishing, label("furnishing", property.furnishing)],
     [t.form.heating, label("heating", property.heating)],
   ];
-  const filledSpecs = specs.filter(([, value]) => value !== null);
+
+  // ---- the top: what it is, the way the portals show it
+  const brokerPlayer = property.responsible_broker_id ? players.get(property.responsible_broker_id) : undefined;
+  const brokerLevel = brokerPlayer ? t.game.levels[brokerPlayer.level.index] : null;
+  const placeLine = [property.neighborhood?.name, property.settlement && settlementLabel(property.settlement)].filter(Boolean).join(", ") || null;
+  const headline = [
+    property.subtype ? localName(property.subtype, lang) : null,
+    property.rooms ? (property.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: property.rooms })) : null,
+    property.bedrooms ? (property.bedrooms === 1 ? t.listing.oneBedroom : fmt(t.listing.bedrooms, { n: property.bedrooms })) : null,
+    property.area ? `${formatNumber(property.area, lang)} ${t.units.sqm}` : null,
+  ].filter((x): x is string => Boolean(x));
+  const SPEC_ICONS = [Ruler, LayoutGrid, BedDouble, Layers, Hammer, BrickWall, Compass, Sofa, Flame];
+  const detailRows = [
+    ...(property.subtype ? [{ icon: Building2, label: t.listing.type, value: localName(property.subtype, lang) }] : []),
+    ...specs
+      .map(([name, value], i) => ({ icon: SPEC_ICONS[i] ?? Building2, label: name, value }))
+      .filter((row): row is { icon: typeof Building2; label: string; value: string } => row.value !== null),
+  ];
+  const mapQuery = [property.address, property.neighborhood?.name, property.settlement && settlementLabel(property.settlement)].filter(Boolean).join(", ");
+  // who the bar at the bottom reaches: on my own listing its owner, else its broker
+  const mine = property.responsible_broker_id === session?.userId;
+  const contact =
+    mine && property.owner?.phone
+      ? { person: { name: property.owner.full_name }, sub: t.listing.owner, phone: property.owner.phone }
+      : !mine && property.broker?.phone
+        ? { person: { name: brokerName, avatarPath: property.broker.avatar_path }, sub: brokerLevel, phone: property.broker.phone }
+        : null;
+  const similar = ((similarRows ?? []) as { reported_on: string; price: number; area: number; price_per_sqm: number }[]).map((row) => ({
+    day: formatDate(row.reported_on, lang),
+    price: formatPrice(Number(row.price), "EUR", lang) ?? "—",
+    sqm: formatNumber(Number(row.price_per_sqm), lang) ?? "—",
+    area: formatNumber(Number(row.area), lang) ?? "—",
+  }));
 
   return (
     <>
-      <PageHeader
-        backHref={back?.href ?? "/properties"}
-        backLabel={back?.label ?? t.nav.properties}
-        title={property.title}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>
-              {[property.subtype && localName(property.subtype, lang), label("operation", property.operation_type)]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-            {locationParts.length > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3.5" />
-                {locationParts.join(", ")}
+      {/* ---- the photos, edge to edge ---- */}
+      <ListingHero
+        photos={property.photos}
+        topLeft={
+          <Link href={back?.href ?? "/properties"} aria-label={back?.label ?? t.nav.properties} className={floatingButton}>
+            <ArrowLeft className="size-5" />
+          </Link>
+        }
+        topRight={
+          canEdit ? (
+            <Link href={`/properties/${property.id}/edit`} aria-label={t.common.edit} className={floatingButton}>
+              <Pencil className="size-4" />
+            </Link>
+          ) : undefined
+        }
+        bottomLeft={
+          <>
+            <StatusBadge status={property.status} label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status} />
+            {property.exclusive_contract && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-amber-300 backdrop-blur">
+                <ShieldCheck className="size-3" />
+                {t.detail.exclusive}
               </span>
             )}
-          </span>
-        }
-        actions={
-          canEdit ? (
-            <>
-              {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
-              {listing && <ShareWithColleague propertyId={property.id} title={property.title} partners={partners} />}
-              <StatusSelect propertyId={property.id} status={property.status} />
-              <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
-                <Pencil className="size-4" />
-                {t.common.edit}
-              </Link>
-              {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
-            </>
-          ) : (
-            <>
-              {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
-              {listing && <ShareWithColleague propertyId={property.id} title={property.title} partners={partners} />}
-              <StatusBadge
-                status={property.status}
-                label={t.options.status[property.status as keyof typeof t.options.status] ?? property.status}
-              />
-            </>
-          )
+            {property.off_market && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
+                <EyeOff className="size-3" />
+                {t.menu.tabs.offMarketProperties}
+              </span>
+            )}
+          </>
         }
       />
 
+      {/* ---- the broker's buttons ---- */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {listing && <ShareDialog propertyId={property.id} title={property.title} clients={shareClients} />}
+        {listing && <ShareWithColleague propertyId={property.id} title={property.title} partners={partners} />}
+        {canEdit && <StatusSelect propertyId={property.id} status={property.status} />}
+        {canEdit && (
+          <Link href={`/properties/${property.id}/edit`} className={buttonClass.secondary}>
+            <Pencil className="size-4" />
+            {t.common.edit}
+          </Link>
+        )}
+        {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
+      </div>
+
       {!canEdit && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4 text-sm text-fg-2">
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-fg-2">
           <Eye className="size-4 shrink-0 text-accent-fg" />
           <p className="min-w-0 flex-1">{fmt(t.detail.readOnly, { name: brokerName })}</p>
-          {property.responsible_broker_id && (
-            <Link href={`/team/${property.responsible_broker_id}`} className={buttonClass.secondary}>
-              <Avatar path={property.broker?.avatar_path} name={brokerName} size="sm" className="-my-1 -ml-1" />
-              {t.detail.contactBroker}
-            </Link>
-          )}
         </div>
       )}
 
       {photosParam === "failed" && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {t.photos.uploadFailed}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
-          <PhotoGallery photos={property.photos} />
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
+          {/* ---- the price, what it is, the quick actions ---- */}
+          <PriceBlock
+            price={formatPrice(property.current_price, property.currency, lang) ?? t.common.notSet}
+            perMonth={property.operation_type === "rent" && property.current_price !== null}
+            title={property.title}
+            place={placeLine}
+            specs={headline}
+            t={t}
+          >
+            {mapQuery && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`} icon={MapPinned} label={t.listing.map} external />}
+            {market && <QuickAction href="#market" icon={LineChart} label={t.listing.market} />}
+            {listing && <QuickAction href="#marketing" icon={Megaphone} label={t.marketing.title} />}
+            <QuickAction href="#history" icon={History} label={t.detail.historyTitle} />
+          </PriceBlock>
 
-          <Card title={t.detail.specs}>
-            {filledSpecs.length === 0 ? (
-              <p className="text-sm text-muted">{t.common.notSet}</p>
-            ) : (
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-                {filledSpecs.map(([name, value]) => (
-                  <div key={name}>
-                    <dt className="text-xs text-muted">{name}</dt>
-                    <dd className="mt-0.5 font-medium text-fg">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </Card>
+          {detailRows.length > 0 && (
+            <Panel title={t.listing.details}>
+              <DetailRows rows={detailRows} />
+            </Panel>
+          )}
 
-          <Card title={t.detail.features}>
-            {property.features.length === 0 ? (
-              <p className="text-sm text-muted">{t.detail.noFeatures}</p>
-            ) : (
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-                {property.features.map((feature) => (
-                  <li key={feature.id} className="flex items-center gap-2 text-sm text-fg-2">
-                    <span className="grid size-5 place-items-center rounded-full bg-success/10 text-success">
-                      <Check className="size-3" />
-                    </span>
-                    {localName(feature, lang)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card title={t.detail.description}>
+          <Panel title={t.listing.description}>
             {property.description ? (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{property.description}</p>
+              <ClampText text={property.description} more={t.listing.more} less={t.listing.less} />
             ) : (
               <p className="text-sm text-muted">{t.detail.noDescription}</p>
             )}
-          </Card>
+          </Panel>
+
+          {property.features.length > 0 && (
+            <Panel title={t.listing.amenities}>
+              <AmenityChips names={property.features.map((feature) => localName(feature, lang))} />
+            </Panel>
+          )}
+
+          {listing && kind === "sale" && property.subtype && (property.neighborhood || property.settlement) && (
+            <SimilarDeals
+              rows={similar}
+              subtitle={fmt(t.listing.similarSub, {
+                type: localName(property.subtype, lang),
+                place: property.neighborhood?.name ?? (property.settlement ? settlementLabel(property.settlement) : ""),
+              })}
+              t={t}
+              lang={lang}
+            />
+          )}
+
+          {property.responsible_broker_id && property.broker && (
+            <BrokerPanel
+              person={{ name: brokerName, avatarPath: property.broker.avatar_path }}
+              level={brokerLevel}
+              rows={[
+                { icon: BadgeCheck, label: t.listing.closedDeals, value: String(brokerPlayer?.stats.deals ?? 0) },
+                { icon: Building2, label: t.listing.liveListings, value: String(brokerListings ?? 0) },
+                ...(property.broker.phone ? [{ icon: Phone, label: t.partners.phone, value: property.broker.phone }] : []),
+              ]}
+              href={`/properties?broker=${property.responsible_broker_id}`}
+              linkLabel={t.listing.brokerListings}
+            />
+          )}
+
+          {agency && <AgencyPanel name={agency.name} logoUrl={agency.logoUrl} href="/properties" linkLabel={t.listing.agencyListings} />}
 
           {listing && (
             <Card
+              id="marketing"
               title={
                 <span className="flex items-center gap-2">
                   <Megaphone className="size-4 text-brand-cyan" />
@@ -544,7 +650,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             </Card>
           )}
 
-          <Card title={t.detail.historyTitle}>
+          <Card title={t.detail.historyTitle} id="history">
             <LogTabs
               own={<QuickLog propertyId={property.id} />}
               colleague={
@@ -596,15 +702,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               ))}
             </ol>
           </Card>
+
+          {/* ---- who to reach, floating at the bottom ---- */}
+          {contact && <ContactBar person={contact.person} sub={contact.sub} phone={contact.phone} t={t} inApp />}
         </div>
 
         <aside className="space-y-6">
           <Card>
-            <p className="text-3xl font-bold tracking-tight text-fg">
-              {formatPrice(property.current_price, property.currency, lang) ?? t.common.notSet}
-            </p>
             {pricePerSqm && (
-              <p className="mt-1 text-sm text-muted">
+              <p className="text-sm text-muted">
                 {formatPrice(pricePerSqm, property.currency, lang)} / {t.units.sqm}
               </p>
             )}
@@ -684,6 +790,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           </Card>
 
           {market && (
+            <div id="market" className="scroll-mt-24">
             <MarketCard
               facts={market}
               place={property.neighborhood?.name ?? null}
@@ -691,6 +798,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               t={t}
               lang={lang}
             />
+            </div>
           )}
 
           {listing && <BuyerMatchesCard buyers={buyers} t={t} />}

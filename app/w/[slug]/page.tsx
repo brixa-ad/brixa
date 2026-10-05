@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BedDouble, Globe, Home, Mail, MapPin, Maximize2, Phone } from "lucide-react";
+import { Globe, Mail, MapPin, Phone } from "lucide-react";
+import { ListingCard } from "@/components/listing/ListingCard";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import { formatNumber, formatPrice } from "@/lib/format";
-import { localName } from "@/lib/i18n/dictionaries";
+import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { telHref } from "@/lib/phone";
 import { getSite } from "@/lib/site";
@@ -89,50 +90,30 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
         {shown.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-sm text-muted">{t.site.noListings}</p>
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((l) => (
               <li key={l.id}>
-                <Link href={`/w/${slug}/${l.id}`} className="group block overflow-hidden rounded-2xl border border-line bg-surface shadow-xs transition hover:border-accent/50 hover:shadow-md">
-                  <div className="relative aspect-[4/3] bg-raised">
-                    {l.photoUrl ? (
-                      <img src={l.photoUrl} alt={l.title} loading="lazy" className="size-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                    ) : (
-                      <Home className="absolute inset-0 m-auto size-10 text-faint" />
-                    )}
-                    <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
-                      {l.operation === "rent" ? t.site.forRent : t.site.forSale}
-                    </span>
-                    {l.status === "reserved" && (
-                      <span className="absolute right-3 top-3 rounded-md bg-warning px-2 py-0.5 text-xs font-semibold text-white">{t.options.status.reserved}</span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <p className="text-lg font-bold text-accent-fg">
-                      {formatPrice(l.price, l.currency, lang) ?? "—"}
-                      {l.operation === "rent" && l.price !== null && <span className="ml-1 text-sm font-medium text-muted">{t.share.perMonth}</span>}
-                    </p>
-                    <p className="mt-0.5 truncate font-semibold">{l.title}</p>
-                    <p className="mt-1 flex items-center gap-1 truncate text-sm text-muted">
-                      <MapPin className="size-3.5 shrink-0" />
-                      {[l.neighborhood, l.settlement].filter(Boolean).join(", ") || "—"}
-                    </p>
-                    <p className="mt-2 flex flex-wrap gap-x-4 text-xs text-fg-2">
-                      {l.subtype && <span>{localName(l.subtype, lang)}</span>}
-                      {l.area && (
-                        <span className="inline-flex items-center gap-1">
-                          <Maximize2 className="size-3.5 text-subtle" />
-                          {`${formatNumber(l.area, lang)} ${t.units.sqm}`}
-                        </span>
-                      )}
-                      {l.rooms !== null && (
-                        <span className="inline-flex items-center gap-1">
-                          <BedDouble className="size-3.5 text-subtle" />
-                          {l.rooms}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </Link>
+                <ListingCard
+                  t={t}
+                  data={{
+                    href: `/w/${slug}/${l.id}`,
+                    photos: l.photoUrl ? [l.photoUrl] : [],
+                    title: l.title,
+                    place: [l.neighborhood, l.settlement].filter(Boolean).join(", ") || null,
+                    price: formatPrice(l.price, l.currency, lang) ?? "—",
+                    perMonth: l.operation === "rent" && l.price !== null,
+                    specs: [
+                      l.subtype ? localName(l.subtype, lang) : null,
+                      l.rooms ? (l.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: l.rooms })) : null,
+                      l.area ? `${formatNumber(l.area, lang)} ${t.units.sqm}` : null,
+                    ].filter((x): x is string => Boolean(x)),
+                    status: l.status === "active" ? null : { code: l.status, label: t.options.status[l.status as keyof typeof t.options.status] ?? l.status },
+                    exclusive: false,
+                    offMarket: false,
+                    broker: null,
+                    phone: agency.phone,
+                  }}
+                />
               </li>
             ))}
           </ul>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Check, MapPin } from "lucide-react";
-import { BrokerCard } from "@/components/PublicContact";
+import { ArrowLeft, BedDouble, BrickWall, Building2, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
+import { ClampText } from "@/components/listing/ClampText";
+import { ListingHero } from "@/components/listing/ListingHero";
+import { AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
@@ -43,11 +45,23 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
     [t.form.furnishing, label("furnishing", p.furnishing)],
     [t.form.heating, label("heating", p.heating)],
   ];
-  const shown = facts.filter(([, value]) => value);
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
+  const headline = [
+    p.subtype ? localName(p.subtype, lang) : null,
+    p.rooms ? (p.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: p.rooms })) : null,
+    p.bedrooms ? (p.bedrooms === 1 ? t.listing.oneBedroom : fmt(t.listing.bedrooms, { n: p.bedrooms })) : null,
+    p.area ? `${formatNumber(p.area, lang)} ${t.units.sqm}` : null,
+  ].filter((x): x is string => Boolean(x));
+  const ICONS = [Ruler, LayoutGrid, BedDouble, Layers, BrickWall, Hammer, Sofa, Flame];
+  const rows = [
+    ...(p.subtype ? [{ icon: Building2, label: t.listing.type, value: localName(p.subtype, lang) }] : []),
+    ...facts
+      .map(([name, value], i) => ({ icon: ICONS[i] ?? Building2, label: name, value }))
+      .filter((row): row is { icon: typeof Building2; label: string; value: string } => Boolean(row.value)),
+  ];
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
+    <main className="mx-auto max-w-5xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
       <header className="flex items-center justify-between gap-3 py-2">
         <Link href={`/w/${slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-fg">
           <ArrowLeft className="size-4" />
@@ -60,66 +74,54 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
         )}
       </header>
 
-      {photos.length > 0 && (
-        <div className="-mx-4 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          {photos.map((url, i) => (
-            <img key={url} src={url} alt={`${p.title} ${i + 1}`} loading={i === 0 ? "eager" : "lazy"} className="aspect-[4/3] w-[88%] shrink-0 snap-center rounded-2xl object-cover sm:w-[60%]" />
-          ))}
-        </div>
-      )}
+      <div className="mt-3">
+        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} />
+      </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
-          <p className="text-sm font-medium text-muted">{[p.subtype && localName(p.subtype, lang), label("operation", p.operation)].filter(Boolean).join(" · ")}</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{p.title}</h1>
-          {place && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-fg-2">
-              <MapPin className="size-4 text-accent-fg" />
-              {place}
-            </p>
-          )}
-          <p className="mt-4 text-3xl font-bold text-accent-fg">
-            {formatPrice(p.price, p.currency, lang) ?? "—"}
-            {p.operation === "rent" && p.price !== null && <span className="ml-1.5 text-base font-medium text-muted">{t.share.perMonth}</span>}
-          </p>
-
-          {shown.length > 0 && (
-            <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.details}</h2>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-                {shown.map(([name, value]) => (
-                  <div key={name}>
-                    <dt className="text-xs text-muted">{name}</dt>
-                    <dd className="font-medium">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
-          {p.features.length > 0 && (
-            <section className="mt-4 rounded-2xl border border-line bg-surface p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.features}</h2>
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {p.features.map((f) => (
-                  <li key={f.name} className="flex items-center gap-2 text-sm text-fg-2">
-                    <Check className="size-4 text-success" />
-                    {localName(f, lang)}
-                  </li>
-                ))}
-              </ul>
-            </section>
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-5">
+          <PriceBlock
+            price={formatPrice(p.price, p.currency, lang) ?? "—"}
+            perMonth={p.operation === "rent" && p.price !== null}
+            title={p.title}
+            place={place || null}
+            specs={headline}
+            t={t}
+          >
+            {place && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} icon={MapPinned} label={t.listing.map} external />}
+          </PriceBlock>
+          {rows.length > 0 && (
+            <Panel title={t.listing.details}>
+              <DetailRows rows={rows} />
+            </Panel>
           )}
           {p.description && (
-            <section className="mt-4 rounded-2xl border border-line bg-surface p-5">
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-subtle">{t.share.description}</h2>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-fg-2">{p.description}</p>
-            </section>
+            <Panel title={t.listing.description}>
+              <ClampText text={p.description} more={t.listing.more} less={t.listing.less} />
+            </Panel>
+          )}
+          {p.features.length > 0 && (
+            <Panel title={t.listing.amenities}>
+              <AmenityChips names={p.features.map((f) => localName(f, lang))} />
+            </Panel>
+          )}
+          {broker && (
+            <ContactBar person={{ name: broker.name, avatarUrl: broker.avatarUrl }} sub={broker.job_title ?? agency?.name ?? null} phone={broker.phone} t={t} />
           )}
         </div>
 
-        <aside className="space-y-4">
-          {broker && <BrokerCard broker={broker} subject={p.title} t={t} />}
-          <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5">
+        <aside className="space-y-5">
+          {broker && (
+            <BrokerPanel
+              person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
+              level={broker.job_title}
+              rows={[
+                ...(broker.phone ? [{ icon: Phone, label: t.partners.phone, value: broker.phone }] : []),
+                { icon: Mail, label: t.partners.email, value: broker.email },
+              ]}
+            />
+          )}
+          <div className="rounded-3xl border border-accent/30 bg-accent-soft/30 p-5">
             <h2 className="mb-3 font-bold">{t.site.interested}</h2>
             <InquiryForm slug={slug} propertyId={p.id} agency={agency?.name ?? ""} defaultMessage={fmt(t.site.interestedMessage, { title: p.title })} />
           </div>
