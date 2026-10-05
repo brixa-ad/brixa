@@ -79,6 +79,9 @@ import { getCommissionDefaults } from "@/lib/lookups";
 import { getMarketSnapshot } from "@/lib/market";
 import { findBuyers, findPartnerSearches } from "@/lib/matching";
 import { getProperty } from "@/lib/properties";
+import { parseEstimate, rentalYield } from "@/lib/yield";
+import { YieldPanel } from "@/components/listing/YieldPanel";
+import { RentEditor } from "@/components/property/RentEditor";
 import { memberBack } from "@/lib/member-back";
 import { DOCUMENT_BUCKET } from "@/lib/documents";
 import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
@@ -125,6 +128,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { count: brokerListings },
     players,
     agency,
+    { data: rentRow },
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -204,7 +208,11 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         : Promise.resolve({ count: 0 }),
       getPlayers(property.organization_id, sofiaToday()),
       getAgency(property.organization_id),
+      // a listing for sale: what it would rent for (from the agency's market)
+      kind === "sale" && listing ? supabase.rpc("property_rent_estimate", { target_property: id }) : Promise.resolve({ data: null }),
     ]);
+  const rentEstimate = parseEstimate(rentRow);
+  const investment = kind === "sale" && listing ? rentalYield(property.current_price, property.currency, property.expected_rent, rentEstimate) : null;
   const deals = toDeals(dealRows);
   const shares: ShareRow[] = (
     (shareRows ?? []) as unknown as {
@@ -568,6 +576,37 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             <Panel title={t.listing.details}>
               <DetailRows rows={detailRows} />
             </Panel>
+          )}
+
+          {kind === "sale" && listing && (investment || canEdit) && (
+            <YieldPanel
+              y={investment}
+              t={t}
+              lang={lang}
+              source={[
+                investment?.fromBroker ? t.yield.fromBroker : null,
+                rentEstimate
+                  ? (investment?.fromBroker ? fmt(t.yield.brixaSays, { amount: formatPrice(rentEstimate.rent, "EUR", lang) ?? "" }) + " " : "") +
+                    fmt(t.yield.basis[rentEstimate.basis], {
+                      n: String(rentEstimate.samples ?? ""),
+                      type: property.subtype ? localName(property.subtype, lang).toLowerCase() : "",
+                      place:
+                        rentEstimate.basis === "hood_type" || rentEstimate.basis === "hood" || rentEstimate.basis === "manual_hood"
+                          ? (property.neighborhood?.name ?? "")
+                          : property.settlement
+                            ? settlementLabel(property.settlement)
+                            : "",
+                      perSqm: formatNumber(rentEstimate.perSqm, lang, 1) ?? "",
+                    })
+                  : investment
+                    ? null
+                    : t.yield.noData,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {canEdit && <RentEditor propertyId={property.id} initial={property.expected_rent} />}
+            </YieldPanel>
           )}
 
           <Panel title={t.listing.description}>

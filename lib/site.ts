@@ -4,6 +4,7 @@ import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
 import { anonymous, type SharedListing } from "./share";
+import { parseEstimate } from "./yield";
 
 export const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
@@ -78,7 +79,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
   const { data, error } = await supabase.rpc("site_listing", { site: slug.toLowerCase(), target_property: id });
   if (error || !data) return null;
   const raw = data as {
-    property: SharedListing["property"] & { photos: string[] };
+    property: Omit<SharedListing["property"], "rent_estimate"> & { photos: string[]; rent_estimate: unknown };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null };
   };
@@ -95,6 +96,8 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
       area: property.area === null ? null : Number(property.area),
       exposures: property.exposures ?? [],
       features: property.features ?? [],
+      expected_rent: property.expected_rent === null || property.expected_rent === undefined ? null : Number(property.expected_rent),
+      rent_estimate: parseEstimate(property.rent_estimate),
     },
     photos,
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,

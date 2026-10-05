@@ -4,6 +4,8 @@ import { BedDouble, BrickWall, Building2, Compass, Flame, Hammer, Layers, Layout
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
 import { AgencyPanel, AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
+import { YieldPanel } from "@/components/listing/YieldPanel";
+import { rentalYield } from "@/lib/yield";
 import { AgencyFooter, PublicHeader } from "@/components/PublicContact";
 import { PrintButton, ViewBeacon } from "@/components/PublicPageTools";
 import { formatNumber, formatPrice } from "@/lib/format";
@@ -67,6 +69,9 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
       .filter((row): row is { icon: typeof Building2; label: string; value: string } => Boolean(row.value)),
   ];
 
+  // a listing for sale as an investment: the rent it would bring and the yield
+  const investment = p.operation === "sale" ? rentalYield(p.price, p.currency, p.expected_rent, p.rent_estimate) : null;
+
   return (
     <main className="shared-page mx-auto max-w-3xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
       <ViewBeacon token={token} kind="listing" />
@@ -99,6 +104,15 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
           <Panel title={t.listing.details}>
             <DetailRows rows={rows} />
           </Panel>
+        )}
+
+        {investment && (
+          <YieldPanel
+            y={investment}
+            t={t}
+            lang={lang}
+            source={investment.fromBroker ? `${t.yield.fromBroker} ${t.yield.publicNote}` : t.yield.publicNote}
+          />
         )}
 
         {p.description && (

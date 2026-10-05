@@ -227,6 +227,21 @@ export async function setPropertyStatus(id: string, status: string) {
   return { ok: !error && Boolean(data?.length) };
 }
 
+/** The monthly rent (€) the broker expects for a listing for sale — null: BRIXA's estimate again. */
+export async function setExpectedRent(id: string, rent: number | null) {
+  if (rent !== null && !(Number.isFinite(rent) && rent > 0 && rent < 1_000_000)) return { ok: false };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .update({ expected_rent: rent === null ? null : Math.round(rent) })
+    .eq("id", id)
+    .select("id");
+
+  revalidatePath(`/properties/${id}`);
+  return { ok: !error && Boolean(data?.length) };
+}
+
 export async function deleteProperty(id: string) {
   const session = await getSession();
   if (!session?.isManager) return { ok: false };

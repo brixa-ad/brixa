@@ -43,6 +43,8 @@ export type PropertyDetail = {
   currency: string;
   /** sale: %, rent: months; null = agency default */
   commission_rate: number | null;
+  /** for sale: the monthly rent (€) the broker expects — null: BRIXA estimates it */
+  expected_rent: number | null;
   exclusive_contract: boolean;
   off_market: boolean;
   description: string | null;
@@ -117,6 +119,7 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
     asking_price: toNumber(rest.asking_price),
     current_price: toNumber(rest.current_price),
     commission_rate: toNumber(rest.commission_rate),
+    expected_rent: toNumber(rest.expected_rent),
     features: ((feature_values ?? []) as { feature: Feature | null }[])
       .map((row) => row.feature)
       .filter((feature): feature is Feature => Boolean(feature)),

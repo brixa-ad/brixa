@@ -5,6 +5,7 @@ import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
 import type { Tap } from "./signals";
+import { parseEstimate, type RentEstimate } from "./yield";
 
 export type SharedListing = {
   property: {
@@ -29,6 +30,9 @@ export type SharedListing = {
     settlement: string | null;
     neighborhood: string | null;
     features: { name: string; name_en: string | null }[];
+    /** for sale: the broker's rent and BRIXA's estimate */
+    expected_rent: number | null;
+    rent_estimate: RentEstimate | null;
   };
   photos: string[];
   broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
@@ -52,7 +56,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
   if (error || !data) return null;
 
   const raw = data as {
-    property: SharedListing["property"] & { photos: string[] };
+    property: Omit<SharedListing["property"], "rent_estimate"> & { photos: string[]; rent_estimate: unknown };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null } | null;
   };
@@ -72,6 +76,8 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
       area: property.area === null ? null : Number(property.area),
       exposures: property.exposures ?? [],
       features: property.features ?? [],
+      expected_rent: property.expected_rent === null || property.expected_rent === undefined ? null : Number(property.expected_rent),
+      rent_estimate: parseEstimate(property.rent_estimate),
     },
     photos,
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,

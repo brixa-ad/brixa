@@ -5,6 +5,8 @@ import { ArrowLeft, BedDouble, BrickWall, Building2, Flame, Hammer, Layers, Layo
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
 import { AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
+import { YieldPanel } from "@/components/listing/YieldPanel";
+import { rentalYield } from "@/lib/yield";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
@@ -60,6 +62,9 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
       .filter((row): row is { icon: typeof Building2; label: string; value: string } => Boolean(row.value)),
   ];
 
+  // a listing for sale as an investment: the rent it would bring and the yield
+  const investment = p.operation === "sale" ? rentalYield(p.price, p.currency, p.expected_rent, p.rent_estimate) : null;
+
   return (
     <main className="mx-auto max-w-5xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
       <header className="flex items-center justify-between gap-3 py-2">
@@ -94,6 +99,15 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
             <Panel title={t.listing.details}>
               <DetailRows rows={rows} />
             </Panel>
+          )}
+
+          {investment && (
+            <YieldPanel
+              y={investment}
+              t={t}
+              lang={lang}
+              source={investment.fromBroker ? `${t.yield.fromBroker} ${t.yield.publicNote}` : t.yield.publicNote}
+            />
           )}
           {p.description && (
             <Panel title={t.listing.description}>
