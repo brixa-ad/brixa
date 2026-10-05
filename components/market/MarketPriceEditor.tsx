@@ -64,7 +64,8 @@ export function MarketPriceEditor({
 
   function applyPaste() {
     if (!town) return;
-    const range = operation === "rent" ? { min: 1, max: 500 } : { min: 100, max: 50000 };
+    // a price per m²: a sale 100–20 000 €, a month's rent 1–60 €
+    const range = operation === "rent" ? { min: 1, max: 60 } : { min: 100, max: 20000 };
     const result = parseMarketPaste(pasted, town.neighborhoods, range);
     setValues((v) => {
       const next = { ...v };
