@@ -23,11 +23,13 @@ export type Settlement = {
 
 export type Neighborhood = { id: string; settlement_id: string; name: string };
 
-export type Role = "owner" | "manager" | "broker";
+export type Role = "owner" | "office_manager" | "manager" | "broker";
 
 export type Member = {
   profile_id: string;
   role: Role;
+  office_id: string | null;
+  team_id: string | null;
   full_name: string | null;
   email: string;
   avatar_path: string | null;

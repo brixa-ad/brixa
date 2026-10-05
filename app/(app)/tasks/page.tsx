@@ -8,7 +8,7 @@ import { buttonClass } from "@/components/ui/form";
 import { sofiaToday } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +47,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
 
   const [{ data, error }, members] = await Promise.all([
     query,
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
   ]);
   if (error) console.error("Loading tasks failed:", error.message);
 

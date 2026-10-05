@@ -34,8 +34,8 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
     getI18n(),
     getMarketDay(session.organizationId, operation),
     getMarketOverview(session.organizationId, operation),
-    session.isManager ? getMarketTowns(session.organizationId) : Promise.resolve([]),
-    session.isManager ? getMarketPrices(session.organizationId, operation) : Promise.resolve([]),
+    session.isLeader ? getMarketTowns(session.organizationId) : Promise.resolve([]),
+    session.isLeader ? getMarketPrices(session.organizationId, operation) : Promise.resolve([]),
   ]);
   const today = sofiaToday();
   const unit = operation === "rent" ? t.market.perSqmMonth : t.market.perSqm;
@@ -91,7 +91,7 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
 
   return (
     <>
-      <PageHeader title={t.market.title} subtitle={t.market.dailySubtitle} actions={session.isManager ? <RefreshMarketButton /> : undefined} />
+      <PageHeader title={t.market.title} subtitle={t.market.dailySubtitle} actions={session.isLeader ? <RefreshMarketButton /> : undefined} />
 
       {/* ---- sale / rent, the town, the type ---- */}
       <nav className="mb-3 flex gap-1 rounded-xl border border-line bg-surface p-1 sm:w-80">
@@ -277,7 +277,7 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
             </>
           }
         >
-          {session.isManager ? (
+          {session.isLeader ? (
             <MarketPriceEditor key={operation} towns={towns} prices={prices} operation={operation} today={today} />
           ) : (
             <p className="text-sm text-muted">{t.market.readOnly}</p>

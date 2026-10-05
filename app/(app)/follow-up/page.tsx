@@ -12,7 +12,7 @@ import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
 import { formatDate, formatDayMonth } from "@/lib/format";
 import { fmt, locale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import type { ClientClass } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -79,7 +79,7 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
   if (view === "signals") {
     const [{ t, lang }, members] = await Promise.all([
       getI18n(),
-      session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+      session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
     ]);
     return (
       <>
@@ -118,7 +118,7 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
   const [{ t, lang }, { data }, members] = await Promise.all([
     getI18n(),
     query,
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
   ]);
   const rows = (data ?? []) as unknown as Row[];
 

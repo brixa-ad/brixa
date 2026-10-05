@@ -13,6 +13,8 @@ import { formatDate, formatPrice, settlementLabel } from "@/lib/format";
 import { getPlayers } from "@/lib/game-server";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { leads } from "@/lib/hierarchy";
+import { getHierarchy } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/types";
@@ -48,7 +50,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
     getI18n(),
     supabase
       .from("organization_members")
-      .select("role, created_at")
+      .select("role, office_id, team_id, created_at")
       .eq("organization_id", session.organizationId)
       .eq("profile_id", id)
       .maybeSingle(),
@@ -69,6 +71,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
     // level, streak and badges — every colleague sees them
     getPlayers(session.organizationId, sofiaToday()),
   ]);
+  const { teams } = session.isManager && !session.isOwner ? await getHierarchy(supabase, session.organizationId) : { teams: [] };
   const player = players.get(id);
 
   if (!membership || !profile) notFound();
@@ -79,8 +82,8 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
 
   const results = (statRows as Record<string, number | string>[] | null)?.[0] ?? null;
   const n = (key: string) => Number(results?.[key] ?? 0);
-  // Their deals and clients open for managers (and for themselves); properties for everyone.
-  const canOpenWork = session.isManager || isSelf;
+  // Their deals and clients open for their leaders (and for themselves); properties for everyone.
+  const canOpenWork = isSelf || leads(session, { profile_id: id, office_id: membership.office_id, team_id: membership.team_id }, teams);
   const dealsHref = (tab?: string) => {
     const qs = new URLSearchParams();
     if (tab) qs.set("tab", tab);

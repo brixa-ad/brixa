@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { Dictionary } from "./i18n/dictionaries";
-import { getCommissionDefaults, getMembers } from "./lookups";
+import { getCommissionDefaults, getMyPeople } from "./lookups";
 import type { DealKind, DealStage, DealStatus } from "./options";
 import { createClient } from "./supabase/server";
 
@@ -120,7 +120,7 @@ export type DealFormProperty = {
 export async function getDealFormLookups(organizationId: string) {
   const supabase = await createClient();
   const [members, clients, properties, defaults] = await Promise.all([
-    getMembers(supabase, organizationId),
+    getMyPeople(supabase),
     supabase
       .from("clients")
       .select("id, full_name, phone")

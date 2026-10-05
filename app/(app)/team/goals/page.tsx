@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { GoalRow } from "../actions";
@@ -20,7 +20,7 @@ export default async function GoalsPage() {
   const supabase = await createClient();
   const [{ t }, members, { data }] = await Promise.all([
     getI18n(),
-    getMembers(supabase, session.organizationId),
+    getMyPeople(supabase),
     supabase.from("broker_goals").select("*").eq("organization_id", session.organizationId),
   ]);
 
@@ -42,7 +42,10 @@ export default async function GoalsPage() {
     <>
       <PageHeader backHref="/team" backLabel={t.team.title} title={t.goals.title} subtitle={t.goals.subtitle} />
       <GoalsForm
-        people={members.map((m) => ({ profileId: m.profile_id, name: m.full_name || m.email, avatarPath: m.avatar_path }))}
+        people={members
+          // goals are set for the people one leads (the owner: themself too)
+          .filter((m) => session.isOwner || m.profile_id !== session.userId)
+          .map((m) => ({ profileId: m.profile_id, name: m.full_name || m.email, avatarPath: m.avatar_path }))}
         initial={initial}
       />
     </>

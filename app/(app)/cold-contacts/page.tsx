@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import type { LeadAnswer } from "@/lib/leads";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { ago, one } from "@/lib/signals";
 import { createClient } from "@/lib/supabase/server";
@@ -79,7 +79,7 @@ export default async function ColdContactsPage({ searchParams }: PageProps<"/col
     formsQuery,
     // how many in each folder
     supabase.from("clients").select("lead_form_id").eq("organization_id", session.organizationId).not("lead_form_id", "is", null),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
     headers(),
   ]);
   const leads = (leadRows ?? []) as unknown as Lead[];

@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewClientPage({ searchParams }: PageProps<"/clients/new">) {
   const free = (await searchParams).free === "1";
   const session = (await getSession())!;
-  const [{ t }, lookups] = await Promise.all([getI18n(), getClientFormLookups(session.organizationId)]);
+  const [{ t }, lookups] = await Promise.all([getI18n(), getClientFormLookups()]);
 
   return (
     <>

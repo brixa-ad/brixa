@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Flame, Gift, Trophy } from "lucide-react";
+import { Building2, Flame, Gift, Trophy, Users } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
 import { formatPrice } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
-import type { BoardRow } from "@/lib/stats";
+import type { BoardGroups, BoardRow } from "@/lib/stats";
 
 const MEDALS = ["bg-[#f5c542] text-[#3b2a00]", "bg-[#c9d1dc] text-[#1f2937]", "bg-[#d99a5b] text-[#3a1d00]"];
 
 export type Mission = { label: string; done: number; target: number; bonus: string | null };
 
-/** Top 10 of the agency: commission or activity points, this month or this year — with my missions and rewards on top. */
+/**
+ * Top 10 of the agency: commission or activity points, this month or this year — of the brokers,
+ * the teams or the offices — with my missions and rewards on top.
+ */
 export function Leaderboard({
   month,
   year,
@@ -21,6 +24,7 @@ export function Leaderboard({
   points,
   players = {},
   records = null,
+  groups = null,
 }: {
   month: BoardRow[];
   year: BoardRow[];
@@ -32,22 +36,49 @@ export function Leaderboard({
   players?: Record<string, { level: number; streak: number }>;
   /** working alone: the missions and my records, no ranking */
   records?: { label: string; value: string }[] | null;
+  /** teams and offices, for ranking them too */
+  groups?: BoardGroups | null;
 }) {
   const { t, lang } = useI18n();
   const [board, setBoard] = useState<"money" | "activity">("money");
   const [period, setPeriod] = useState<"month" | "year">("month");
+  const [unit, setUnit] = useState<"people" | "teams" | "offices">("people");
+  const units = [
+    "people" as const,
+    ...(groups && groups.teams.length > 0 ? ["teams" as const] : []),
+    ...(groups && groups.offices.length > 1 ? ["offices" as const] : []),
+  ];
 
   const value = (row: BoardRow) => (board === "money" ? row.commission : row.points);
-  const ranked = [...(period === "month" ? month : year)].sort((a, b) => value(b) - value(a));
+  const people = period === "month" ? month : year;
+  // a team's or an office's numbers: its people's added up
+  const placeKey = unit === "teams" ? "teamId" : "officeId";
+  const rows: BoardRow[] =
+    unit === "people" || !groups
+      ? people
+      : (unit === "teams" ? groups.teams : groups.offices).map((group) => {
+          const inside = people.filter((row) => groups.placeOf[row.profileId]?.[placeKey] === group.id);
+          return {
+            profileId: group.id,
+            name: group.name,
+            avatarPath: null,
+            commission: inside.reduce((sum, row) => sum + row.commission, 0),
+            deals: inside.reduce((sum, row) => sum + row.deals, 0),
+            points: inside.reduce((sum, row) => sum + row.points, 0),
+          };
+        });
+  const mine = unit === "people" ? viewerId : (groups?.placeOf[viewerId]?.[placeKey] ?? null);
+  const ranked = [...rows].sort((a, b) => value(b) - value(a));
   const top = ranked.slice(0, 10);
   const leader = Math.max(0, ...ranked.map(value));
-  const myRank = ranked.findIndex((row) => row.profileId === viewerId);
+  const myRank = ranked.findIndex((row) => row.profileId === mine);
 
   const toggle = (active: boolean) =>
     `rounded-md px-2.5 py-1 text-xs font-semibold transition ${active ? "bg-accent text-on-accent" : "text-muted hover:text-fg"}`;
 
   const line = (row: BoardRow, rank: number) => {
-    const you = row.profileId === viewerId;
+    const you = row.profileId === mine;
+    const GroupIcon = unit === "teams" ? Users : Building2;
     const percent = leader > 0 ? Math.max(2, (value(row) / leader) * 100) : 0;
     return (
       <li key={row.profileId} className={`flex items-center gap-3 rounded-xl px-2 py-2 ${you ? "bg-accent-soft/60" : ""}`}>
@@ -58,11 +89,17 @@ export function Leaderboard({
         >
           {rank + 1}
         </span>
-        <Avatar path={row.avatarPath} name={row.name} size="sm" />
+        {unit === "people" ? (
+          <Avatar path={row.avatarPath} name={row.name} size="sm" />
+        ) : (
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-fg">
+            <GroupIcon className="size-4" />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2 text-sm">
             <span className="flex min-w-0 items-center gap-1.5">
-              {players[row.profileId] && (
+              {unit === "people" && players[row.profileId] && (
                 <span
                   title={t.game.levels[players[row.profileId].level]}
                   className="grid size-4.5 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-brand-cyan text-[10px] font-black text-white"
@@ -71,7 +108,7 @@ export function Leaderboard({
                 </span>
               )}
               <span className={`truncate ${you ? "font-bold" : "font-medium"}`}>{row.name}</span>
-              {(players[row.profileId]?.streak ?? 0) >= 2 && (
+              {unit === "people" && (players[row.profileId]?.streak ?? 0) >= 2 && (
                 <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-warning">
                   <Flame className="size-3" />
                   {players[row.profileId].streak}
@@ -102,7 +139,16 @@ export function Leaderboard({
           <Trophy className="size-4 text-brand-cyan" />
           {records ? t.home.recordsTitle : t.home.boardTitle}
         </h2>
-        {!records && <div className="flex gap-2">
+        {!records && <div className="flex flex-wrap gap-2">
+          {units.length > 1 && (
+            <div className="inline-flex rounded-lg border border-line bg-canvas/40 p-0.5">
+              {units.map((u) => (
+                <button key={u} type="button" onClick={() => setUnit(u)} className={toggle(unit === u)} aria-pressed={unit === u}>
+                  {u === "people" ? t.home.boardPeople : u === "teams" ? t.home.boardTeams : t.home.boardOffices}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="inline-flex rounded-lg border border-line bg-canvas/40 p-0.5">
             <button type="button" onClick={() => setBoard("money")} className={toggle(board === "money")} aria-pressed={board === "money"}>
               {t.home.boardMoney}

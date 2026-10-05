@@ -6,18 +6,42 @@ import { createClient } from "@/lib/supabase/server";
 import { isValidEmail } from "@/lib/validation";
 
 export type AuthState = {
-  error?: "invalidCredentials" | "genericError" | "invalidEmail" | "passwordHint";
+  error?: "invalidCredentials" | "genericError" | "invalidEmail" | "passwordHint" | "invalidEik" | "agencyRequired";
   checkEmail?: boolean;
 };
 
+/**
+ * Sign up as an agency (its details become the agency's and its first office's) or as a broker
+ * on their own. Someone with a pending invitation joins the inviting agency either way.
+ */
 export async function signUp(_: AuthState, formData: FormData): Promise<AuthState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const text = (key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
+  const email = text("email", 200);
   const password = String(formData.get("password") ?? "");
-  const fullName = String(formData.get("fullName") ?? "").trim();
-  const agencyName = String(formData.get("agencyName") ?? "").trim();
+  const account = formData.get("accountType") === "solo" ? "solo" : "agency";
+  const fullName = text("fullName", 120);
+  const agencyName = account === "agency" ? text("agencyName", 120) : "";
+  const eik = account === "agency" ? text("eik", 40).replace(/\D/g, "") : "";
+  const rawWebsite = account === "agency" ? text("website", 200) : "";
+  const website = rawWebsite && !/^https?:\/\//i.test(rawWebsite) ? `https://${rawWebsite}` : rawWebsite;
 
   if (!isValidEmail(email)) return { error: "invalidEmail" };
   if (password.length < 8) return { error: "passwordHint" };
+  if (account === "agency" && !agencyName) return { error: "agencyRequired" };
+  if (eik && !/^\d{9}(\d{4})?$/.test(eik)) return { error: "invalidEik" };
+
+  const metadata: Record<string, string> = { account_type: account, full_name: fullName, phone: text("phone", 40) };
+  if (account === "agency") {
+    Object.assign(metadata, {
+      agency_name: agencyName,
+      legal_name: text("legalName", 200),
+      eik,
+      city: text("city", 80),
+      address: text("address", 200),
+      agency_phone: text("agencyPhone", 40),
+      website,
+    });
+  }
 
   const headerList = await headers();
   const origin =
@@ -29,7 +53,7 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
     email,
     password,
     options: {
-      data: { full_name: fullName, agency_name: agencyName },
+      data: metadata,
       emailRedirectTo: `${origin}/auth/callback`,
     },
   });

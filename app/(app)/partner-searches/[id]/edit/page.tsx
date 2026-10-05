@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { PartnerSearchForm } from "@/components/partner/PartnerSearchForm";
 import { getClientFormLookups, searchFromRow } from "@/lib/clients";
 import { getI18n } from "@/lib/i18n/server";
-import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,11 +13,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function EditPartnerSearchPage({ params }: PageProps<"/partner-searches/[id]/edit">) {
   const { id } = await params;
-  const session = (await getSession())!;
   const supabase = await createClient();
   const [{ t }, lookups, { data: row }] = await Promise.all([
     getI18n(),
-    getClientFormLookups(session.organizationId),
+    getClientFormLookups(),
     supabase.from("partner_searches").select("*").eq("id", id).maybeSingle(),
   ]);
   if (!row) notFound();

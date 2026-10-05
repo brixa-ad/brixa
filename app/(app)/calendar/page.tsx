@@ -12,7 +12,7 @@ import { getCalendarEntries, mondayOf, monthRange, shiftMonth, type CalendarEntr
 import { formatDayMonth } from "@/lib/format";
 import { locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleCalendarLink } from "./GoogleCalendarLink";
@@ -51,7 +51,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     i18n,
     i18n.then(({ t }) => getCalendarEntries(supabase, person, from, to, t)),
     person === session.userId ? supabase.rpc("my_calendar_token") : Promise.resolve({ data: null }),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
     headers(),
   ]);
 

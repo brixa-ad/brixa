@@ -12,7 +12,7 @@ import { sofiaToday } from "@/lib/dates";
 import { formatDate, formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { resolveRange } from "@/lib/period";
 import { getSession } from "@/lib/session";
 import { getStatistics } from "@/lib/statistics";
@@ -32,7 +32,7 @@ export default async function BrokerStatsPage({ searchParams }: PageProps<"/stat
 
   // managers look at anyone in the agency; brokers at themselves
   const supabase = await createClient();
-  const members = session.isManager ? await getMembers(supabase, session.organizationId) : [];
+  const members = session.isManager ? await getMyPeople(supabase) : [];
   const picked = session.isManager && typeof params.broker === "string" ? members.find((m) => m.profile_id === params.broker) : undefined;
   const brokerId = picked?.profile_id ?? session.userId;
   const self = members.find((m) => m.profile_id === session.userId);

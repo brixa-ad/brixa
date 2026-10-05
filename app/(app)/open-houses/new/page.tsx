@@ -3,7 +3,7 @@ import { OpenHouseForm } from "@/components/openhouse/OpenHouseForm";
 import { PageHeader } from "@/components/PageHeader";
 import { addDays, sofiaToday } from "@/lib/dates";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,7 +33,7 @@ export default async function NewOpenHousePage({ searchParams }: PageProps<"/ope
       .in("operation_type", ["sale", "rent"])
       .order("updated_at", { ascending: false })
       .limit(500),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
   ]);
 
   const options = (listings ?? []) as { id: string; title: string }[];

@@ -9,7 +9,7 @@ import { DEAL_SELECT, toDeals, type DealRow } from "@/lib/deals";
 import { formatPrice } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { DEAL_STAGES } from "@/lib/options";
 import { memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
@@ -50,7 +50,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
 
   const [{ data, error }, members, { count: toConfirm }] = await Promise.all([
     query,
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
     session.isManager
       ? supabase
           .from("deals")

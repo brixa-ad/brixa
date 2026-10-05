@@ -27,7 +27,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { findMatches } from "@/lib/matching";
 import { signPhotoUrls } from "@/lib/photos-server";
 import { memberBack } from "@/lib/member-back";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { describeOffer, describeSearch } from "@/lib/search-describe";
 import { createClient } from "@/lib/supabase/server";
@@ -178,7 +178,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   // Free contacts are open to everyone to take; only the broker and managers change a client.
   const isFree = client.responsible_broker_id === null;
   const canEdit = session.isManager || client.responsible_broker_id === session.userId;
-  const members = session.isManager ? await getMembers(supabase, session.organizationId) : [];
+  const members = session.isManager ? await getMyPeople(supabase) : [];
   const followUpLate = client.follow_up_at !== null && client.follow_up_at <= new Date().toISOString();
   const activeProgram = programs.find((p) => p.status === "active");
   const programTask = activeProgram ? openTasks.find((task) => task.program_id === activeProgram.id) : undefined;

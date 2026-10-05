@@ -8,7 +8,7 @@ import { buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import type { ClientClass, ClientType } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +42,7 @@ export default async function ContactsPage() {
       .is("responsible_broker_id", null)
       .order("updated_at", { ascending: false })
       .limit(500),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
   ]);
   const contacts = (data ?? []) as FreeContact[];
 

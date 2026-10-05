@@ -2,6 +2,8 @@ import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CommissionDefaults } from "./commission";
+import { leads, type Office, type Team } from "./hierarchy";
+import { getSession } from "./session";
 import { createClient } from "./supabase/server";
 import type { Feature, FormLookups, Member, Role, Settlement } from "./types";
 
@@ -33,17 +35,19 @@ export async function fetchAllSettlements(supabase: SupabaseClient) {
 export async function getMembers(supabase: SupabaseClient, organizationId: string) {
   const { data, error } = await supabase
     .from("organization_members")
-    .select("profile_id, role, created_at, profiles(full_name, email, avatar_path, job_title, phone)")
+    .select("profile_id, role, office_id, team_id, created_at, profiles(full_name, email, avatar_path, job_title, phone)")
     .eq("organization_id", organizationId)
     .order("created_at");
 
   if (error) throw error;
 
   return (data ?? []).map((row) => {
-    const profile = row.profiles as unknown as Omit<Member, "profile_id" | "role"> | null;
+    const profile = row.profiles as unknown as Omit<Member, "profile_id" | "role" | "office_id" | "team_id"> | null;
     return {
       profile_id: row.profile_id,
       role: row.role as Role,
+      office_id: (row.office_id as string | null) ?? null,
+      team_id: (row.team_id as string | null) ?? null,
       created_at: row.created_at as string,
       full_name: profile?.full_name ?? null,
       email: profile?.email ?? "",
@@ -52,6 +56,28 @@ export async function getMembers(supabase: SupabaseClient, organizationId: strin
       phone: profile?.phone ?? null,
     };
   });
+}
+
+/** The agency's offices and teams (everyone in it reads them). */
+export async function getHierarchy(supabase: SupabaseClient, organizationId: string): Promise<{ offices: Office[]; teams: Team[] }> {
+  const [{ data: offices }, { data: teams }] = await Promise.all([
+    supabase.from("offices").select("id, name, city, address, phone").eq("organization_id", organizationId).order("created_at"),
+    supabase.from("teams").select("id, office_id, name, manager_id").eq("organization_id", organizationId).order("name"),
+  ]);
+  return { offices: offices ?? [], teams: teams ?? [] };
+}
+
+/**
+ * Whom one gives work to and filters by: a leader themself and the people they lead (the owner
+ * everyone). A broker gets the whole agency — their pickers are locked to themself anyway.
+ */
+export async function getMyPeople(supabase: SupabaseClient) {
+  const session = await getSession();
+  const organizationId = session?.organizationId ?? "";
+  const members = session ? await getMembers(supabase, organizationId) : [];
+  if (!session || session.isOwner || !session.isManager) return members;
+  const { teams } = await getHierarchy(supabase, organizationId);
+  return members.filter((m) => m.profile_id === session.userId || leads(session, m, teams));
 }
 
 /** The agency's standard commission: % for sales, months of rent for leases. */
@@ -82,7 +108,7 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
       .select("subtype_id, property_features(id, code, name, name_en)"),
     supabase.from("geo_regions").select("id, code, name").order("name"),
     fetchAllSettlements(supabase),
-    getMembers(supabase, organizationId),
+    getMyPeople(supabase),
     supabase
       .from("clients")
       .select("id, full_name, phone")

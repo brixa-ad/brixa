@@ -75,7 +75,7 @@ export async function removeMarketingPoint(propertyId: string, key: string): Pro
 /** A manager saves the agency's template. */
 export async function saveMarketingTemplate(items: MarketingPoint[]): Promise<Result> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isLeader) return { ok: false };
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_marketing_template", { target_org: session.organizationId, items: cleanTemplate(items) });
   if (error) {

@@ -78,6 +78,10 @@ export type AgencyInput = {
   email: string;
   website: string;
   address: string;
+  kind: "agency" | "solo";
+  legalName: string;
+  eik: string;
+  city: string;
   defaultCurrency: string;
   commissionSalePercent: number;
   commissionRentMonths: number;
@@ -88,7 +92,7 @@ export type AgencyInput = {
 /** Managers: the agency's details, defaults and ranking points. */
 export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isOwner) return { ok: false };
   const text = (value: string, max: number) => (typeof value === "string" ? value.trim().slice(0, max) || null : null);
   const name = text(input.name, 120);
   const whole = (n: number) => Number.isInteger(n) && n >= 0 && n <= 1000;
@@ -103,6 +107,8 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
     return { ok: false };
   }
   const website = text(input.website, 200);
+  const eik = String(input.eik ?? "").replace(/\D/g, "");
+  if (eik && !/^\d{9}(\d{4})?$/.test(eik)) return { ok: false };
   const supabase = await createClient();
   const { error } = await supabase
     .from("organizations")
@@ -112,6 +118,10 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
       email: text(input.email, 200),
       website: website && !/^https?:\/\//.test(website) ? `https://${website}` : website,
       address: text(input.address, 300),
+      kind: input.kind === "solo" ? "solo" : "agency",
+      legal_name: text(input.legalName, 200),
+      eik: eik || null,
+      city: text(input.city, 80),
       default_currency: input.defaultCurrency,
       commission_sale_percent: input.commissionSalePercent,
       commission_rent_months: input.commissionRentMonths,
@@ -134,7 +144,7 @@ export async function updateAgency(input: AgencyInput): Promise<{ ok: boolean }>
 /** Managers: the website — on or off, its address, the headline and a few words. */
 export async function saveSite(input: { enabled: boolean; slug: string; headline: string; about: string }): Promise<{ ok: boolean; reason?: "taken" | "invalid" }> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isOwner) return { ok: false };
   const slug = String(input.slug ?? "").trim().toLowerCase();
   if (slug && !/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug)) return { ok: false, reason: "invalid" };
   if (input.enabled && !slug) return { ok: false, reason: "invalid" };
@@ -161,7 +171,7 @@ export async function saveSite(input: { enabled: boolean; slug: string; headline
 /** After the browser uploaded a logo (or to remove it: null). */
 export async function setAgencyLogo(path: string | null): Promise<{ ok: boolean }> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isOwner) return { ok: false };
   if (path !== null && !path.startsWith(`${session.organizationId}/`)) return { ok: false };
   const supabase = await createClient();
   const { data: before } = await supabase.from("organizations").select("logo_path").eq("id", session.organizationId).maybeSingle();

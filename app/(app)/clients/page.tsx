@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { buttonClass } from "@/components/ui/form";
 import { formatDate } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { CLIENT_CLASSES, CLIENT_STAGES, CLIENT_TYPES, isOneOf, type ClientStage, type ClientType } from "@/lib/options";
 import { fromQuery, memberBack } from "@/lib/member-back";
 import { getSession } from "@/lib/session";
@@ -94,7 +94,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   const [{ data, error }, { data: all }, members] = await Promise.all([
     query,
     supabase.from("clients").select("client_class, stage, types").eq("organization_id", session.organizationId).not("responsible_broker_id", "is", null),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
   ]);
   if (error) console.error("Loading clients failed:", error.message);
 

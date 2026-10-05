@@ -25,8 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SettingsPage() {
   const [session, { t }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
   const supabase = await createClient();
-  const agency = session!.isManager ? await getAgency(session!.organizationId) : null;
-  const { data: rules } = session!.isManager
+  const agency = session!.isOwner ? await getAgency(session!.organizationId) : null;
+  const { data: rules } = session!.isLeader
     ? await supabase
         .from("organizations")
         .select("follow_up_first_hours, follow_up_days_a, follow_up_days_b, follow_up_days_c, release_after_days, marketing_template")
@@ -62,6 +62,10 @@ export default async function SettingsPage() {
                   email: agency.email ?? "",
                   website: agency.website ?? "",
                   address: agency.address ?? "",
+                  kind: agency.kind,
+                  legalName: agency.legalName ?? "",
+                  eik: agency.eik ?? "",
+                  city: agency.city ?? "",
                   defaultCurrency: agency.defaultCurrency,
                   commissionSalePercent: agency.commissionSalePercent,
                   commissionRentMonths: agency.commissionRentMonths,
@@ -91,7 +95,7 @@ export default async function SettingsPage() {
             </Card>
           )}
 
-          {rules && (
+          {rules && session!.isOwner && (
             <Card title={t.followUp.rulesTitle} id="follow-up">
               <FollowUpRulesForm
                 initial={{

@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { sofiaDay } from "./dates";
-import { getMembers } from "./lookups";
+import { getMyPeople } from "./lookups";
 import type { TaskType } from "./options";
 import { createClient } from "./supabase/server";
 
@@ -129,7 +129,7 @@ export const getTask = cache(async (id: string): Promise<TaskRow | null> => {
 export async function getTaskFormLookups(organizationId: string) {
   const supabase = await createClient();
   const [members, clients, properties] = await Promise.all([
-    getMembers(supabase, organizationId),
+    getMyPeople(supabase),
     supabase
       .from("clients")
       .select("id, full_name, phone")

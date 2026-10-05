@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { emptySearch, type OfferInput, type SearchInput } from "./client-validation";
-import { fetchAllSettlements, getMembers } from "./lookups";
+import { fetchAllSettlements, getMyPeople } from "./lookups";
 import { CURRENCIES, isOneOf, type ClientClass, type ClientStage, type ClientType } from "./options";
 import { createClient } from "./supabase/server";
 import type { Category, Feature, Member, Region, Settlement, Subtype } from "./types";
@@ -132,7 +132,7 @@ export type ClientFormLookups = {
   members: Member[];
 };
 
-export async function getClientFormLookups(organizationId: string): Promise<ClientFormLookups> {
+export async function getClientFormLookups(): Promise<ClientFormLookups> {
   const supabase = await createClient();
   const [categories, subtypes, features, regions, settlements, members] = await Promise.all([
     supabase.from("property_categories").select("id, code, name, name_en").order("sort_order"),
@@ -140,7 +140,7 @@ export async function getClientFormLookups(organizationId: string): Promise<Clie
     supabase.from("property_features").select("id, code, name, name_en").order("name"),
     supabase.from("geo_regions").select("id, code, name").order("name"),
     fetchAllSettlements(supabase),
-    getMembers(supabase, organizationId),
+    getMyPeople(supabase),
   ]);
 
   return {

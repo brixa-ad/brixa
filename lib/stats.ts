@@ -25,6 +25,13 @@ export type BoardRow = {
   points: number;
 };
 
+/** The agency's teams and offices, and where each person sits — for the teams' and offices' ranking. */
+export type BoardGroups = {
+  teams: { id: string; name: string }[];
+  offices: { id: string; name: string }[];
+  placeOf: Record<string, { teamId: string | null; officeId: string | null }>;
+};
+
 /** A broker's own numbers for the home screen. Only confirmed commission counts. */
 export async function getMyNumbers(session: SessionContext, today: string) {
   const supabase = await createClient();
@@ -186,11 +193,12 @@ export async function getUpcomingSteps(session: SessionContext, today: string): 
 /** The agency's ranking for this month and this year (commission + activity points). */
 export async function getLeaderboards(organizationId: string) {
   const supabase = await createClient();
-  const [month, year] = await Promise.all(
-    (["month", "year"] as const).map((period) =>
-      supabase.rpc("leaderboard", { target_org: organizationId, period })
-    )
-  );
+  const [[month, year], { data: teams }, { data: offices }, { data: places }] = await Promise.all([
+    Promise.all((["month", "year"] as const).map((period) => supabase.rpc("leaderboard", { target_org: organizationId, period }))),
+    supabase.from("teams").select("id, name, office_id").eq("organization_id", organizationId).order("name"),
+    supabase.from("offices").select("id, name").eq("organization_id", organizationId).order("created_at"),
+    supabase.from("organization_members").select("profile_id, office_id, team_id").eq("organization_id", organizationId),
+  ]);
   const rows = (data: unknown): BoardRow[] =>
     ((data ?? []) as {
       profile_id: string;
@@ -209,7 +217,19 @@ export async function getLeaderboards(organizationId: string) {
       points: r.points,
     }));
   if (month.error) console.error("Loading the ranking failed:", month.error.message);
-  return { month: rows(month.data), year: rows(year.data) };
+  // a person's team decides their office
+  const teamOffice = new Map((teams ?? []).map((tm) => [tm.id as string, tm.office_id as string | null]));
+  const groups: BoardGroups = {
+    teams: (teams ?? []).map((tm) => ({ id: tm.id, name: tm.name })),
+    offices: offices ?? [],
+    placeOf: Object.fromEntries(
+      (places ?? []).map((p) => [
+        p.profile_id,
+        { teamId: p.team_id, officeId: (p.team_id && teamOffice.get(p.team_id)) || p.office_id },
+      ])
+    ),
+  };
+  return { month: rows(month.data), year: rows(year.data), groups };
 }
 
 export type StaleDeal = { id: string; title: string; kind: DealKind; stage: string; days: number; broker: string | null };

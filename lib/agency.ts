@@ -22,6 +22,10 @@ export type Agency = {
   email: string | null;
   website: string | null;
   address: string | null;
+  kind: "agency" | "solo";
+  legalName: string | null;
+  eik: string | null;
+  city: string | null;
   logoPath: string | null;
   logoUrl: string | null;
   defaultCurrency: "EUR" | "BGN" | "USD";
@@ -61,6 +65,10 @@ export const getAgency = cache(async (organizationId: string): Promise<Agency | 
     email: data.email ?? null,
     website: data.website ?? null,
     address: data.address ?? null,
+    kind: data.kind === "solo" ? "solo" : "agency",
+    legalName: data.legal_name ?? null,
+    eik: data.eik ?? null,
+    city: data.city ?? null,
     logoPath: data.logo_path ?? null,
     logoUrl: logoUrl(data.logo_path),
     defaultCurrency: data.default_currency === "BGN" || data.default_currency === "USD" ? data.default_currency : "EUR",

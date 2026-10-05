@@ -19,7 +19,7 @@ import { getCalendarEntries, monthRange } from "@/lib/calendar";
 import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
-import { getMembers } from "@/lib/lookups";
+import { getMyPeople } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
@@ -46,7 +46,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     getI18n(),
     getMyDay(session.userId, today),
     session.isManager ? getTeamDay(session.organizationId, today) : Promise.resolve(null),
-    session.isManager ? getMembers(supabase, session.organizationId) : Promise.resolve([]),
+    session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
     getMyNumbers(session, today),
     getLeaderboards(session.organizationId),
     session.isManager
@@ -407,6 +407,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <Leaderboard
           month={boards.month}
           year={boards.year}
+          groups={boards.groups}
           viewerId={session.userId}
           missions={missions}
           points={agency?.points ?? DEFAULT_POINTS}

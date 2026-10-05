@@ -55,7 +55,7 @@ export function AgencySettingsForm({
     if (file.current) file.current.value = "";
   }
 
-  const field = (key: "name" | "phone" | "email" | "website" | "address", label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+  const field = (key: "name" | "phone" | "email" | "website" | "address" | "legalName" | "eik" | "city", label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <label className="block text-xs font-medium text-muted">
       {label}
       <input {...props} value={values[key]} onChange={(e) => set(key, e.target.value)} className={`${inputClass} mt-1`} />
@@ -97,13 +97,27 @@ export function AgencySettingsForm({
         </div>
       </div>
 
+      {/* who the agency is */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-medium text-muted sm:col-span-2">
+          {t.agency.kind}
+          <select value={values.kind} onChange={(e) => set("kind", e.target.value)} className={`${inputClass} mt-1`}>
+            <option value="agency">{t.auth.accountAgency}</option>
+            <option value="solo">{t.auth.accountSolo}</option>
+          </select>
+        </label>
+        {field("legalName", t.auth.legalName, { maxLength: 200 })}
+        {field("eik", t.auth.eik, { inputMode: "numeric", maxLength: 15 })}
+      </div>
+
       {/* contact details */}
       <div className="grid gap-3 sm:grid-cols-2">
         {field("name", t.agency.name, { maxLength: 120 })}
         {field("phone", t.agency.phone, { type: "tel", maxLength: 40 })}
         {field("email", t.agency.email, { type: "email", maxLength: 200 })}
         {field("website", t.agency.website, { maxLength: 200, placeholder: "yavlena.bg" })}
-        <div className="sm:col-span-2">{field("address", t.agency.address, { maxLength: 300 })}</div>
+        {field("city", t.auth.city, { maxLength: 80 })}
+        {field("address", t.agency.address, { maxLength: 300 })}
       </div>
 
       {/* defaults */}

@@ -7,7 +7,7 @@ import { createClient } from "./supabase/server";
 export async function getClosedDealLookups(organizationId: string) {
   const supabase = await createClient();
   const [base, { data: listings }] = await Promise.all([
-    getClientFormLookups(organizationId),
+    getClientFormLookups(),
     supabase
       .from("properties")
       .select("id, title, subtype_id, settlement_id, neighborhood_id, street, street_no, block, entrance, floor, apartment, area, construction_type")

@@ -19,7 +19,7 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
   const [{ t }, client, lookups] = await Promise.all([
     getI18n(),
     getClient(id),
-    getClientFormLookups(session.organizationId),
+    getClientFormLookups(),
   ]);
 
   // RLS only returns clients this user may edit (their own, or any for managers).

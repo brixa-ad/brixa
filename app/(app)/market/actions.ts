@@ -16,7 +16,7 @@ export type MarketPricesInput = {
 /** A manager saves a town's average prices (an empty price removes that row). */
 export async function saveMarketPrices(input: MarketPricesInput): Promise<{ ok: boolean }> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isLeader) return { ok: false };
   if (
     (input.operation !== "sale" && input.operation !== "rent") ||
     !input.settlementId ||
@@ -48,7 +48,7 @@ export async function saveMarketPrices(input: MarketPricesInput): Promise<{ ok: 
 /** A manager works today's market out again now (after entering many listings, say). */
 export async function refreshMarketToday(): Promise<{ ok: boolean }> {
   const session = await getSession();
-  if (!session?.isManager) return { ok: false };
+  if (!session?.isLeader) return { ok: false };
   const supabase = await createClient();
   const { error } = await supabase.rpc("refresh_market_today", { target_org: session.organizationId });
   if (error) {

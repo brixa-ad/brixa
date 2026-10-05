@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
 import { PasskeyPrompt } from "@/components/passkey/PasskeyPrompt";
 import { ServiceWorker } from "@/components/push/ServiceWorker";
+import { PendingLogo } from "@/components/settings/PendingLogo";
 import { SideMenu } from "@/components/SideMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DictationProvider } from "@/components/ui/Dictate";
@@ -123,6 +124,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
       </main>
 
+      {session.isOwner && session.kind === "agency" && <PendingLogo organizationId={session.organizationId} />}
       <BottomNav items={bottomNavFor(session.bottomNav, session.isManager, brixOn, session.solo).map((key) => menu.find((s) => s.key === key)!).filter(Boolean)} />
     </div>
   );
