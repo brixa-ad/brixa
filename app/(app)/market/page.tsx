@@ -264,6 +264,7 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
 
         {/* ---- the portals' prices, by hand (optional) ---- */}
         <Card
+          id="prices"
           title={
             <span className="flex items-center gap-2">
               <SlidersHorizontal className="size-4 text-brand-cyan" />

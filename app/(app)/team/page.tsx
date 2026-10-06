@@ -311,7 +311,7 @@ export default async function TeamPage() {
 
           {session.isManager && (
             <>
-              <Card title={isOwner ? t.team.inviteColleague : t.team.inviteTitle} description={t.team.inviteHint}>
+              <Card title={isOwner ? t.team.inviteColleague : t.team.inviteTitle} description={t.team.inviteHint} id="invite">
                 <InviteForm roles={invite.roles} offices={invite.offices} teams={invite.teams} note={invite.note} />
               </Card>
 

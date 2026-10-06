@@ -32,9 +32,9 @@ export async function getFirstSteps(session: SessionContext, hasLogo: boolean): 
   const steps: FirstStep[] = [
     { key: "logo", href: "/settings#agency", done: hasLogo },
     { key: "offices", href: "/team", done: offices + teams > 0 },
-    { key: "invite", href: "/team", done: invites > 0 || members > 1 },
+    { key: "invite", href: "/team#invite", done: invites > 0 || members > 1 },
     { key: "property", href: "/properties/new", done: properties > 0 },
-    { key: "market", href: "/market", done: prices > 0 },
+    { key: "market", href: "/market#prices", done: prices > 0 },
   ];
   return session.kind === "solo" ? steps.filter((s) => s.key !== "offices" && s.key !== "invite") : steps;
 }
