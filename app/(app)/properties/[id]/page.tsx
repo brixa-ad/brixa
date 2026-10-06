@@ -76,7 +76,6 @@ import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/fo
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getCommissionDefaults } from "@/lib/lookups";
-import { getMarketSnapshot } from "@/lib/market";
 import { findBuyers, findPartnerSearches } from "@/lib/matching";
 import { getProperty } from "@/lib/properties";
 import { parseEstimate, rentalYield } from "@/lib/yield";
@@ -120,7 +119,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: shareRows },
     { data: clientRows },
     { data: reportRows },
-    market,
+    marketSnapshot,
     buyers,
     partnerMatches,
     { data: partnerRows },
@@ -180,7 +179,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         .order("created_at", { ascending: false })
         .limit(50),
       // its price against the market (listings only)
-      listing ? getMarketSnapshot(id) : Promise.resolve(null),
+      // (the market's facts come with the analysis below)
+      Promise.resolve(null),
       // who it fits: our buyers (the ones this user may see) and colleagues' searches
       listing ? findBuyers(supabase, id) : Promise.resolve([]),
       listing ? findPartnerSearches(supabase, id) : Promise.resolve([]),
@@ -218,6 +218,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // how it stands on the market: the stars, the comparables
       listing ? getAnalysis(id) : Promise.resolve(null),
     ]);
+  const market = marketSnapshot ?? analysis?.facts ?? null;
   const rentEstimate = parseEstimate(rentRow);
   const investment = kind === "sale" && listing ? rentalYield(property.current_price, property.currency, property.expected_rent, rentEstimate) : null;
   const deals = toDeals(dealRows);
