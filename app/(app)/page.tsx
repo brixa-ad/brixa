@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
+import { FirstSteps } from "@/components/home/FirstSteps";
 import { TodayWindow } from "@/components/home/TodayWindow";
 import { PushBanner } from "@/components/push/PushBanner";
 import { TemperatureItem } from "@/components/signals/SignalRows";
@@ -24,6 +25,7 @@ import { quoteOfTheDay } from "@/lib/quotes";
 import { getSession } from "@/lib/session";
 import { DEFAULT_POINTS, getAgency } from "@/lib/agency";
 import { getMissions, getPlanInputs, getPlayers } from "@/lib/game-server";
+import { getFirstSteps } from "@/lib/first-steps";
 import { getGreetings } from "@/lib/greetings-server";
 import { countTemperatures, getTemperatures } from "@/lib/signals-server";
 import { getLeaderboards, getMyNumbers, getStaleDeals, getUpcomingSteps } from "@/lib/stats";
@@ -74,6 +76,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     countTemperatures(supabase, session.organizationId, session.userId, ["cooling", "cold"]),
   ]);
   const agency = await getAgency(session.organizationId);
+  const firstSteps = await getFirstSteps(session, Boolean(agency?.logoPath));
   // Brix's plan (written on the first visit of the day, when the AI key is set)
   const brixReady = Boolean(process.env.ANTHROPIC_API_KEY);
   const { data: brief } = brixReady
@@ -247,6 +250,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </div>
       </section>
 
+      {firstSteps && <FirstSteps userId={session.userId} steps={firstSteps} />}
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
       <PushBanner />
 
