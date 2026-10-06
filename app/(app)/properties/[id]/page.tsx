@@ -82,6 +82,7 @@ import { getProperty } from "@/lib/properties";
 import { parseEstimate, rentalYield } from "@/lib/yield";
 import { YieldPanel } from "@/components/listing/YieldPanel";
 import { RentEditor } from "@/components/property/RentEditor";
+import { PropertySections } from "@/components/property/PropertySections";
 import { AnalysisPanel } from "@/components/property/AnalysisPanel";
 import { StarRating } from "@/components/listing/StarRating";
 import { getAnalysis } from "@/lib/analysis";
@@ -595,6 +596,108 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             </Panel>
           )}
 
+          <Panel title={t.listing.description}>
+            {property.description ? (
+              <ClampText text={property.description} more={t.listing.more} less={t.listing.less} />
+            ) : (
+              <p className="text-sm text-muted">{t.detail.noDescription}</p>
+            )}
+          </Panel>
+
+          {property.features.length > 0 && (
+            <Panel title={t.listing.amenities}>
+              <AmenityChips names={property.features.map((feature) => localName(feature, lang))} />
+            </Panel>
+          )}
+
+          {/* ---- the listing's working parts, one at a time ---- */}
+          <PropertySections
+            sections={[
+              ...(listing
+                ? [
+              { key: "work" as const, label: t.detail.sectionWork, anchors: ["buyers","deals","open-houses"], content: (
+                <>
+          {listing && <BuyerMatchesCard buyers={buyers} t={t} />}
+          {partnerMatches.length > 0 && <PartnerMatchesCard matches={partnerMatches} t={t} />}
+          {listing && (
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  {t.deals.forProperty}
+                  <Link
+                    href={`/deals/new?property=${property.id}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                  >
+                    <Plus className="size-3.5" />
+                    {t.deals.newDeal}
+                  </Link>
+                </span>
+              }
+            >
+              {deals.length === 0 ? (
+                <p className="text-sm text-muted">{t.deals.none}</p>
+              ) : (
+                <div className="space-y-2">
+                  {deals.map((deal) => (
+                    <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker />
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+          {listing && (
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <DoorOpen className="size-4 text-brand-cyan" />
+                    {t.openHouses.propertyCard}
+                  </span>
+                  {["active", "reserved"].includes(property.status) && (
+                    <Link
+                      href={`/open-houses/new?property=${property.id}`}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
+                    >
+                      <Plus className="size-3.5" />
+                      {t.openHouses.organize}
+                    </Link>
+                  )}
+                </span>
+              }
+            >
+              {(houseRows ?? []).length === 0 ? (
+                <p className="text-sm text-muted">{t.openHouses.noneForProperty}</p>
+              ) : (
+                <ul className="-mx-2 space-y-0.5">
+                  {(houseRows ?? []).map((h) => (
+                    <li key={h.id}>
+                      <Link href={`/open-houses/${h.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-raised">
+                        <span className={`min-w-0 flex-1 truncate capitalize ${h.cancelled_at ? "text-muted line-through" : "font-medium"}`}>
+                          {fmt(t.openHouses.when, { day: weekdayDate(h.day, lang), from: hhmm(h.starts_at), to: hhmm(h.ends_at) })}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+                </>
+              ) },
+              { key: "market" as const, label: t.detail.sectionMarket, anchors: ["market","analysis","yield","similar"], content: (
+                <>
+          {market && (
+            <div id="market" className="scroll-mt-24">
+            <MarketCard
+              facts={market}
+              place={property.neighborhood?.name ?? null}
+              town={property.settlement ? settlementLabel(property.settlement) : null}
+              t={t}
+              lang={lang}
+            />
+            </div>
+          )}
+          {analysis && <AnalysisPanel analysis={analysis} propertyId={property.id} canEdit={canEdit} t={t} lang={lang} />}
           {kind === "sale" && listing && (investment || canEdit) && (
             <YieldPanel
               y={investment}
@@ -625,23 +728,6 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               {canEdit && <RentEditor propertyId={property.id} initial={property.expected_rent} />}
             </YieldPanel>
           )}
-
-          {analysis && <AnalysisPanel analysis={analysis} propertyId={property.id} canEdit={canEdit} t={t} lang={lang} />}
-
-          <Panel title={t.listing.description}>
-            {property.description ? (
-              <ClampText text={property.description} more={t.listing.more} less={t.listing.less} />
-            ) : (
-              <p className="text-sm text-muted">{t.detail.noDescription}</p>
-            )}
-          </Panel>
-
-          {property.features.length > 0 && (
-            <Panel title={t.listing.amenities}>
-              <AmenityChips names={property.features.map((feature) => localName(feature, lang))} />
-            </Panel>
-          )}
-
           {listing && kind === "sale" && property.subtype && (property.neighborhood || property.settlement) && (
             <SimilarDeals
               rows={similar}
@@ -653,23 +739,10 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               lang={lang}
             />
           )}
-
-          {property.responsible_broker_id && property.broker && (
-            <BrokerPanel
-              person={{ name: brokerName, avatarPath: property.broker.avatar_path }}
-              level={brokerLevel}
-              rows={[
-                { icon: BadgeCheck, label: t.listing.closedDeals, value: String(brokerPlayer?.stats.deals ?? 0) },
-                { icon: Building2, label: t.listing.liveListings, value: String(brokerListings ?? 0) },
-                ...(property.broker.phone ? [{ icon: Phone, label: t.partners.phone, value: property.broker.phone }] : []),
-              ]}
-              href={`/properties?broker=${property.responsible_broker_id}`}
-              linkLabel={t.listing.brokerListings}
-            />
-          )}
-
-          {agency && <AgencyPanel name={agency.name} logoUrl={agency.logoUrl} href="/properties" linkLabel={t.listing.agencyListings} />}
-
+                </>
+              ) },
+              { key: "marketing" as const, label: t.detail.sectionMarketing, anchors: ["marketing","shares","report"], content: (
+                <>
           {listing && (
             <Card
               id="marketing"
@@ -707,7 +780,44 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               />
             </Card>
           )}
-
+          {listing && shares.length > 0 && (
+            <Card title={t.share.linksTitle}>
+              <ShareList rows={shares} empty={t.share.noLinks} />
+            </Card>
+          )}
+          {listing && canEdit && (
+            <Card title={t.report.title} description={t.report.hint}>
+              <OwnerReportDialog
+                propertyId={property.id}
+                title={property.title}
+                listedOn={sofiaDay(property.created_at)}
+                today={sofiaToday()}
+                owner={property.owner}
+              />
+              {reports.length > 0 && (
+                <div className="mt-5 border-t border-line-soft pt-4">
+                  <h3 className="mb-3 text-sm font-semibold text-fg-2">{t.report.linksTitle}</h3>
+                  <ShareList rows={reports} empty={t.report.noLinks} kind="report" />
+                </div>
+              )}
+            </Card>
+          )}
+                </>
+              ) },
+                  ]
+                : []),
+              { key: "papers" as const, label: t.detail.sectionPapers, anchors: ["history","documents"], content: (
+                <>
+          {canEdit && session && (
+            <Card title={t.documents.title}>
+              <PropertyDocuments
+                propertyId={property.id}
+                organizationId={property.organization_id}
+                userId={session.userId}
+                documents={documents}
+              />
+            </Card>
+          )}
           <Card title={t.detail.historyTitle} id="history">
             <LogTabs
               own={<QuickLog propertyId={property.id} />}
@@ -760,6 +870,26 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               ))}
             </ol>
           </Card>
+                </>
+              ) },
+            ]}
+          />
+
+          {property.responsible_broker_id && property.broker && (
+            <BrokerPanel
+              person={{ name: brokerName, avatarPath: property.broker.avatar_path }}
+              level={brokerLevel}
+              rows={[
+                { icon: BadgeCheck, label: t.listing.closedDeals, value: String(brokerPlayer?.stats.deals ?? 0) },
+                { icon: Building2, label: t.listing.liveListings, value: String(brokerListings ?? 0) },
+                ...(property.broker.phone ? [{ icon: Phone, label: t.partners.phone, value: property.broker.phone }] : []),
+              ]}
+              href={`/properties?broker=${property.responsible_broker_id}`}
+              linkLabel={t.listing.brokerListings}
+            />
+          )}
+
+          {agency && <AgencyPanel name={agency.name} logoUrl={agency.logoUrl} href="/properties" linkLabel={t.listing.agencyListings} />}
 
           {/* ---- who to reach, floating at the bottom ---- */}
           {contact && <ContactBar person={contact.person} sub={contact.sub} phone={contact.phone} t={t} inApp />}
@@ -846,121 +976,6 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               <Row name={t.detail.updated} value={formatDate(property.updated_at, lang, true)} />
             </dl>
           </Card>
-
-          {market && (
-            <div id="market" className="scroll-mt-24">
-            <MarketCard
-              facts={market}
-              place={property.neighborhood?.name ?? null}
-              town={property.settlement ? settlementLabel(property.settlement) : null}
-              t={t}
-              lang={lang}
-            />
-            </div>
-          )}
-
-          {listing && <BuyerMatchesCard buyers={buyers} t={t} />}
-          {partnerMatches.length > 0 && <PartnerMatchesCard matches={partnerMatches} t={t} />}
-
-          {listing && (
-            <Card
-              title={
-                <span className="flex items-center justify-between gap-3">
-                  {t.deals.forProperty}
-                  <Link
-                    href={`/deals/new?property=${property.id}`}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
-                  >
-                    <Plus className="size-3.5" />
-                    {t.deals.newDeal}
-                  </Link>
-                </span>
-              }
-            >
-              {deals.length === 0 ? (
-                <p className="text-sm text-muted">{t.deals.none}</p>
-              ) : (
-                <div className="space-y-2">
-                  {deals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker />
-                  ))}
-                </div>
-              )}
-            </Card>
-          )}
-
-          {listing && (
-            <Card
-              title={
-                <span className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2">
-                    <DoorOpen className="size-4 text-brand-cyan" />
-                    {t.openHouses.propertyCard}
-                  </span>
-                  {["active", "reserved"].includes(property.status) && (
-                    <Link
-                      href={`/open-houses/new?property=${property.id}`}
-                      className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
-                    >
-                      <Plus className="size-3.5" />
-                      {t.openHouses.organize}
-                    </Link>
-                  )}
-                </span>
-              }
-            >
-              {(houseRows ?? []).length === 0 ? (
-                <p className="text-sm text-muted">{t.openHouses.noneForProperty}</p>
-              ) : (
-                <ul className="-mx-2 space-y-0.5">
-                  {(houseRows ?? []).map((h) => (
-                    <li key={h.id}>
-                      <Link href={`/open-houses/${h.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-raised">
-                        <span className={`min-w-0 flex-1 truncate capitalize ${h.cancelled_at ? "text-muted line-through" : "font-medium"}`}>
-                          {fmt(t.openHouses.when, { day: weekdayDate(h.day, lang), from: hhmm(h.starts_at), to: hhmm(h.ends_at) })}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          )}
-
-          {listing && shares.length > 0 && (
-            <Card title={t.share.linksTitle}>
-              <ShareList rows={shares} empty={t.share.noLinks} />
-            </Card>
-          )}
-
-          {listing && canEdit && (
-            <Card title={t.report.title} description={t.report.hint}>
-              <OwnerReportDialog
-                propertyId={property.id}
-                title={property.title}
-                listedOn={sofiaDay(property.created_at)}
-                today={sofiaToday()}
-                owner={property.owner}
-              />
-              {reports.length > 0 && (
-                <div className="mt-5 border-t border-line-soft pt-4">
-                  <h3 className="mb-3 text-sm font-semibold text-fg-2">{t.report.linksTitle}</h3>
-                  <ShareList rows={reports} empty={t.report.noLinks} kind="report" />
-                </div>
-              )}
-            </Card>
-          )}
-
-          {canEdit && session && (
-            <Card title={t.documents.title}>
-              <PropertyDocuments
-                propertyId={property.id}
-                organizationId={property.organization_id}
-                userId={session.userId}
-                documents={documents}
-              />
-            </Card>
-          )}
         </aside>
       </div>
     </>

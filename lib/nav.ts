@@ -88,20 +88,28 @@ export const NAV_HREF: Record<NavKey, string> = {
 export const MENU_KEYS = ["home", "day", "clients", "properties", "deals", "insights", "path", "team", "brix", "notifications", "profile", "settings"] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 
-export const MENU_PAGES: Record<MenuKey, NavKey[]> = {
-  home: ["home"],
-  day: ["tasks", "calendar"],
-  clients: ["buyers", "sellers", "tenants", "landlords", "coldContacts", "contacts", "partners", "followup", "partnerSearches"],
-  properties: ["myProperties", "offMarketProperties", "soldProperties", "withdrawnProperties", "colleaguesProperties", "openHouses"],
-  deals: ["deals", "closedDeals"],
-  insights: ["stats", "statsBroker", "statsMarket", "market"],
-  path: ["plan", "business", "territory"],
-  team: ["team", "goals"],
-  brix: ["brix"],
-  notifications: ["notifications"],
-  profile: ["profile"],
-  settings: ["settings"],
+/**
+ * Each section's tabs; a tab with several pages shows them as quick filters inside it (Clients:
+ * All | Buyers | Sellers | Tenants | Landlords). The tab is named after its first page and leads to
+ * the first of them the person may open.
+ */
+export const MENU_TABS: Record<MenuKey, NavKey[][]> = {
+  home: [["home"]],
+  day: [["tasks"], ["calendar"]],
+  clients: [["clients", "buyers", "sellers", "tenants", "landlords"], ["followup"], ["coldContacts", "contacts"], ["partners", "partnerSearches"]],
+  properties: [["myProperties", "offMarketProperties", "soldProperties", "withdrawnProperties"], ["colleaguesProperties"], ["openHouses"]],
+  deals: [["deals"], ["closedDeals"]],
+  insights: [["stats", "statsBroker"], ["statsMarket", "market"]],
+  path: [["plan"], ["business"], ["territory"]],
+  team: [["team"], ["goals"]],
+  brix: [["brix"]],
+  notifications: [["notifications"]],
+  profile: [["profile"]],
+  settings: [["settings"]],
 };
+
+/** Every page of each section. */
+export const MENU_PAGES = Object.fromEntries(MENU_KEYS.map((key) => [key, MENU_TABS[key].flat()])) as Record<MenuKey, NavKey[]>;
 
 /** The places at the bottom of the side menu (not sections). */
 export const MENU_EXTRAS: readonly MenuKey[] = ["notifications", "profile", "settings"];
@@ -123,12 +131,19 @@ export function navKeysFor(isManager: boolean, brix = false, solo = false): NavK
   );
 }
 
-export type MenuSection = { key: MenuKey; pages: NavKey[] };
+/** A tab: named after `key`, it leads to its first page; its pages (those this person may open) are its filters. */
+export type MenuTab = { key: NavKey; pages: NavKey[] };
+export type MenuSection = { key: MenuKey; pages: NavKey[]; tabs: MenuTab[] };
 
-/** The menu for this person: each section with the pages they may open (empty sections left out). */
+/** The menu for this person: each section with the tabs and pages they may open (empty ones left out). */
 export function menuFor(isManager: boolean, brix = false, solo = false): MenuSection[] {
   const allowed = new Set(navKeysFor(isManager, brix, solo));
-  return MENU_KEYS.map((key) => ({ key, pages: MENU_PAGES[key].filter((page) => allowed.has(page)) })).filter((s) => s.pages.length > 0);
+  return MENU_KEYS.map((key) => {
+    const tabs = MENU_TABS[key]
+      .map((pages) => ({ key: pages[0], pages: pages.filter((page) => allowed.has(page)) }))
+      .filter((tab) => tab.pages.length > 0);
+    return { key, tabs, pages: tabs.flatMap((tab) => tab.pages) };
+  }).filter((s) => s.pages.length > 0);
 }
 
 export const sectionHref = (section: MenuSection) => NAV_HREF[section.pages[0]];
