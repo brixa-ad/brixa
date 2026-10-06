@@ -616,7 +616,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             sections={[
               ...(listing
                 ? [
-              { key: "work" as const, label: t.detail.sectionWork, anchors: ["buyers","deals","open-houses"], content: (
+              { key: "work" as const, label: t.detail.sectionWork, short: t.detail.sectionWorkShort, anchors: ["buyers","deals","open-houses"], content: (
                 <>
           {listing && <BuyerMatchesCard buyers={buyers} t={t} />}
           {partnerMatches.length > 0 && <PartnerMatchesCard matches={partnerMatches} t={t} />}
@@ -685,7 +685,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           )}
                 </>
               ) },
-              { key: "market" as const, label: t.detail.sectionMarket, anchors: ["market","analysis","yield","similar"], content: (
+              { key: "market" as const, label: t.detail.sectionMarket, short: t.detail.sectionMarket, anchors: ["market","analysis","yield","similar"], content: (
                 <>
           {market && (
             <div id="market" className="scroll-mt-24">
@@ -742,7 +742,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           )}
                 </>
               ) },
-              { key: "marketing" as const, label: t.detail.sectionMarketing, anchors: ["marketing","shares","report"], content: (
+              { key: "marketing" as const, label: t.detail.sectionMarketing, short: t.detail.sectionMarketing, anchors: ["marketing","shares","report"], content: (
                 <>
           {listing && (
             <Card
@@ -807,7 +807,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               ) },
                   ]
                 : []),
-              { key: "papers" as const, label: t.detail.sectionPapers, anchors: ["history","documents"], content: (
+              { key: "papers" as const, label: t.detail.sectionPapers, short: t.detail.sectionPapersShort, anchors: ["history","documents"], content: (
                 <>
           {canEdit && session && (
             <Card title={t.documents.title}>

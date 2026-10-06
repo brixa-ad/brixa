@@ -6,6 +6,8 @@ import { FileText, LineChart, Megaphone, Users } from "lucide-react";
 export type PropertySection = {
   key: "work" | "market" | "marketing" | "papers";
   label: string;
+  /** on a phone */
+  short: string;
   /** the places inside it a link may point at (#market, #history…) */
   anchors: string[];
   content: React.ReactNode;
@@ -51,7 +53,8 @@ export function PropertySections({ sections }: { sections: PropertySection[] }) 
               }`}
             >
               <Icon className="size-4 shrink-0" />
-              {section.label}
+              <span className="sm:hidden">{section.short}</span>
+              <span className="hidden sm:inline">{section.label}</span>
             </a>
           );
         })}
