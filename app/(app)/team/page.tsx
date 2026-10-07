@@ -13,6 +13,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/types";
 import {
+  HandOverButton,
   InviteForm,
   MoveButton,
   OfficeButton,
@@ -123,8 +124,8 @@ export default async function TeamPage() {
     const isYou = member.profile_id === session.userId;
     const options = roleOptions(member);
     return (
-      <li key={member.profile_id} className="flex items-center gap-2 px-5 py-3.5 sm:gap-3 sm:px-6">
-        <Link href={`/team/${member.profile_id}`} className="group flex min-w-0 flex-1 items-center gap-3">
+      <li key={member.profile_id} className="flex flex-wrap items-center gap-x-2 gap-y-2 px-5 py-3.5 sm:flex-nowrap sm:gap-3 sm:px-6">
+        <Link href={`/team/${member.profile_id}`} className="group flex min-w-[11rem] flex-1 items-center gap-3 sm:min-w-0">
           <Avatar path={member.avatar_path} name={name} />
           <div className="min-w-0">
             <p className="truncate font-medium group-hover:text-accent-fg">
@@ -141,44 +142,59 @@ export default async function TeamPage() {
           </div>
         </Link>
 
-        {member.phone && (
-          <a
-            href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
-            className="hidden items-center gap-1.5 text-sm whitespace-nowrap text-muted hover:text-fg lg:flex"
-          >
-            <Phone className="size-3.5" />
-            {member.phone}
-          </a>
-        )}
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          {member.phone && (
+            <a
+              href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
+              className="hidden items-center gap-1.5 text-sm whitespace-nowrap text-muted hover:text-fg lg:flex"
+            >
+              <Phone className="size-3.5" />
+              {member.phone}
+            </a>
+          )}
 
-        {options ? (
-          <RoleSelect profileId={member.profile_id} role={member.role} options={options} />
-        ) : (
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${ROLE_STYLES[member.role]}`}>
-            {t.roles[member.role]}
-          </span>
-        )}
+          {options ? (
+            <RoleSelect profileId={member.profile_id} role={member.role} options={options} />
+          ) : (
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${ROLE_STYLES[member.role]}`}>
+              {t.roles[member.role]}
+            </span>
+          )}
 
-        {canMove(member) && moveOffices.length > 0 && (
-          <MoveButton
-            profileId={member.profile_id}
-            name={name}
-            officeId={placeOf(member).officeId}
-            teamId={placeOf(member).teamId}
-            offices={moveOffices}
-            teams={moveTeams}
-            allowNoOffice={isOwner}
-          />
-        )}
+          {canMove(member) && moveOffices.length > 0 && (
+            <MoveButton
+              profileId={member.profile_id}
+              name={name}
+              officeId={placeOf(member).officeId}
+              teamId={placeOf(member).teamId}
+              offices={moveOffices}
+              teams={moveTeams}
+              allowNoOffice={isOwner}
+            />
+          )}
 
-        {canRemove(member) && (
-          <RemoveMemberButton
-            profileId={member.profile_id}
-            name={name}
-            defaultReassign={session.userId}
-            colleagues={colleagues.filter((c) => c.id !== member.profile_id)}
-          />
-        )}
+          {member.profile_id !== session.userId && iLead(member) && (
+            <HandOverButton
+              profileId={member.profile_id}
+              name={name}
+              colleagues={[
+                { id: session.userId, name: fmt(t.handover.me, { name: nameById.get(session.userId) ?? "" }) },
+                ...members
+                  .filter((m) => m.profile_id !== member.profile_id && m.profile_id !== session.userId && iLead(m))
+                  .map((m) => ({ id: m.profile_id, name: nameOf(m) })),
+              ]}
+            />
+          )}
+
+          {canRemove(member) && (
+            <RemoveMemberButton
+              profileId={member.profile_id}
+              name={name}
+              defaultReassign={session.userId}
+              colleagues={colleagues.filter((c) => c.id !== member.profile_id)}
+            />
+          )}
+        </div>
       </li>
     );
   };

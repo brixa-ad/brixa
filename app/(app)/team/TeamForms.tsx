@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
-import { ArrowRightLeft, Pencil, Plus, Trash2, UserMinus } from "lucide-react";
+import { ArrowRightLeft, Forward, Pencil, Plus, Trash2, UserMinus } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import type { Office, Team } from "@/lib/hierarchy";
@@ -10,6 +10,7 @@ import type { Role } from "@/lib/types";
 import {
   deleteOffice,
   deleteTeam,
+  handOverWork,
   inviteMember,
   moveMember,
   removeMember,
@@ -18,6 +19,7 @@ import {
   saveOffice,
   saveTeam,
   setMemberRole,
+  type HandOverPart,
   type TeamState,
 } from "./actions";
 
@@ -583,6 +585,99 @@ export function RemoveMemberButton({
             ))}
           </select>
         </label>
+        {error && <p className="text-sm font-medium text-danger">{t.errors.generic}</p>}
+      </Dialog>
+    </>
+  );
+}
+
+/** Hand a broker's work (the parts ticked) to a colleague; the broker stays in the agency. */
+export function HandOverButton({
+  profileId,
+  name,
+  colleagues,
+}: {
+  profileId: string;
+  name: string;
+  /** whom the work may go to (the one handing over first) */
+  colleagues: { id: string; name: string }[];
+}) {
+  const { t } = useI18n();
+  const H = t.handover;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [to, setTo] = useState(colleagues[0]?.id ?? "");
+  const [parts, setParts] = useState<Set<HandOverPart>>(new Set(["clients", "properties", "deals", "tasks"]));
+  const [done, setDone] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const ALL: HandOverPart[] = ["clients", "properties", "deals", "tasks"];
+
+  function run() {
+    setError(false);
+    setDone(null);
+    startTransition(async () => {
+      const result = await handOverWork(profileId, to, [...parts]);
+      if (!result.ok || !result.counts) return setError(true);
+      const c = result.counts;
+      const list = ALL.filter((p) => c[p] > 0).map((p) => `${H[p]}: ${c[p]}`);
+      setDone(list.length > 0 ? fmt(H.done, { parts: list.join(", ") }) : H.nothing);
+    });
+  }
+
+  return (
+    <>
+      <button type="button" title={H.button} aria-label={H.button} onClick={() => dialogRef.current?.showModal()} className={iconButton}>
+        <Forward className="size-4" />
+      </button>
+      <Dialog
+        dialogRef={dialogRef}
+        title={fmt(H.title, { name })}
+        footer={
+          <>
+            <button type="button" onClick={() => dialogRef.current?.close()} className={buttonClass.secondary}>
+              {done ? t.common.back : t.common.cancel}
+            </button>
+            {!done && (
+              <button type="button" disabled={pending || parts.size === 0 || !to} onClick={run} className={buttonClass.primary}>
+                <Forward className="size-4" />
+                {pending ? t.common.loading : H.run}
+              </button>
+            )}
+          </>
+        }
+      >
+        <p className="text-sm text-muted">{fmt(H.hint, { name })}</p>
+        <div className="space-y-2">
+          {ALL.map((p) => (
+            <label key={p} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={parts.has(p)}
+                onChange={() =>
+                  setParts((current) => {
+                    const next = new Set(current);
+                    if (next.has(p)) next.delete(p);
+                    else next.add(p);
+                    return next;
+                  })
+                }
+                className="size-4 accent-[var(--accent)]"
+              />
+              {H[p]}
+            </label>
+          ))}
+        </div>
+        <label className={labelClass}>
+          {H.to}
+          <select value={to} onChange={(e) => setTo(e.target.value)} className={`${inputClass} mt-1.5`}>
+            {colleagues.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {done && <p className="text-sm font-medium text-success">{done}</p>}
         {error && <p className="text-sm font-medium text-danger">{t.errors.generic}</p>}
       </Dialog>
     </>

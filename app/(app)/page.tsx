@@ -19,6 +19,7 @@ import { addDays, sofiaToday, TIME_ZONE } from "@/lib/dates";
 import { getCalendarEntries, monthRange } from "@/lib/calendar";
 import { formatDayMonth, formatPrice } from "@/lib/format";
 import { fmt, locale } from "@/lib/i18n/dictionaries";
+import { GroupGoalsCard } from "@/components/home/GroupGoalsCard";
 import { getI18n } from "@/lib/i18n/server";
 import { getMyPeople } from "@/lib/lookups";
 import { quoteOfTheDay } from "@/lib/quotes";
@@ -44,7 +45,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const today = sofiaToday();
   const supabase = await createClient();
 
-  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }, upcoming, players, planInputs] = await Promise.all([
+  const [{ t, lang }, day, team, members, numbers, boards, { count: toConfirm }, upcoming, players, planInputs, { data: goalRows }] = await Promise.all([
     getI18n(),
     getMyDay(session.userId, today),
     session.isManager ? getTeamDay(session.organizationId, today) : Promise.resolve(null),
@@ -62,7 +63,13 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     getUpcomingSteps(session, today),
     getPlayers(session.organizationId, today),
     getPlanInputs(session, today),
+    // the month's goals of the agency, offices and teams
+    supabase.rpc("group_goal_progress", { target_org: session.organizationId, goal_month: today }),
   ]);
+  // mine: the agency's, my office's, my team's
+  const groupGoals = ((goalRows ?? []) as { scope: "agency" | "office" | "team"; scope_id: string | null; name: string; target: number; reached: number; people: number }[])
+    .filter((g) => g.scope === "agency" || (g.scope === "office" && g.scope_id === session.officeId) || (g.scope === "team" && g.scope_id === session.teamId))
+    .map((g) => ({ scope: g.scope, name: g.name, target: Number(g.target), reached: Number(g.reached), people: g.people }));
   // the game: my level and streak, today's and this week's missions
   const me = players.get(session.userId);
   const month = monthRange(today);
@@ -389,6 +396,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       )}
 
       {brixReady && <MorningBrief initial={brief?.content ?? null} />}
+
+      <GroupGoalsCard goals={groupGoals} t={t} lang={lang} />
 
       {/* ---- the game: today's and this week's missions, and the ranking with the targets ---- */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">

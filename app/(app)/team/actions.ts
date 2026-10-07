@@ -367,3 +367,79 @@ export async function saveGoals(rows: GoalRow[]): Promise<{ ok: boolean }> {
   revalidatePath("/team/goals");
   return { ok: true };
 }
+
+export type GroupGoalRow = { scope: "agency" | "office" | "team"; scopeId: string | null; target: number | null };
+
+/** A leader sets the month's commission goals of the agency, offices or teams they may (an empty one is removed). */
+export async function saveGroupGoals(month: string, rows: GroupGoalRow[]): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isManager || !/^\d{4}-\d{2}-01$/.test(month) || !Array.isArray(rows) || rows.length > 200) return { ok: false };
+  const supabase = await createClient();
+  let ok = true;
+  for (const row of rows) {
+    if (!["agency", "office", "team"].includes(row.scope) || (row.scope === "agency") !== (row.scopeId === null)) return { ok: false };
+    if (row.target !== null && !(Number.isFinite(row.target) && row.target > 0 && row.target < 1_000_000_000)) return { ok: false };
+    // the one goal of this scope and month
+    const find = () => {
+      const q = supabase
+        .from("group_goals")
+        .select("id")
+        .eq("organization_id", session.organizationId)
+        .eq("scope", row.scope)
+        .eq("month", month);
+      return row.scopeId === null ? q.is("scope_id", null) : q.eq("scope_id", row.scopeId);
+    };
+    const { data: existing } = await find().maybeSingle();
+    if (row.target === null) {
+      if (existing) {
+        const { error } = await supabase.from("group_goals").delete().eq("id", existing.id);
+        if (error) ok = false;
+      }
+      continue;
+    }
+    const { error } = existing
+      ? await supabase.from("group_goals").update({ target: row.target, updated_by: session.userId, updated_at: new Date().toISOString() }).eq("id", existing.id)
+      : await supabase.from("group_goals").insert({
+          organization_id: session.organizationId,
+          scope: row.scope,
+          scope_id: row.scopeId,
+          month,
+          target: row.target,
+        });
+    if (error) {
+      console.error("Saving a group goal failed:", error.message);
+      ok = false;
+    }
+  }
+  revalidatePath("/team/goals");
+  revalidatePath("/");
+  return { ok };
+}
+
+export type HandOverPart = "clients" | "properties" | "deals" | "tasks";
+
+/** A leader hands a broker's work (the parts chosen) to themself or to someone they lead. */
+export async function handOverWork(
+  fromProfile: string,
+  toProfile: string,
+  what: HandOverPart[]
+): Promise<{ ok: boolean; counts?: Record<HandOverPart, number> }> {
+  const session = await getSession();
+  const parts = (what ?? []).filter((w): w is HandOverPart => ["clients", "properties", "deals", "tasks"].includes(w));
+  if (!session?.isManager || parts.length === 0 || !fromProfile || !toProfile || fromProfile === toProfile) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("hand_over_work", {
+    target_org: session.organizationId,
+    from_profile: fromProfile,
+    to_profile: toProfile,
+    what: parts,
+  });
+  if (error) {
+    console.error("Handing over failed:", error.message);
+    return { ok: false };
+  }
+  revalidatePath("/team");
+  revalidatePath("/clients");
+  revalidatePath("/properties");
+  return { ok: true, counts: data as Record<HandOverPart, number> };
+}

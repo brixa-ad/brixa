@@ -33,6 +33,7 @@ export const NAV_KEYS = [
   "closedDeals",
   "team",
   "goals",
+  "teamReport",
   "notifications",
   "profile",
   "settings",
@@ -76,6 +77,7 @@ export const NAV_HREF: Record<NavKey, string> = {
   closedDeals: "/closed-deals",
   team: "/team",
   goals: "/team/goals",
+  teamReport: "/team/report",
   notifications: "/notifications",
   profile: "/profile",
   settings: "/settings",
@@ -101,7 +103,7 @@ export const MENU_TABS: Record<MenuKey, NavKey[][]> = {
   deals: [["deals"], ["closedDeals"]],
   insights: [["stats", "statsBroker"], ["statsMarket", "market"]],
   path: [["plan"], ["business"], ["territory"]],
-  team: [["team"], ["goals"]],
+  team: [["team"], ["teamReport"], ["goals"]],
   brix: [["brix"]],
   notifications: [["notifications"]],
   profile: [["profile"]],
@@ -124,7 +126,7 @@ export const DEFAULT_BOTTOM_NAV: MenuKey[] = ["home", "day", "clients", "propert
 export function navKeysFor(isManager: boolean, brix = false, solo = false): NavKey[] {
   return NAV_KEYS.filter(
     (key) =>
-      ((key !== "goals" && key !== "stats") || isManager) &&
+      ((key !== "goals" && key !== "stats" && key !== "teamReport") || isManager) &&
       (key !== "brix" || brix) &&
       // working alone: no team (own targets are set in My plan), no free contacts, no colleagues
       !(solo && (key === "team" || key === "goals" || key === "contacts" || key === "colleaguesProperties"))

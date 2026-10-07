@@ -49,6 +49,8 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   free_contact: { icon: Inbox, tone: "bg-accent-soft text-accent-fg" },
   client_assigned: { icon: UserPlus, tone: "bg-accent-soft text-accent-fg" },
   imported: { icon: FileUp, tone: "bg-accent-soft text-accent-fg" },
+  team_week: { icon: ClipboardList, tone: "bg-accent-soft text-accent-fg" },
+  work_handed: { icon: Handshake, tone: "bg-accent-soft text-accent-fg" },
   contact_claimed: { icon: UserPlus, tone: "bg-success/10 text-success" },
   follow_ups_today: { icon: CalendarCheck, tone: "bg-accent-soft text-accent-fg" },
   morning_brief: { icon: Sparkles, tone: "bg-accent-soft text-accent-fg" },

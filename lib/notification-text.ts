@@ -16,6 +16,10 @@ export type NotificationData = {
   steps?: number;
   /** an import: clients or properties */
   what?: string;
+  /** work handed over */
+  clients?: number;
+  properties?: number;
+  deals?: number;
 };
 
 /** Where tapping a notification leads: the morning brief opens the day's window on the home screen. */
@@ -82,6 +86,20 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "team_week":
+      return fmt(t.notifications.team_week, vars);
+    case "work_handed":
+      return fmt(t.notifications.work_handed, {
+        ...vars,
+        parts: [
+          data.clients ? fmt(t.notifications.handed_clients, { n: data.clients }) : "",
+          data.properties ? fmt(t.notifications.handed_properties, { n: data.properties }) : "",
+          data.deals ? fmt(t.notifications.handed_deals, { n: data.deals }) : "",
+          data.tasks ? fmt(t.notifications.handed_tasks, { n: data.tasks }) : "",
+        ]
+          .filter(Boolean)
+          .join(", "),
+      });
     case "imported":
       return fmt(data.what === "properties" ? t.notifications.imported_properties : t.notifications.imported_clients, vars);
     case "morning_brief": {

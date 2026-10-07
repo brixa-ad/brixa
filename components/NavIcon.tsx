@@ -1,4 +1,4 @@
-import {
+import { ClipboardList,
   ArchiveX,
   BadgeCheck,
   BarChart3,
@@ -71,6 +71,7 @@ const ICONS: Record<NavKey | MenuKey, React.ComponentType<LucideProps>> = {
   closedDeals: BadgeCheck,
   team: UsersRound,
   goals: Target,
+  teamReport: ClipboardList,
   notifications: Bell,
   profile: UserRound,
   settings: Settings,
