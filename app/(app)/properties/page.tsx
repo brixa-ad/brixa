@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, Plus } from "lucide-react";
+import { FileUp, Building2, Plus } from "lucide-react";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PropertyFilters } from "@/components/property/PropertyFilters";
@@ -160,10 +160,16 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
         title={title}
         subtitle={t.list.subtitle}
         actions={
-          <Link href="/properties/new" className={buttonClass.primary}>
-            <Plus className="size-4" />
-            {t.list.newProperty}
-          </Link>
+          <>
+            <Link href="/import?what=properties" className={buttonClass.secondary}>
+              <FileUp className="size-4" />
+              {t.importer.link}
+            </Link>
+            <Link href="/properties/new" className={buttonClass.primary}>
+              <Plus className="size-4" />
+              {t.list.newProperty}
+            </Link>
+          </>
         }
       />
 

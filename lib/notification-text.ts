@@ -14,6 +14,8 @@ export type NotificationData = {
   tasks?: number;
   followups?: number;
   steps?: number;
+  /** an import: clients or properties */
+  what?: string;
 };
 
 /** Where tapping a notification leads: the morning brief opens the day's window on the home screen. */
@@ -80,6 +82,8 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "imported":
+      return fmt(data.what === "properties" ? t.notifications.imported_properties : t.notifications.imported_clients, vars);
     case "morning_brief": {
       const parts = [
         data.tasks ? fmt(t.notifications.morning_tasks, { count: data.tasks }) : "",

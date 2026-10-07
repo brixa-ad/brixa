@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Metadata } from "next";
+import { FileUp } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { FollowUpRulesForm } from "@/components/followup/FollowUpRulesForm";
@@ -6,7 +8,7 @@ import { AgencySettingsForm } from "@/components/settings/AgencySettingsForm";
 import { SiteSettingsForm } from "@/components/settings/SiteSettingsForm";
 import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Card } from "@/components/ui/form";
+import { Card, buttonClass } from "@/components/ui/form";
 import { getAgency } from "@/lib/agency";
 import { TemplateEditor } from "@/components/marketing/TemplateEditor";
 import { cleanTemplate } from "@/lib/marketing";
@@ -108,6 +110,13 @@ export default async function SettingsPage() {
               />
             </Card>
           )}
+
+          <Card title={t.importer.title} description={t.importer.subtitle} id="import">
+            <Link href="/import" className={buttonClass.secondary}>
+              <FileUp className="size-4" />
+              {t.importer.link}
+            </Link>
+          </Card>
 
           <Card title={t.settings.appearance}>
             <dl className="space-y-4 text-sm">

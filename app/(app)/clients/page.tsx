@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Phone, Plus, UserRound, Users } from "lucide-react";
+import { FileUp, Phone, Plus, UserRound, Users } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ClientFilters } from "@/components/client/ClientFilters";
@@ -116,10 +116,16 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
         title={{ buyer: t.nav.buyers, seller: t.nav.sellers, tenant: t.nav.tenants, landlord: t.nav.landlords, investor: t.clients.title, "": t.clients.title }[type]}
         subtitle={session.isManager ? t.clients.subtitleManager : t.clients.subtitleBroker}
         actions={
-          <Link href="/clients/new" className={buttonClass.primary}>
-            <Plus className="size-4" />
-            {t.clients.newClient}
-          </Link>
+          <>
+            <Link href="/import" className={buttonClass.secondary}>
+              <FileUp className="size-4" />
+              {t.importer.link}
+            </Link>
+            <Link href="/clients/new" className={buttonClass.primary}>
+              <Plus className="size-4" />
+              {t.clients.newClient}
+            </Link>
+          </>
         }
       />
 
