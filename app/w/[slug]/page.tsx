@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Globe, Mail, MapPin, Phone } from "lucide-react";
+import { Globe, Mail, MapPin, Phone, Star } from "lucide-react";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import { formatNumber, formatPrice } from "@/lib/format";
@@ -24,19 +24,26 @@ export async function generateMetadata({ params }: PageProps<"/w/[slug]">): Prom
 /** The agency's (or the solo broker's) own website: every active listing, the team, and "call me back". */
 export default async function SitePage({ params, searchParams }: PageProps<"/w/[slug]">) {
   const { slug } = await params;
-  const { op, town } = await searchParams;
+  const { op, town, good } = await searchParams;
   const [site, { t, lang }] = await Promise.all([getSite(slug), getI18n()]);
   if (!site) notFound();
 
   const operation = op === "sale" || op === "rent" ? op : null;
   const towns = [...new Set(site.listings.map((l) => l.settlement).filter((s): s is string => Boolean(s)))].sort((a, b) => a.localeCompare(b, "bg"));
-  const shown = site.listings.filter((l) => (!operation || l.operation === operation) && (typeof town !== "string" || !town || l.settlement === town));
-  const href = (next: { op?: string | null; town?: string | null }) => {
+  // "Good offers": the listings with 4–5 stars for their market
+  const goodCount = site.listings.filter((l) => l.stars !== null).length;
+  const goodOnly = good === "1" && goodCount > 0;
+  const shown = site.listings.filter(
+    (l) => (!operation || l.operation === operation) && (typeof town !== "string" || !town || l.settlement === town) && (!goodOnly || l.stars !== null)
+  );
+  const href = (next: { op?: string | null; town?: string | null; good?: boolean }) => {
     const qs = new URLSearchParams();
     const o = next.op === undefined ? operation : next.op;
     const tw = next.town === undefined ? (typeof town === "string" ? town : null) : next.town;
+    const g = next.good === undefined ? goodOnly : next.good;
     if (o) qs.set("op", o);
     if (tw) qs.set("town", tw);
+    if (g) qs.set("good", "1");
     const s = qs.toString();
     return s ? `/w/${slug}?${s}` : `/w/${slug}`;
   };
@@ -79,6 +86,12 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
           <Link href={href({ op: "rent" })} className={chip(operation === "rent")}>
             {t.site.forRent}
           </Link>
+          {goodCount > 0 && (
+            <Link href={href({ good: !goodOnly })} className={`${chip(goodOnly)} inline-flex items-center gap-1.5`}>
+              <Star className={`size-3.5 ${goodOnly ? "fill-current" : "fill-amber-400 text-amber-400"}`} />
+              {t.site.goodOffers}
+            </Link>
+          )}
           {towns.length > 1 &&
             towns.map((tw) => (
               <Link key={tw} href={href({ town: town === tw ? null : tw })} className={chip(town === tw)}>
@@ -112,6 +125,7 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
                     offMarket: false,
                     broker: null,
                     phone: agency.phone,
+                    rating: l.stars ? { stars: l.stars, label: t.rating.labels[l.stars], title: fmt(t.rating.stars, { n: l.stars }) } : null,
                   }}
                 />
               </li>

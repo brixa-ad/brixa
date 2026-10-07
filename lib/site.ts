@@ -3,6 +3,7 @@ import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
 import { PHOTO_BUCKET } from "./photos";
+import type { Stars } from "./rating";
 import { anonymous, goodStars, type SharedListing } from "./share";
 import { parseEstimate } from "./yield";
 
@@ -23,6 +24,8 @@ export type SiteListing = {
   settlement: string | null;
   neighborhood: string | null;
   photoUrl: string | null;
+  /** 4 or 5: a good offer for its market (lower never comes) */
+  stars: Stars | null;
 };
 
 export type Site = {
@@ -48,7 +51,7 @@ export const getSite = cache(async (slug: string): Promise<Site | null> => {
   if (error || !data) return null;
   const raw = data as {
     agency: Site["agency"] & { logo_path: string | null };
-    listings: (Omit<SiteListing, "photoUrl"> & { photo: string | null })[];
+    listings: (Omit<SiteListing, "photoUrl" | "stars"> & { photo: string | null; stars?: unknown })[];
     team: (Omit<Site["team"][number], "avatarUrl"> & { avatar_path: string | null })[];
   };
 
@@ -62,8 +65,9 @@ export const getSite = cache(async (slug: string): Promise<Site | null> => {
   const { logo_path, ...agency } = raw.agency;
   return {
     agency: { ...agency, logoUrl: logoUrl(logo_path) },
-    listings: raw.listings.map(({ photo, ...l }) => ({
+    listings: raw.listings.map(({ photo, stars, ...l }) => ({
       ...l,
+      stars: goodStars({ stars }),
       price: l.price === null ? null : Number(l.price),
       area: l.area === null ? null : Number(l.area),
       photoUrl: photo ? (urls.get(photo) ?? null) : null,
