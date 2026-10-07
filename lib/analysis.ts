@@ -48,6 +48,11 @@ export const getAnalysis = cache(async (propertyId: string): Promise<Analysis | 
     console.error("The analysis failed:", error.message);
     return null;
   }
+  return parseAnalysis(data);
+});
+
+/** The analysis as the database sends it (property_analysis, shared_analysis). */
+export function parseAnalysis(data: unknown): Analysis | null {
   const facts = toMarketFacts(data);
   if (!data || !facts) return null;
   const raw = data as {
@@ -86,4 +91,4 @@ export const getAnalysis = cache(async (propertyId: string): Promise<Analysis | 
       sameNeighborhood: Boolean(s.same_neighborhood),
     })),
   };
-});
+}

@@ -116,3 +116,56 @@ export async function stopOwnerReport(reportId: string): Promise<{ ok: boolean }
   revalidatePath(`/properties/${data.property_id}`);
   return { ok: true };
 }
+
+/** A link to the listing's market analysis for its owner or a buyer (noted in the client's history). */
+export async function createAnalysisShare(
+  propertyId: string,
+  audience: "owner" | "buyer",
+  clientId: string | null
+): Promise<{ ok: true; token: string } | { ok: false }> {
+  const session = await getSession();
+  if (!session || (audience !== "owner" && audience !== "buyer")) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analysis_shares")
+    .insert({
+      organization_id: session.organizationId,
+      property_id: propertyId,
+      audience,
+      client_id: clientId,
+      created_by: session.userId,
+    })
+    .select("token, property:properties(title)")
+    .single();
+  if (error || !data) {
+    console.error("Sending an analysis failed:", error?.message ?? "no row");
+    return { ok: false };
+  }
+  if (clientId) {
+    const title = (data.property as unknown as { title: string } | null)?.title ?? "";
+    await supabase.from("activities").insert({
+      organization_id: session.organizationId,
+      profile_id: session.userId,
+      type: "message",
+      client_id: clientId,
+      property_id: propertyId,
+      note: `📊 ${title}`,
+    });
+    revalidatePath(`/clients/${clientId}`);
+  }
+  revalidatePath(`/properties/${propertyId}`);
+  return { ok: true, token: data.token };
+}
+
+export async function stopAnalysisShare(id: string): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analysis_shares")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("property_id")
+    .maybeSingle();
+  if (error || !data) return { ok: false };
+  revalidatePath(`/properties/${data.property_id}`);
+  return { ok: true };
+}

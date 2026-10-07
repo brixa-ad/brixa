@@ -9,11 +9,11 @@ import { whatsappHref } from "@/lib/phone";
 
 export { Modal };
 
-export type LinkKind = "listing" | "report" | "search";
+export type LinkKind = "listing" | "report" | "search" | "analysis";
 
 /** The public page a token opens: /p/… a shared listing, /r/… an owner's report, /s/… a shared search. */
 export const linkUrl = (kind: LinkKind, token: string) =>
-  `${window.location.origin}/${kind === "report" ? "r" : kind === "search" ? "s" : "p"}/${token}`;
+  `${window.location.origin}/${kind === "report" ? "r" : kind === "search" ? "s" : kind === "analysis" ? "a" : "p"}/${token}`;
 
 /** The link, ready to copy or send by Viber, WhatsApp, email or the phone's own share sheet. */
 export function SendLink({

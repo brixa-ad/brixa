@@ -18,6 +18,8 @@ const PUBLIC_PATHS = [
   "/api/share",
   // the owner's report: the owner has the link
   "/r",
+  // a market analysis sent to a client
+  "/a",
   // a client's search shared with colleagues
   "/s",
   // the open house sign-in (the QR code at the door)

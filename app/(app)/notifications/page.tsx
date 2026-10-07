@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
+import { Eye, AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -50,6 +50,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   client_assigned: { icon: UserPlus, tone: "bg-accent-soft text-accent-fg" },
   imported: { icon: FileUp, tone: "bg-accent-soft text-accent-fg" },
   team_week: { icon: ClipboardList, tone: "bg-accent-soft text-accent-fg" },
+  analysis_viewed: { icon: Eye, tone: "bg-success/10 text-success" },
   work_handed: { icon: Handshake, tone: "bg-accent-soft text-accent-fg" },
   contact_claimed: { icon: UserPlus, tone: "bg-success/10 text-success" },
   follow_ups_today: { icon: CalendarCheck, tone: "bg-accent-soft text-accent-fg" },

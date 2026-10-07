@@ -16,6 +16,8 @@ export type NotificationData = {
   steps?: number;
   /** an import: clients or properties */
   what?: string;
+  /** an analysis opened again (another day) */
+  again?: boolean;
   /** work handed over */
   clients?: number;
   properties?: number;
@@ -86,6 +88,8 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "analysis_viewed":
+      return fmt(data.again ? t.notifications.analysis_viewed_again : t.notifications.analysis_viewed, { ...vars, actor: data.actor ?? t.notifications.someone });
     case "team_week":
       return fmt(t.notifications.team_week, vars);
     case "work_handed":

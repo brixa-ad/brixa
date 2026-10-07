@@ -133,6 +133,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     agency,
     { data: rentRow },
     analysis,
+    { data: analysisShareRows },
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -217,6 +218,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       kind === "sale" && listing ? supabase.rpc("property_rent_estimate", { target_property: id }) : Promise.resolve({ data: null }),
       // how it stands on the market: the stars, the comparables
       listing ? getAnalysis(id) : Promise.resolve(null),
+      // the analyses sent to clients
+      listing
+        ? supabase
+            .from("analysis_shares")
+            .select("id, audience, views, last_viewed_at, created_at, revoked_at, client:clients(full_name)")
+            .eq("property_id", id)
+            .order("created_at", { ascending: false })
+            .limit(20)
+        : Promise.resolve({ data: [] }),
     ]);
   const market = marketSnapshot ?? analysis?.facts ?? null;
   const rentEstimate = parseEstimate(rentRow);
@@ -698,7 +708,35 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             />
             </div>
           )}
-          {analysis && <AnalysisPanel analysis={analysis} propertyId={property.id} canEdit={canEdit} t={t} lang={lang} />}
+          {analysis && (
+            <AnalysisPanel
+              analysis={analysis}
+              propertyId={property.id}
+              canEdit={canEdit}
+              t={t}
+              lang={lang}
+              title={property.title}
+              clients={shareClients}
+              ownerClientId={property.owner?.id ?? null}
+              shares={((analysisShareRows ?? []) as unknown as {
+                id: string;
+                audience: "owner" | "buyer";
+                views: number;
+                last_viewed_at: string | null;
+                created_at: string;
+                revoked_at: string | null;
+                client: { full_name: string } | null;
+              }[]).map((r) => ({
+                id: r.id,
+                audience: r.audience,
+                client: r.client?.full_name ?? null,
+                views: r.views,
+                lastViewedAt: r.last_viewed_at,
+                createdAt: r.created_at,
+                revoked: r.revoked_at !== null,
+              }))}
+            />
+          )}
           {kind === "sale" && listing && (investment || canEdit) && (
             <YieldPanel
               y={investment}

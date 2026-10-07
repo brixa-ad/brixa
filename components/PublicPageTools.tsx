@@ -27,7 +27,7 @@ function beacon(body: object) {
  * listing it also tells the broker how long the page was looked at, how many photos were seen and
  * the taps on call / Viber / WhatsApp / e-mail.
  */
-export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "report" }) {
+export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "report" | "analysis" }) {
   useEffect(() => {
     const key = `brixa.viewed.${token}`;
     const read = (k: string) => {
@@ -45,7 +45,7 @@ export function ViewBeacon({ token, kind }: { token: string; kind: "listing" | "
     const fresh = !read(key);
     write(key, "1");
 
-    if (kind === "report") {
+    if (kind === "report" || kind === "analysis") {
       if (fresh) {
         void fetch("/api/share/view", {
           method: "POST",

@@ -1,3 +1,4 @@
+import { markAnalysisViewed } from "@/lib/analysis-share";
 import { markReportViewed } from "@/lib/owner-report";
 import { markShareViewed } from "@/lib/share";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims) {
     if (body.kind === "report") await markReportViewed(body.token);
+    else if (body.kind === "analysis") await markAnalysisViewed(body.token);
     else {
       // the opening's id: the page adds its time to it
       const id = await markShareViewed(body.token);

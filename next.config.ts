@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // the PDF analysis needs its fonts on the server
   outputFileTracingIncludes: {
     "/properties/\\[id\\]/analysis": ["./lib/pdf/fonts/**/*"],
+    "/a/\\[token\\]/pdf": ["./lib/pdf/fonts/**/*"],
   },
   turbopack: {
     // The parent CRM folder has its own package-lock.json — pin the root to this project.

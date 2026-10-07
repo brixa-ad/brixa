@@ -6,7 +6,9 @@ import type { Analysis } from "@/lib/analysis";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { AiComparables } from "./AiComparables";
+import { AnalysisSendButton, AnalysisShareList, type AnalysisShareRow } from "./AnalysisShare";
 import { ComparablesEditor } from "./ComparablesEditor";
+import type { ShareClient } from "./ShareDialog";
 
 /** "8% над пазара" / "12% под пазара" / "В рамките на пазара". */
 export function diffText(diff: number, t: Dictionary, lang: Lang) {
@@ -25,12 +27,21 @@ export function AnalysisPanel({
   canEdit,
   t,
   lang,
+  title,
+  clients,
+  ownerClientId,
+  shares,
 }: {
   analysis: Analysis;
   propertyId: string;
   canEdit: boolean;
   t: Dictionary;
   lang: Lang;
+  title: string;
+  /** whom a link may be for */
+  clients: ShareClient[];
+  ownerClientId: string | null;
+  shares: AnalysisShareRow[];
 }) {
   const { facts, rating } = analysis;
   const rent = facts.operation === "rent";
@@ -91,22 +102,33 @@ export function AnalysisPanel({
       </div>
 
       {rating && (
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-4">
-          <a href={`/properties/${propertyId}/analysis?for=owner`} className={buttonClass.primary}>
-            <FileDown className="size-4" />
-            {t.rating.pdfOwner}
-          </a>
-          {rating.stars >= 4 ? (
-            <a href={`/properties/${propertyId}/analysis?for=buyer`} className={buttonClass.secondary}>
+        <div className="mt-5 border-t border-line-soft pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <AnalysisSendButton propertyId={propertyId} title={title} audience="owner" clients={clients} defaultClientId={ownerClientId} primary />
+            )}
+            <a href={`/properties/${propertyId}/analysis?for=owner`} className={buttonClass.secondary}>
               <FileDown className="size-4" />
-              {t.rating.pdfBuyer}
+              {t.rating.pdfOwner}
             </a>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-sm text-muted">
-              <Lock className="size-3.5" />
-              {t.rating.pdfBuyerLocked}
-            </span>
-          )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {rating.stars >= 4 ? (
+              <>
+                <AnalysisSendButton propertyId={propertyId} title={title} audience="buyer" clients={clients} />
+                <a href={`/properties/${propertyId}/analysis?for=buyer`} className={buttonClass.secondary}>
+                  <FileDown className="size-4" />
+                  {t.rating.pdfBuyer}
+                </a>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+                <Lock className="size-3.5" />
+                {t.rating.pdfBuyerLocked}
+              </span>
+            )}
+          </div>
+          <AnalysisShareList rows={shares} />
         </div>
       )}
     </Panel>
