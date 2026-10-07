@@ -60,7 +60,7 @@ export default async function SharedSearchPage({ params }: PageProps<"/s/[token]
 
       <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">{t.searchShare.criteria}</h2>
-        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           {rows.map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs text-muted">{label}</dt>

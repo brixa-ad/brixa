@@ -49,7 +49,7 @@ export function ProfileForm({ initial }: { initial: ProfileInput }) {
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Field label={t.profile.fullName} required error={errorText("fullName")}>
           {(props) => (
             <input

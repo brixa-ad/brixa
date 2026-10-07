@@ -105,7 +105,7 @@ export function GoalsForm({ people, initial }: { people: Person[]; initial: Reco
                 </label>
               ))}
             </div>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {BONUSES.map((field) => (
                 <label key={field} className="block text-[11px] font-medium text-muted">
                   {bonusLabels[field]}

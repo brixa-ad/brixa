@@ -65,7 +65,7 @@ export default async function BusinessPage() {
         ]}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ---- pay yourself first: towards the goal ---- */}
         <Card title={<CardTitle icon={PiggyBank}>{t.business.saved}</CardTitle>}>
           {goal ? (

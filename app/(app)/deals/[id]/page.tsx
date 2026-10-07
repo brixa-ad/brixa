@@ -118,7 +118,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
           </Card>
 
           <Card>
-            <dl className="grid gap-5 text-sm sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted">{deal.status === "won" ? t.deals.commission : t.deals.expected}</dt>
                 <dd className="mt-1 text-2xl font-bold text-accent-fg">

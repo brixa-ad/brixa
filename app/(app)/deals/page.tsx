@@ -137,7 +137,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
         </div>
       ) : tab === "open" ? (
         // One column per stage (stacked on the phone).
-        <div className="grid gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           {DEAL_STAGES.map((stage) => {
             const list = byStage.get(stage) ?? [];
             if (list.length === 0) return <div key={stage} className="hidden lg:block" />;
@@ -155,7 +155,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
           })}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {deals.map((deal) => (
             <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={showBroker} from={back?.id} />
           ))}

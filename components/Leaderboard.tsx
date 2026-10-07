@@ -174,7 +174,7 @@ export function Leaderboard({
       </header>
 
       {missions.some((m) => m.target > 0 || m.bonus) && (
-        <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {missions
             .filter((m) => m.target > 0 || m.bonus)
             .map((mission) => {

@@ -74,7 +74,7 @@ export function PartnerPicker({
           emptyText={t.partners.noMatch}
         />
       ) : (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <input
             value={draft.full_name}
             onChange={(e) => pickNew({ ...draft, full_name: e.target.value })}

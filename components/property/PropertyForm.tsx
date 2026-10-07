@@ -253,7 +253,7 @@ export function PropertyForm({
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field label={t.form.category} required error={errorText("categoryId")}>
                   {(props) => (
                     <select
@@ -348,7 +348,7 @@ export function PropertyForm({
 
           {/* ---------------- Specs ---------------- */}
           <Card title={t.form.sectionSpecs} id="specs">
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <NumberField label={t.form.area} value={values.area} onChange={(v) => set("area", v)} error={errorText("area")} decimal />
               {showBuilding && (
                 <>
@@ -453,7 +453,7 @@ export function PropertyForm({
 
           {/* ---------------- Price ---------------- */}
           <Card title={t.form.sectionPrice} id="price">
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
               <NumberField
                 label={t.form.price}
                 required={values.operationType === "sale" || values.operationType === "rent"}
@@ -506,7 +506,7 @@ export function PropertyForm({
           {/* ---------------- Contract & description ---------------- */}
           <Card title={t.form.sectionContract} id="contract">
             <div className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field
                   label={t.form.broker}
                   error={errorText("brokerId")}

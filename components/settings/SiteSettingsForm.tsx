@@ -45,7 +45,7 @@ export function SiteSettingsForm({ initial }: { initial: { enabled: boolean; slu
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40))}
             placeholder="moyata-agencia"
-            className="min-w-0 flex-1 bg-transparent py-2 pr-3 outline-none"
+            className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-base outline-none sm:text-sm"
           />
         </div>
         <span className="mt-1 block text-[11px] text-subtle">{t.site.addressHint}</span>

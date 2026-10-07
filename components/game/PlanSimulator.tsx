@@ -73,7 +73,7 @@ export function PlanSimulator({ inputs }: { inputs: Inputs }) {
     : [];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* ---- the goal ---- */}
       <section className="rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6">
         <h2 className="text-base font-semibold">{t.game.planTitle}</h2>
@@ -208,7 +208,7 @@ export function PlanSimulator({ inputs }: { inputs: Inputs }) {
             </button>
           )}
         </div>
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           {RATE_KEYS.map((k) => (
             <label key={k} className="block">
               <span className="flex items-baseline justify-between gap-3 text-sm">

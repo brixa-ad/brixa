@@ -156,7 +156,7 @@ export function MarketPriceEditor({
             onChange={(e) => void searchTowns(e.target.value)}
             placeholder={t.market.otherTown}
             aria-label={t.market.otherTown}
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none"
+            className="min-w-0 flex-1 bg-transparent py-2 text-base outline-none sm:text-sm"
           />
           {searching && <Loader2 className="size-4 animate-spin text-subtle" />}
         </label>
@@ -177,7 +177,7 @@ export function MarketPriceEditor({
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block text-xs font-medium text-muted">
           {t.market.town}
           <select value={townId} onChange={(e) => chooseTown(e.target.value)} className={`${inputClass} mt-1`}>
@@ -216,7 +216,7 @@ export function MarketPriceEditor({
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
           placeholder={"Аспарухово: 2 120 €/м²\nБриз: 2 750 €/м²"}
-          className={`${inputClass} font-mono text-xs`}
+          className={`${inputClass} font-mono sm:text-xs`}
         />
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={applyPaste} disabled={!pasted.trim() || pending} className={buttonClass.primary}>
@@ -235,7 +235,7 @@ export function MarketPriceEditor({
         </div>
       </div>
 
-      <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
         {rows.map((row) => (
           <li key={row.id} className="flex items-center justify-between gap-3">
             <label htmlFor={`price-${row.id}`} className={`min-w-0 truncate text-sm ${row.id === TOWN_ROW ? "font-semibold" : "text-fg-2"}`}>

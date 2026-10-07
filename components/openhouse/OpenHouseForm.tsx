@@ -56,7 +56,7 @@ export function OpenHouseForm({
             )}
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label={t.openHouses.day} error={err("day")} hint={t.openHouses.dayHint} required>
               {(props) => <input {...props} type="date" value={draft.day} onChange={(e) => set("day", e.target.value)} className={inputClass} />}
             </Field>

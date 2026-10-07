@@ -63,7 +63,7 @@ export function AssignSelect({
           await assignClient(clientId, to as string | "free");
         });
       }}
-      className={`${inputClass} w-auto py-1.5! text-xs!`}
+      className={`${inputClass} w-auto py-1.5! sm:text-xs!`}
     >
       <option value="">{pending ? "…" : label}</option>
       {members

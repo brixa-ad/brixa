@@ -75,7 +75,7 @@ export function PartnerForm({ partner }: { partner?: (PartnerInput & { id: strin
         <Modal title={partner ? t.partners.editTitle : t.partners.newPartner} onClose={() => setOpen(false)}>
           <div className="space-y-4">
             {field("full_name", t.partners.name, { maxLength: 120, autoFocus: true })}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {field("phone", t.partners.phone, { maxLength: 40, inputMode: "tel" })}
               {field("agency", t.partners.agency, { maxLength: 120 })}
             </div>

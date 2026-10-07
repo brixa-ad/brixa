@@ -91,7 +91,7 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
       </p>
 
       {/* the listing at a glance */}
-      <section className="mt-5 grid gap-4 overflow-hidden rounded-2xl border border-line bg-surface sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section className="mt-5 grid grid-cols-1 gap-4 overflow-hidden rounded-2xl border border-line bg-surface sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {p.coverUrl && <img src={p.coverUrl} alt={p.title} className="aspect-[4/3] size-full object-cover sm:aspect-auto" />}
         <dl className={`space-y-3 p-5 ${p.coverUrl ? "sm:pl-1" : "sm:col-span-2"}`}>
           <div>
@@ -221,7 +221,7 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
       {/* ---- what we did: the listing's marketing plan, and how far it reached ---- */}
       {marketing && marketing.plan.length > 0 && (
         <Section title={t.marketing.reportTitle}>
-          <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             {marketing.plan.map((point) => {
               const done = point.weekly ? point.times > 0 : point.last !== null;
               return (

@@ -68,7 +68,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
         <div className="space-y-6">
           {/* ---- who / when ---- */}
           <Card>
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted">{t.tasks.fieldType}</dt>
                 <dd className="mt-1 inline-flex items-center gap-1.5 font-medium">
@@ -145,7 +145,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
 
           {/* ---- linked client & property ---- */}
           {task.client || task.partner || task.property ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {task.partner && (
                 <Card>
                   <p className="text-xs font-medium text-muted">{t.partners.colleague}</p>

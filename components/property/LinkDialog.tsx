@@ -51,7 +51,7 @@ export function SendLink({
   return (
     <>
       <div className="flex gap-2">
-        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className={`${inputClass} min-w-0 flex-1 text-sm`} />
+        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className={`${inputClass} min-w-0 flex-1`} />
         <button type="button" onClick={copy} className={`${buttonClass.primary} shrink-0`}>
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           {copied ? t.share.copied : t.share.copy}

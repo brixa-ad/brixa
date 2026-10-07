@@ -24,7 +24,7 @@ export function GoogleCalendarLink({ url }: { url: string }) {
         value={url}
         onFocus={(e) => e.currentTarget.select()}
         aria-label={t.calendar.googleTitle}
-        className={`${inputClass} font-mono text-xs!`}
+        className={`${inputClass} font-mono sm:text-xs!`}
       />
       <div className="flex flex-wrap gap-2">
         <button

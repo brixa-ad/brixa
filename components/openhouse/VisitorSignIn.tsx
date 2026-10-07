@@ -57,7 +57,7 @@ export function VisitorSignIn({ token, agency, broker }: { token: string; agency
         <span className="mb-1.5 block text-sm font-medium">{t.openHouses.name} *</span>
         <input required minLength={2} maxLength={120} autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} className={inputClass} />
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium">{t.openHouses.phone} *</span>
           <input type="tel" autoComplete="tel" maxLength={40} value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass} />

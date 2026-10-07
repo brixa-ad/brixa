@@ -40,7 +40,7 @@ export function InquiryForm({ slug, propertyId, agency, defaultMessage = "" }: {
       className="space-y-3"
     >
       <input required minLength={2} maxLength={120} autoComplete="name" placeholder={t.site.name} aria-label={t.site.name} value={form.name} onChange={(e) => set("name", e.target.value)} className={inputClass} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input type="tel" autoComplete="tel" maxLength={40} placeholder={t.site.phone} aria-label={t.site.phone} value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass} />
         <input type="email" autoComplete="email" maxLength={200} placeholder={t.site.email} aria-label={t.site.email} value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass} />
       </div>

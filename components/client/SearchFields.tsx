@@ -131,7 +131,7 @@ export function SearchFields({
         <p className="mt-1.5 text-xs text-muted">{t.clients.searchLocationsHint}</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div>
           <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.searchBudget}</span>
           <div className="grid grid-cols-[1fr_1fr_84px] gap-2">

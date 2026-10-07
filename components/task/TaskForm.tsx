@@ -118,7 +118,7 @@ export function TaskForm({
             )}
           </Field>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label={t.tasks.fieldClient} error={err("clientId")}>
               {(props) => (
                 <Combobox
@@ -145,7 +145,7 @@ export function TaskForm({
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
             <Field label={t.tasks.fieldDue} required error={err("dueDate")}>
               {(props) => (
                 <div className="space-y-2">

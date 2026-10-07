@@ -43,7 +43,7 @@ export function FinanceSettingsForm({ initial }: { initial: FinanceSettings }) {
   const field = "mb-1 block text-xs font-medium text-muted";
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
           <span className={field}>{t.business.share}</span>
           <input inputMode="decimal" value={share} onChange={(e) => setShare(e.target.value)} className={`${inputClass} tabular-nums`} />

@@ -180,7 +180,7 @@ export function ClosedDealForm({
       )}
 
       <Card>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label={t.closedDeals.date} required error={err("reportedOn")} hint={t.closedDeals.dateHint}>
             {(props) => (
               <input {...props} type="date" value={draft.reportedOn} max={today} onChange={(e) => set("reportedOn", e.target.value)} className={`${inputClass} max-w-48`} />
@@ -223,7 +223,7 @@ export function ClosedDealForm({
       </Card>
 
       <Card title={t.closedDeals.place}>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label={t.closedDeals.type} required error={err("subtypeId")}>
             {(props) => (
               <select {...props} value={draft.subtypeId ?? ""} onChange={(e) => set("subtypeId", e.target.value || null)} className={inputClass}>
@@ -328,7 +328,7 @@ export function ClosedDealForm({
       </Card>
 
       <Card>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {money("price", `${t.closedDeals.price} (€)`, true)}
           {draft.parking && money("parkingPrice", `${t.closedDeals.parkingPrice} (€)`)}
         </div>
@@ -351,7 +351,7 @@ export function ClosedDealForm({
       </Card>
 
       <Card>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {text$("brokerName", t.closedDeals.broker, t.closedDeals.brokerPlaceholder, { required: true })}
         </div>
         <label className="mt-4 flex items-start gap-2 text-sm text-fg-2">
@@ -367,7 +367,7 @@ export function ClosedDealForm({
           </span>
         </label>
         {!draft.doubleSided && (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             {text$("colleagueName", t.closedDeals.colleague, t.closedDeals.colleaguePlaceholder)}
             {text$("colleagueAgency", t.closedDeals.colleagueAgency, t.closedDeals.agencyPlaceholder, { hint: t.closedDeals.agencyHint })}
           </div>

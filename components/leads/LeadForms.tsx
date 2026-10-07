@@ -210,7 +210,7 @@ export function NewLeadFormButton({
                   </select>
                 </div>
               )}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={label} htmlFor="lead-form-type">
                     {t.leads.clientType}

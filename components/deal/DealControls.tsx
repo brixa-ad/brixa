@@ -132,7 +132,7 @@ export function DealActions({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted">{isManager ? t.deals.closeHintManager : t.deals.closeHint}</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <label className="block text-sm font-medium text-fg-2">
             {t.deals.realCommission}
             <input

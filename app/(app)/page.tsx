@@ -222,7 +222,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
           {fmt(t.home.hello, { name: firstName })} <span aria-hidden>👋</span>
         </h1>
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
           <figure className="flex gap-3 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur sm:p-5">
             <Quote className="size-5 shrink-0 text-accent-fg" />
             <div>
@@ -452,7 +452,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         {upcoming.length === 0 ? (
           <p className="text-sm text-muted">{t.home.upcomingNone}</p>
         ) : (
-          <ul className="-mx-2 grid gap-x-6 gap-y-0.5 lg:grid-cols-2">
+          <ul className="-mx-2 grid grid-cols-1 gap-x-6 gap-y-0.5 lg:grid-cols-2">
             {upcoming.slice(0, 8).map((step) => {
               const soon = step.day === today ? t.home.todayLabel : step.day === addDays(today, 1) ? t.home.tomorrowLabel : null;
               const stages = step.kind === "rent" ? t.options.dealStageRent : t.options.dealStage;
@@ -497,7 +497,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </Link>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card title={t.home.teamToday}>
               <ul className="space-y-4">
                 {members.map((member) => {

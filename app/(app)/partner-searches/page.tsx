@@ -99,7 +99,7 @@ export default async function PartnerSearchesPage({ searchParams }: PageProps<"/
           <p className="mx-auto mt-3 max-w-md text-sm text-muted">{t.partnerSearches.empty}</p>
         </div>
       ) : (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {cards.map(({ row, lines, matches }) => {
             const mine = row.created_by === session.userId || session.isManager;
             return (
@@ -128,7 +128,7 @@ export default async function PartnerSearchesPage({ searchParams }: PageProps<"/
                         </>
                       )}
                       {row.email && (
-                        <a href={`mailto:${row.email}`} className="inline-flex items-center gap-1 text-fg-2 hover:text-fg">
+                        <a href={`mailto:${row.email}`} className="inline-flex min-w-0 items-center gap-1 break-all text-fg-2 hover:text-fg">
                           <Mail className="size-3.5" />
                           {row.email}
                         </a>
@@ -138,7 +138,7 @@ export default async function PartnerSearchesPage({ searchParams }: PageProps<"/
                   {mine && <PartnerSearchActions id={row.id} active={row.active} />}
                 </div>
 
-                <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                   {lines.map(([label, value]) => (
                     <div key={label}>
                       <dt className="text-xs text-muted">{label}</dt>

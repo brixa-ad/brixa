@@ -145,7 +145,7 @@ export default async function OpenHousePage({ params }: PageProps<"/open-houses/
               <p className="text-sm text-muted">{t.openHouses.noVisitors}</p>
             ) : (
               <>
-                <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-raised/60 p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">{t.openHouses.priceTitle}</p>
                     {(["low", "right", "high"] as const).map((key) => (

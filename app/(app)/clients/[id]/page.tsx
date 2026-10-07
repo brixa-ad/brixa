@@ -541,7 +541,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             {deals.length === 0 ? (
               <p className="text-sm text-muted">{t.deals.none}</p>
             ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {deals.map((deal) => (
                   <DealCard key={deal.id} deal={deal} t={t} lang={lang} showBroker={session.isManager} />
                 ))}
@@ -579,7 +579,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             <Card title={t.clients.sectionSearch}>
               {searchLines.length > 0 ? (
                 <>
-                  <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                     {searchLines.map(([label, value]) => (
                       <div key={label}>
                         <dt className="text-xs text-muted">{label}</dt>
@@ -615,7 +615,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               }
             >
               {offerLines.length > 0 ? (
-                <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                   {offerLines.map(([label, value]) => (
                     <div key={label}>
                       <dt className="text-xs text-muted">{label}</dt>
@@ -660,7 +660,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   {t.clients.noMatches}
                 </div>
               ) : (
-                <ul className="grid gap-3 sm:grid-cols-2">
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {matches.slice(0, 24).map((m) => {
                     const cover = m.coverPath ? covers.get(m.coverPath) : undefined;
                     const mine = m.brokerId === session.userId;

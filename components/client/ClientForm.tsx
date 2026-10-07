@@ -183,7 +183,7 @@ export function ClientForm({
       )}
 
       <Card title={t.clients.sectionContact}>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label={t.clients.fullName} required error={err("fullName")}>
             {(props) => (
               <input
@@ -285,7 +285,7 @@ export function ClientForm({
             <p className="mt-1.5 text-xs text-muted">{t.signals.classFormHint}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label={t.clients.stage} error={err("stage")}>
               {(props) => (
                 <select {...props} value={draft.stage} onChange={(e) => set("stage", e.target.value as Draft["stage"])} className={inputClass}>
@@ -363,7 +363,7 @@ export function ClientForm({
             )}
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t.clients.egn} error={err("egn")} hint={egnHint}>
               {(props) => (
                 <input

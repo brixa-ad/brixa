@@ -135,7 +135,7 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
       </section>
 
       {/* ---- the people, and "call me back" ---- */}
-      <section className="mt-12 grid gap-6 lg:grid-cols-2">
+      <section className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-lg font-bold">{site.team.length > 1 ? t.site.team : t.site.contact}</h2>
           <ul className="mt-4 space-y-4">

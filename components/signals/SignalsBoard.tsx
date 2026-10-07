@@ -43,7 +43,7 @@ export async function SignalsBoard({
         {hot.length === 0 ? (
           <p className="text-sm text-muted">{t.signals.hotNone}</p>
         ) : (
-          <ul className="-my-3 grid divide-y divide-line-soft lg:grid-cols-2 lg:gap-x-8 lg:divide-y-0">
+          <ul className="-my-3 grid grid-cols-1 divide-y divide-line-soft lg:grid-cols-2 lg:gap-x-8 lg:divide-y-0">
             {hot.map((row) => (
               <TemperatureItem key={row.client.id} row={row} t={t} lang={lang} showBroker={showBroker} />
             ))}
@@ -51,7 +51,7 @@ export async function SignalsBoard({
         )}
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ---- 👀 opening the links ---- */}
         <Card title={title(Eye, t.signals.opensTitle, opens.length, "text-brand-cyan")} description={t.signals.opensHint}>
           {opens.length === 0 ? (

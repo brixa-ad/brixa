@@ -204,7 +204,7 @@ export function RoleSelect({ profileId, role, options }: { profileId: string; ro
             if (!result.ok) setError(true);
           });
         }}
-        className={`${inputClass} w-auto py-1.5 text-xs font-semibold`}
+        className={`${inputClass} w-auto py-1.5 font-semibold sm:text-xs`}
       >
         {options.map((r) => (
           <option key={r} value={r}>

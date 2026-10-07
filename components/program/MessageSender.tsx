@@ -47,7 +47,7 @@ export function MessageSender({
   return (
     <div className="space-y-2.5">
       {!compact && (
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} className={`${inputClass} text-sm leading-relaxed`} />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} className={`${inputClass} leading-relaxed`} />
       )}
       <div className="flex flex-wrap gap-2">
         {phone && (

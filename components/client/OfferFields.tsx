@@ -67,7 +67,7 @@ export function OfferFields({
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <label className="block text-sm font-medium text-fg-2">
           {t.clients.offerSubtype}
           <select
@@ -103,7 +103,7 @@ export function OfferFields({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {num("area", t.clients.offerArea)}
         {num("rooms", t.clients.offerRooms, false)}
         <div>

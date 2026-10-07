@@ -89,7 +89,7 @@ export function PartnerSearchForm({
       )}
 
       <Card title={t.partnerSearches.sectionBroker}>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {text("brokerName", t.partnerSearches.broker, { placeholder: t.partnerSearches.brokerPlaceholder, required: true, max: PARTNER_LIMITS.name })}
           {text("agency", t.partnerSearches.agency, { max: PARTNER_LIMITS.name })}
           {text("phone", t.partnerSearches.phone, { type: "tel", placeholder: t.profile.phonePlaceholder, max: PARTNER_LIMITS.phone })}

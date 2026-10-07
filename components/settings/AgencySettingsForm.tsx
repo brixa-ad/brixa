@@ -98,7 +98,7 @@ export function AgencySettingsForm({
       </div>
 
       {/* who the agency is */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block text-xs font-medium text-muted sm:col-span-2">
           {t.agency.kind}
           <select value={values.kind} onChange={(e) => set("kind", e.target.value)} className={`${inputClass} mt-1`}>
@@ -111,7 +111,7 @@ export function AgencySettingsForm({
       </div>
 
       {/* contact details */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {field("name", t.agency.name, { maxLength: 120 })}
         {field("phone", t.agency.phone, { type: "tel", maxLength: 40 })}
         {field("email", t.agency.email, { type: "email", maxLength: 200 })}
