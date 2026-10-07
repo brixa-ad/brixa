@@ -75,3 +75,29 @@ export async function addNeighborhoods(settlementId: string, names: string[]): P
   revalidatePath("/market");
   return { ok: true, hoods: (data ?? []) as { id: string; name: string }[] };
 }
+
+export type FoundTown = { id: string; name: string; region: string | null; neighborhoods: { id: string; name: string }[] };
+
+/** Any town or village by the start of its name (towns first) — with its neighbourhoods, for the price table. */
+export async function findTowns(query: string): Promise<FoundTown[]> {
+  const session = await getSession();
+  const q = String(query ?? "").trim().replace(/^(гр\.|с\.)\s*/i, "").replace(/[%_]/g, "");
+  if (!session?.isLeader || q.length < 2) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("geo_settlements")
+    .select("id, name, settlement_type, region:geo_regions(name), hoods:geo_neighborhoods(id, name)")
+    .ilike("name", `${q}%`)
+    .order("settlement_type", { ascending: true })
+    .order("name")
+    .limit(12);
+  type Raw = { id: string; name: string; settlement_type: string; region: { name: string } | { name: string }[] | null; hoods: { id: string; name: string }[] };
+  return ((data ?? []) as unknown as Raw[])
+    .sort((a, b) => Number(b.settlement_type === "гр.") - Number(a.settlement_type === "гр."))
+    .map((s) => ({
+      id: s.id,
+      name: `${s.settlement_type} ${s.name}`,
+      region: (Array.isArray(s.region) ? s.region[0]?.name : s.region?.name) ?? null,
+      neighborhoods: [...(s.hoods ?? [])].sort((a, b) => a.name.localeCompare(b.name, "bg")),
+    }));
+}

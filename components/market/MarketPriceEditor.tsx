@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, ClipboardPaste, Loader2 } from "lucide-react";
-import { addNeighborhoods, saveMarketPrices } from "@/app/(app)/market/actions";
+import { Check, ClipboardPaste, Loader2, Search } from "lucide-react";
+import { addNeighborhoods, findTowns, saveMarketPrices, type FoundTown } from "@/app/(app)/market/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
@@ -19,7 +19,7 @@ const parse = (value: string) => {
 
 /** Managers keep the average €/m² by neighborhood — typed in, or pasted from a portal's table. */
 export function MarketPriceEditor({
-  towns,
+  towns: knownTowns,
   prices,
   operation,
   today,
@@ -30,6 +30,12 @@ export function MarketPriceEditor({
   today: string;
 }) {
   const { t } = useI18n();
+  // towns found by name (beyond those the agency already works in)
+  const [extraTowns, setExtraTowns] = useState<FoundTown[]>([]);
+  const [townQuery, setTownQuery] = useState("");
+  const [found, setFound] = useState<FoundTown[]>([]);
+  const [searching, setSearching] = useState(false);
+  const towns: Town[] = [...knownTowns, ...extraTowns.filter((x) => !knownTowns.some((k) => k.id === x.id))];
   const firstWithPrices = towns.find((town) => prices.some((p) => p.settlement_id === town.id)) ?? towns[0];
   const [townId, setTownId] = useState(firstWithPrices?.id ?? "");
   const valuesFor = (id: string) => {
@@ -61,6 +67,22 @@ export function MarketPriceEditor({
     const n = parse(v);
     return n === null || (Number.isFinite(n) && n > 0);
   });
+
+  async function searchTowns(q: string) {
+    setTownQuery(q);
+    if (q.trim().length < 2) return setFound([]);
+    setSearching(true);
+    const result = await findTowns(q);
+    setSearching(false);
+    setFound(result);
+  }
+
+  function pickTown(x: FoundTown) {
+    setExtraTowns((list) => (list.some((y) => y.id === x.id) ? list : [...list, x]));
+    setFound([]);
+    setTownQuery("");
+    chooseTown(x.id);
+  }
 
   function chooseTown(id: string) {
     setTownId(id);
@@ -123,9 +145,38 @@ export function MarketPriceEditor({
     });
   }
 
-  if (towns.length === 0) return null;
   return (
     <div className="space-y-5">
+      {/* another town: by the start of its name */}
+      <div className="relative">
+        <label className="flex items-center gap-2 rounded-xl border border-line bg-canvas/40 px-3">
+          <Search className="size-4 shrink-0 text-subtle" />
+          <input
+            value={townQuery}
+            onChange={(e) => void searchTowns(e.target.value)}
+            placeholder={t.market.otherTown}
+            aria-label={t.market.otherTown}
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none"
+          />
+          {searching && <Loader2 className="size-4 animate-spin text-subtle" />}
+        </label>
+        {found.length > 0 && (
+          <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-line bg-surface p-1 shadow-xl">
+            {found.map((x) => (
+              <li key={x.id}>
+                <button type="button" onClick={() => pickTown(x)} className="flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-raised">
+                  <span className="font-medium">{x.name}</span>
+                  <span className="text-xs text-muted">
+                    {x.region}
+                    {x.neighborhoods.length > 0 ? ` · ${x.neighborhoods.length}` : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block text-xs font-medium text-muted">
           {t.market.town}
