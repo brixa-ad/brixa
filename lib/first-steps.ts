@@ -9,24 +9,24 @@ export type FirstStep = { key: FirstStepKey; href: string; done: boolean };
  * The owner's first steps after signing up, each ticked off by what is already in the agency.
  * A broker on their own skips the team steps. Null for anyone but the owner.
  */
-export async function getFirstSteps(session: SessionContext, hasLogo: boolean): Promise<FirstStep[] | null> {
+export async function getFirstSteps(session: SessionContext, hasLogo: boolean): Promise<{ steps: FirstStep[]; sampleOffer: boolean } | null> {
   if (!session.isOwner) return null;
   const supabase = await createClient();
   const org = session.organizationId;
-  const count = (table: string) =>
-    supabase
-      .from(table)
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", org)
-      .then(({ count }) => count ?? 0);
+  // made-up data (051) doesn't count as the agency's own
+  const count = (table: string, real = false) => {
+    const query = supabase.from(table).select("*", { count: "exact", head: true }).eq("organization_id", org);
+    return (real ? query.eq("sample", false) : query).then(({ count }) => count ?? 0);
+  };
 
-  const [offices, teams, invites, members, properties, prices] = await Promise.all([
+  const [offices, teams, invites, members, properties, prices, clients] = await Promise.all([
     count("offices"),
     count("teams"),
     count("organization_invitations"),
     count("organization_members"),
-    count("properties"),
+    count("properties", true),
     count("market_prices"),
+    count("clients", true),
   ]);
 
   const steps: FirstStep[] = [
@@ -36,5 +36,9 @@ export async function getFirstSteps(session: SessionContext, hasLogo: boolean): 
     { key: "property", href: "/properties/new", done: properties > 0 },
     { key: "market", href: "/market#prices", done: prices > 0 },
   ];
-  return session.kind === "solo" ? steps.filter((s) => s.key !== "offices" && s.key !== "invite") : steps;
+  return {
+    steps: session.kind === "solo" ? steps.filter((s) => s.key !== "offices" && s.key !== "invite") : steps,
+    // nothing of its own yet: look around with made-up data first
+    sampleOffer: !session.sampleSince && properties === 0 && clients === 0,
+  };
 }

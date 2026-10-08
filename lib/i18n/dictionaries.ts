@@ -789,6 +789,15 @@ const bg = {
     privacy: "Поверителност",
     dpa: "Обработване на лични данни",
   },
+  sample: {
+    offerTitle: "Разгледайте BRIXA с примерни данни",
+    offerText: "Ще добавим няколко измислени имота, клиенти, сделки и задачи във вашия град, за да видите как работи всичко. Махат се с един бутон.",
+    load: "Зареди примерни данни",
+    banner: "Разглеждате BRIXA с примерни данни — всичко с „Пример“ в името е измислено.",
+    remove: "Изтрий примерните данни",
+    removeConfirm: "Да изтрием ли всички примерни имоти, клиенти, сделки и задачи? Вашите истински данни остават.",
+    badge: "с примерни данни",
+  },
   billing: {
     title: "Абонамент",
     trialLeft: "Пробен период: остават {n} дни",
@@ -3495,6 +3504,15 @@ const en: Dictionary = {
     terms: "Terms of use",
     privacy: "Privacy",
     dpa: "Data processing",
+  },
+  sample: {
+    offerTitle: "Look around BRIXA with sample data",
+    offerText: "We'll add a few made-up listings, clients, deals and tasks in your town so you can see how everything works. They go with one tap.",
+    load: "Load sample data",
+    banner: "You're looking around BRIXA with sample data — everything with “Пример” (sample) in its name is made up.",
+    remove: "Remove the sample data",
+    removeConfirm: "Remove all the sample listings, clients, deals and tasks? Your real data stays.",
+    badge: "with sample data",
   },
   billing: {
     title: "Subscription",

@@ -23,6 +23,8 @@ export type AgencyRow = {
   paid_until: string | null;
   comped: boolean;
   terms_accepted_at: string | null;
+  /** looking around with made-up data since that day */
+  sample_since: string | null;
   owner: { name: string; email: string; phone: string | null } | null;
   people: number;
   invited: number;
@@ -151,7 +153,10 @@ function AgencyCard({ agency: a, plans, statusLabel }: { agency: AgencyRow; plan
       <p className="mt-1 text-xs text-muted">
         {P.created}: {when(a.created_at)} · {P.lastSignIn}: {when(a.last_sign_in)} · {P.lastActivity}: {when(a.last_activity)}
       </p>
-      <p className="mt-1 text-xs text-muted">{a.terms_accepted_at ? fmt(P.termsYes, { date: when(a.terms_accepted_at) }) : P.termsNo}</p>
+      <p className="mt-1 text-xs text-muted">
+        {a.terms_accepted_at ? fmt(P.termsYes, { date: when(a.terms_accepted_at) }) : P.termsNo}
+        {a.sample_since && ` · ${t.sample.badge}`}
+      </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 border-t border-line-soft pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_10rem_10rem_auto_auto] lg:items-end">
         <label className="block text-sm">

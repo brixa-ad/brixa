@@ -31,6 +31,8 @@ export type SessionContext = {
   subscription: Subscription;
   /** runs BRIXA itself: sees every agency */
   platformAdmin: boolean;
+  /** the day made-up data came in to look around with (051) */
+  sampleSince: string | null;
 };
 
 /**
@@ -50,7 +52,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     supabase.from("profiles").select("full_name, email, avatar_path, bottom_nav").eq("id", user.id).maybeSingle(),
     supabase
       .from("organization_members")
-      .select("organization_id, role, office_id, team_id, organizations(name, kind, trial_ends_at, paid_until, comped, plan_code)")
+      .select("organization_id, role, office_id, team_id, organizations(name, kind, trial_ends_at, paid_until, comped, plan_code, sample_since)")
       .eq("profile_id", user.id)
       .order("created_at")
       .limit(1)
@@ -60,7 +62,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
 
   if (!membership) return null;
 
-  const org = membership.organizations as unknown as ({ name: string; kind: "agency" | "solo" } & SubscriptionRow) | null;
+  const org = membership.organizations as unknown as ({ name: string; kind: "agency" | "solo"; sample_since: string | null } & SubscriptionRow) | null;
   const { count: members } = await supabase
     .from("organization_members")
     .select("profile_id", { count: "exact", head: true })
@@ -84,5 +86,6 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     solo: org?.kind === "solo" && (members ?? 0) <= 1,
     subscription: subscriptionOf(org),
     platformAdmin: platformAdmin === true,
+    sampleSince: org?.sample_since ?? null,
   };
 });

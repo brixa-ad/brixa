@@ -257,7 +257,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </div>
       </section>
 
-      {firstSteps && <FirstSteps userId={session.userId} steps={firstSteps} />}
+      {firstSteps && <FirstSteps userId={session.userId} steps={firstSteps.steps} sampleOffer={firstSteps.sampleOffer} />}
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
       <PushBanner />
 

@@ -8,6 +8,7 @@ import { useMounted } from "@/components/ui/Modal";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { firstStepsText } from "@/lib/i18n/first-steps";
 import type { FirstStep } from "@/lib/first-steps";
+import { SampleOffer } from "@/components/SampleData";
 
 const key = (userId: string) => `brixa.firstSteps.hidden.${userId}`;
 
@@ -20,7 +21,7 @@ function readHidden(userId: string) {
 }
 
 /** The owner's checklist after signing up; gone once everything is done or it is hidden. */
-export function FirstSteps({ userId, steps }: { userId: string; steps: FirstStep[] }) {
+export function FirstSteps({ userId, steps, sampleOffer = false }: { userId: string; steps: FirstStep[]; sampleOffer?: boolean }) {
   const t = { firstSteps: firstStepsText[useI18n().lang] };
   const mounted = useMounted();
   const [closed, setClosed] = useState(false);
@@ -75,6 +76,7 @@ export function FirstSteps({ userId, steps }: { userId: string; steps: FirstStep
           </li>
         ))}
       </ul>
+      {sampleOffer && <SampleOffer />}
     </section>
   );
 }

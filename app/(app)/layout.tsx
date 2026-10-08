@@ -16,6 +16,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SubscriptionView } from "@/components/subscription/SubscriptionView";
+import { SampleBanner } from "@/components/SampleData";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -137,6 +138,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="shrink-0 font-semibold text-accent-fg">{t.billing.seePlans} →</span>
           </Link>
         )}
+        {session.sampleSince && session.isOwner && !locked && <SampleBanner />}
         <PasskeyPrompt />
         <ServiceWorker />
         {/* dictation: the server writes recordings when a speech service key is set */}
