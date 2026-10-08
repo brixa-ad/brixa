@@ -33,6 +33,7 @@ import { ClipboardList,
   Users,
   UsersRound,
   Wallet,
+  MessagesSquare,
   type LucideProps,
 } from "lucide-react";
 import type { MenuKey, NavKey } from "@/lib/nav";
@@ -46,6 +47,7 @@ const ICONS: Record<NavKey | MenuKey, React.ComponentType<LucideProps>> = {
   tasks: ListChecks,
   calendar: CalendarDays,
   deals: Handshake,
+  chat: MessagesSquare,
   properties: Building2,
   myProperties: Building2,
   soldProperties: CircleDollarSign,

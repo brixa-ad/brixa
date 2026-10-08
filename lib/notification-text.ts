@@ -16,6 +16,9 @@ export type NotificationData = {
   steps?: number;
   /** an import: clients or properties */
   what?: string;
+  /** a chat message's words, and the agency inviting to a conversation */
+  text?: string;
+  agency?: string;
   /** a package an agency asked for, and whom to call */
   plan?: string;
   phone?: string | null;
@@ -91,6 +94,10 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "chat_message":
+      return fmt(data.kind === "direct" ? t.notifications.chat_direct : t.notifications.chat_group, { ...vars, text: data.text ?? "" });
+    case "chat_invite":
+      return fmt(t.notifications.chat_invite, { ...vars, agency: data.agency ?? "" });
     case "agency_signed_up":
       return fmt(data.kind === "solo" ? t.notifications.agency_signed_up_solo : t.notifications.agency_signed_up, vars);
     case "plan_requested":

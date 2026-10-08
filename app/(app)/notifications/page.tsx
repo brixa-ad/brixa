@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, CreditCard, Eye, AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
+import { Building2, CreditCard, MessagesSquare, Eye, AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -50,6 +50,7 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   client_assigned: { icon: UserPlus, tone: "bg-accent-soft text-accent-fg" },
   imported: { icon: FileUp, tone: "bg-accent-soft text-accent-fg" },
   team_week: { icon: ClipboardList, tone: "bg-accent-soft text-accent-fg" },
+  chat_invite: { icon: MessagesSquare, tone: "bg-accent-soft text-accent-fg" },
   agency_signed_up: { icon: Building2, tone: "bg-accent-soft text-accent-fg" },
   plan_requested: { icon: CreditCard, tone: "bg-success/10 text-success" },
   analysis_viewed: { icon: Eye, tone: "bg-success/10 text-success" },
@@ -76,6 +77,8 @@ export default async function NotificationsPage() {
       .from("notifications")
       .select("id, type, data, link, read_at, created_at")
       .eq("recipient_id", session.userId)
+      // the chat has its own count and list
+      .neq("type", "chat_message")
       .order("created_at", { ascending: false })
       .limit(100),
   ]);

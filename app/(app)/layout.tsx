@@ -17,6 +17,7 @@ import { bottomNavFor, menuFor } from "@/lib/nav";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SubscriptionView } from "@/components/subscription/SubscriptionView";
 import { SampleBanner } from "@/components/SampleData";
+import { ChatButton } from "@/components/chat/ChatButton";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +53,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("recipient_id", session.userId)
+    .neq("type", "chat_message")
     .is("read_at", null);
+  const { data: chatUnread } = await supabase.rpc("chat_unread");
 
   return (
     <div className="min-h-screen">
@@ -76,6 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <ChatButton initial={typeof chatUnread === "number" ? chatUnread : 0} />
             <Link
               href="/notifications"
               title={t.nav.notifications}

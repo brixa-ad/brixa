@@ -14,7 +14,8 @@ export function BottomNav({ items }: { items: MenuSection[] }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  if (/\/(new|edit)$/.test(pathname) || pathname.startsWith("/team/goals")) return null;
+  // a conversation keeps the bottom for writing
+  if (/\/(new|edit)$/.test(pathname) || pathname.startsWith("/team/goals") || /^\/chat\/[0-9a-f-]{36}$/.test(pathname)) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">

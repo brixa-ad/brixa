@@ -68,9 +68,11 @@ export async function POST(request: Request) {
         title: "BRIXA",
         body: notificationText(row.type, row.data ?? {}, t, lang),
         url,
-        tag: id,
+        // a conversation's messages replace each other on the phone
+        tag: row.type === "chat_message" ? (row.link ?? id) : id,
         // on screen until it's tapped (Android, computers; the iPhone keeps it in its list)
-        requireInteraction: true,
+        requireInteraction: row.type !== "chat_message",
+        renotify: row.type === "chat_message",
         // a badge on the app's icon until the day is opened
         badge: row.type === "morning_brief",
         actions,

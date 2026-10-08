@@ -16,6 +16,8 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icon/192",
       tag: data.tag,
+      // a new message in the same conversation still rings
+      renotify: Boolean(data.renotify && data.tag),
       // stays on screen until it's tapped (Android, computers — the iPhone keeps it in the list)
       requireInteraction: Boolean(data.requireInteraction),
       // "Call" / "Viber" / "E-mail" buttons where the phone supports them (not on iPhone)
