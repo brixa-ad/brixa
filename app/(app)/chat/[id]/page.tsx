@@ -37,7 +37,7 @@ export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) 
   ]);
   const chat = ((chats ?? []) as ChatSummary[]).find((c) => c.id === id);
   if (!chat || !mine) notFound();
-  if (chat.status === "invited") redirect("/chat");
+  if (chat.status === "invited" && chat.kind !== "direct") redirect("/chat");
 
   const messages = ((rows ?? []) as ChatMessage[]).reverse();
   const { data: reactionRows } = messages.length
@@ -78,6 +78,7 @@ export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) 
       colleagues={colleagues}
       initial={messages}
       initialReactions={(reactionRows ?? []) as Reaction[]}
+      request={chat.status === "invited" ? { name: other?.name ?? "", agency: other?.agency ?? chat.home_agency ?? "" } : null}
     />
   );
 }

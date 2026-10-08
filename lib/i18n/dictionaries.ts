@@ -888,6 +888,8 @@ const bg = {
     yourMessage: "ваше съобщение",
     unitOffice: "Офис",
     unitTeam: "Екип",
+    requestBadge: "Заявка",
+    requestBar: "{name} от {agency} иска да ви пише. Приемете, за да си пишете и да получавате известия.",
   },
   billing: {
     title: "Абонамент",
@@ -3699,6 +3701,8 @@ const en: Dictionary = {
     yourMessage: "your message",
     unitOffice: "Office",
     unitTeam: "Team",
+    requestBadge: "Request",
+    requestBar: "{name} of {agency} wants to write to you. Accept to write back and get notifications.",
   },
   billing: {
     title: "Subscription",

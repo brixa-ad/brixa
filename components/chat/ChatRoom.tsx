@@ -19,6 +19,7 @@ import { Composer, type CardKind } from "./Composer";
 import { MessageBubble } from "./MessageBubble";
 import type { Colleague } from "./NewChat";
 import { RoomMenu, type RoomPerson } from "./RoomMenu";
+import { RequestBar } from "./RequestBar";
 
 const PAGE = 60;
 
@@ -47,6 +48,7 @@ export function ChatRoom({
   colleagues,
   initial,
   initialReactions,
+  request,
 }: {
   room: string;
   kind: ChatKind;
@@ -63,6 +65,8 @@ export function ChatRoom({
   colleagues: Colleague[];
   initial: ChatMessage[];
   initialReactions: Reaction[];
+  /** a message request not accepted yet: who asks (accept or decline at the bottom) */
+  request: { name: string; agency: string } | null;
 }) {
   const { t, lang } = useI18n();
   const C = t.chat;
@@ -303,7 +307,7 @@ export function ChatRoom({
                   myReaction={(byMessage.get(m.id) ?? []).find((r) => r.profile_id === me)?.emoji ?? null}
                   quote={m.reply_to ? (answered ? { name: nameOf(answered.sender_id), text: messageLine(answered, t) } : { name: "", text: "…" }) : null}
                   canDelete={mine || (platformAdmin && kind === "brixa")}
-                  onSelect={() => setSelected(selected === m.id ? null : m.id)}
+                  onSelect={() => !request && setSelected(selected === m.id ? null : m.id)}
                   onReact={(emoji) => void react(m, emoji)}
                   onReply={() => {
                     setSelected(null);
@@ -340,20 +344,24 @@ export function ChatRoom({
           )}
         </div>
 
-        <Composer
-          room={room}
-          me={me}
-          myOrg={myOrg}
-          shared={shared}
-          replyTo={replyTo}
-          onCancelReply={() => setReplyTo(null)}
-          onTyping={sayTyping}
-          onSent={(message) => {
-            stick.current = true;
-            add(message);
-          }}
-          onPickCard={(k) => setPicking(k)}
-        />
+        {request ? (
+          <RequestBar room={room} name={request.name} agency={request.agency} />
+        ) : (
+          <Composer
+            room={room}
+            me={me}
+            myOrg={myOrg}
+            shared={shared}
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
+            onTyping={sayTyping}
+            onSent={(message) => {
+              stick.current = true;
+              add(message);
+            }}
+            onPickCard={(k) => setPicking(k)}
+          />
+        )}
       </div>
 
       {picking && <CardPicker room={room} kind={picking} myOrg={myOrg} onClose={() => setPicking(null)} />}
