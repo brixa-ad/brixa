@@ -70,7 +70,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isSignedIn && pathname === "/login") {
-    return redirectKeepingCookies(request, response, "/");
+    // A session ended on another device still carries a valid-looking token for up to an hour:
+    // ask the server before sending them in, or the app and this page send each other back and forth.
+    const { data: checked } = await supabase.auth.getUser();
+    if (checked.user) return redirectKeepingCookies(request, response, "/");
+    await supabase.auth.signOut({ scope: "local" });
+    return response;
   }
 
   return response;
