@@ -864,6 +864,7 @@ const bg = {
     you: "Вие",
     voice: "Гласово съобщение",
     peopleCount: "{n} души",
+    noMessages: "Още няма съобщения. Напишете първото — или изпратете имот, снимка или гласово съобщение.",
   },
   billing: {
     title: "Абонамент",
@@ -3650,6 +3651,7 @@ const en: Dictionary = {
     you: "You",
     voice: "Voice message",
     peopleCount: "{n} people",
+    noMessages: "No messages yet. Write the first one — or send a listing, a photo or a voice message.",
   },
   billing: {
     title: "Subscription",

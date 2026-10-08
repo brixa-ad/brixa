@@ -167,6 +167,7 @@ export function ChatRoom({
               </button>
             </div>
           )}
+          {messages.length === 0 && <p className="mx-auto mt-16 max-w-xs text-center text-sm text-muted">{C.noMessages}</p>}
           {messages.map((m, i) => {
             const prev = messages[i - 1];
             const day = sofiaDay(m.created_at);
