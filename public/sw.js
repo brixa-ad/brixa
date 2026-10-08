@@ -25,8 +25,11 @@ self.addEventListener("push", (event) => {
       data: { url: data.url || "/", links: data.links || {} },
     }),
   ];
-  // the morning brief: a badge on the app's icon until the day is opened
-  if (data.badge && self.navigator.setAppBadge) work.push(self.navigator.setAppBadge(1).catch(() => {}));
+  // the number on the app's icon: how many things wait (the morning brief at least one)
+  if (self.navigator.setAppBadge) {
+    const count = typeof data.count === "number" ? Math.max(data.count, data.badge ? 1 : 0) : data.badge ? 1 : null;
+    if (count) work.push(self.navigator.setAppBadge(count).catch(() => {}));
+  }
   event.waitUntil(Promise.all(work));
 });
 

@@ -18,6 +18,8 @@ type Claimed = {
   /** the task's client, when the recipient may see them */
   phone: string | null;
   email: string | null;
+  /** what waits for them (056): the number on the app's icon */
+  waiting?: number | null;
 };
 
 /**
@@ -75,6 +77,8 @@ export async function POST(request: Request) {
         renotify: row.type === "chat_message",
         // a badge on the app's icon until the day is opened
         badge: row.type === "morning_brief",
+        // how many things wait for them — the number on BRIXA's icon, as Messenger does
+        count: typeof row.waiting === "number" ? row.waiting : null,
         actions,
         links: Object.fromEntries(actions.map((a) => [a.action, `${url}?contact=${a.action}`])),
       });
