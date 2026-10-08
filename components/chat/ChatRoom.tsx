@@ -189,16 +189,23 @@ export function ChatRoom({
     setMessages((current) => [...older.filter((m) => !current.some((c) => c.id === m.id)), ...current]);
   }
 
-  function react(message: ChatMessage, emoji: string) {
+  async function react(message: ChatMessage, emoji: string) {
     const supabase = createClient();
     const mine = reactions.find((r) => r.message_id === message.id && r.profile_id === me);
+    const before = reactions;
     setSelected(null);
+    // (a query only goes out when it's awaited)
     if (mine?.emoji === emoji) {
       setReactions((current) => current.filter((r) => r !== mine));
-      void supabase.from("chat_reactions").delete().eq("message_id", message.id).eq("profile_id", me);
+      const { error } = await supabase.from("chat_reactions").delete().eq("message_id", message.id).eq("profile_id", me);
+      if (error) setReactions(before);
     } else {
       setReactions((current) => [...current.filter((r) => r !== mine), { message_id: message.id, profile_id: me, emoji }]);
-      void supabase.from("chat_reactions").upsert({ message_id: message.id, profile_id: me, room_id: room, emoji });
+      const { error } = await supabase.from("chat_reactions").upsert({ message_id: message.id, profile_id: me, room_id: room, emoji });
+      if (error) {
+        console.error("A reaction failed:", error.message);
+        setReactions(before);
+      }
     }
   }
 
@@ -295,7 +302,7 @@ export function ChatRoom({
                   quote={m.reply_to ? (answered ? { name: nameOf(answered.sender_id), text: messageLine(answered, t) } : { name: "", text: "…" }) : null}
                   canDelete={mine || (platformAdmin && kind === "brixa")}
                   onSelect={() => setSelected(selected === m.id ? null : m.id)}
-                  onReact={(emoji) => react(m, emoji)}
+                  onReact={(emoji) => void react(m, emoji)}
                   onReply={() => {
                     setSelected(null);
                     setReplyTo({ id: m.id, name: mine ? C.yourMessage : nameOf(m.sender_id), text: messageLine(m, t) });
