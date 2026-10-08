@@ -7,6 +7,7 @@ import { ArrowLeft, BellOff, Globe, MoreVertical } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { deleteChatMessage, markChatRead, startDirectChat } from "@/app/(app)/chat/actions";
 import { useI18n } from "@/components/I18nProvider";
+import { closeChatNotifications } from "@/components/push/ServiceWorker";
 import { MESSAGE_COLUMNS, messageLine, type ChatKind, type ChatMessage, type Reaction } from "@/lib/chat";
 import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
@@ -84,6 +85,7 @@ export function ChatRoom({
   const lastTyping = useRef(0);
 
   const read = useCallback(() => {
+    closeChatNotifications(room);
     void markChatRead(room).then(() => window.dispatchEvent(new Event("brixa:chat-read")));
   }, [room]);
 
