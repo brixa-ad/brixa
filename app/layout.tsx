@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: { default: "BRIXA", template: "%s · BRIXA" },
-  description: "CRM for real estate agencies",
+  description: "BRIXA — асистентът на брокера на недвижими имоти. Повече сделки. По-малко работа.",
   applicationName: "BRIXA",
   // "Add to Home Screen" on iPhone opens full-screen, like an app.
   appleWebApp: { capable: true, title: "BRIXA", statusBarStyle: "black-translucent" },

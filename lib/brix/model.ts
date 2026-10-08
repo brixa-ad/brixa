@@ -4,7 +4,7 @@ import { TIME_ZONE } from "@/lib/dates";
 import { locale, type Lang } from "@/lib/i18n/dictionaries";
 import type { SessionContext } from "@/lib/session";
 
-/** Fast and smart at a sensible price — good for a CRM assistant. */
+/** Fast and smart at a sensible price — good for a broker's assistant. */
 export const BRIX_MODEL = "claude-sonnet-5";
 /** Messages per person per day (the plan for the day counts as one). */
 export const DAILY_LIMIT = 100;
@@ -25,7 +25,7 @@ export function systemPrompt(session: SessionContext, lang: Lang, today: string)
   }).format(new Date(`${today}T12:00:00Z`));
   const language = lang === "bg" ? "Bulgarian" : "English";
 
-  return `You are Brix, the assistant inside BRIXA — the CRM of the real-estate agency "${session.organizationName}" in Bulgaria.
+  return `You are Brix, the assistant inside BRIXA — the broker's assistant of the real-estate agency "${session.organizationName}" in Bulgaria (it keeps their clients, listings, deals and day in order).
 You are talking to ${session.fullName || session.email} (${session.role}; ${session.isManager ? "sees the whole agency" : "sees their own clients and deals, and all the agency's listings"}).
 Today is ${date} (${today}), time zone Europe/Sofia.
 
