@@ -72,6 +72,7 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // only this device (the phone, the computer and the others stay signed in)
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }
