@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isValidEmail } from "@/lib/validation";
 
 export type AuthState = {
-  error?: "invalidCredentials" | "genericError" | "invalidEmail" | "passwordHint" | "invalidEik" | "agencyRequired";
+  error?: "invalidCredentials" | "genericError" | "invalidEmail" | "passwordHint" | "invalidEik" | "agencyRequired" | "termsRequired";
   checkEmail?: boolean;
 };
 
@@ -29,8 +29,9 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
   if (password.length < 8) return { error: "passwordHint" };
   if (account === "agency" && !agencyName) return { error: "agencyRequired" };
   if (eik && !/^\d{9}(\d{4})?$/.test(eik)) return { error: "invalidEik" };
+  if (formData.get("acceptTerms") !== "yes") return { error: "termsRequired" };
 
-  const metadata: Record<string, string> = { account_type: account, full_name: fullName, phone: text("phone", 40) };
+  const metadata: Record<string, string> = { account_type: account, full_name: fullName, phone: text("phone", 40), accepted_terms: "yes" };
   if (account === "agency") {
     Object.assign(metadata, {
       agency_name: agencyName,

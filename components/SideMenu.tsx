@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { LogOut, Menu, X } from "lucide-react";
+import { Building2, LogOut, Menu, X } from "lucide-react";
 import { signOut } from "@/app/login/actions";
 import { MENU_EXTRAS, sectionActive, sectionHref, type MenuSection } from "@/lib/nav";
 import { Avatar } from "./Avatar";
@@ -19,12 +19,15 @@ export function SideMenu({
   subtitle,
   avatarPath,
   unread,
+  platformAdmin = false,
 }: {
   sections: MenuSection[];
   name: string;
   subtitle: string;
   avatarPath: string | null;
   unread: number;
+  /** runs BRIXA: the panel of every agency */
+  platformAdmin?: boolean;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
@@ -130,6 +133,19 @@ export function SideMenu({
                     })}
                   </ul>
                 ))}
+                {platformAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+                    className={`mt-2 flex items-center gap-3 rounded-lg border-t border-line px-3 pb-2.5 pt-3.5 text-sm font-semibold transition ${
+                      pathname.startsWith("/admin") ? "text-accent-fg" : "text-fg-2 hover:text-fg"
+                    }`}
+                  >
+                    <Building2 className="size-5" />
+                    {t.platform.menu}
+                  </Link>
+                )}
               </nav>
 
               <form action={signOut} className="border-t border-line p-3">

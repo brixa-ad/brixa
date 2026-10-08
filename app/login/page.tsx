@@ -13,13 +13,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const [{ error, notice }, theme] = await Promise.all([searchParams, getTheme()]);
+  const [{ error, notice, signup }, theme] = await Promise.all([searchParams, getTheme()]);
 
   return (
     <main className="flex min-h-screen flex-col">
       <StopPushAfterSignOut />
       <div className="flex items-center justify-between px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8">
-        <Logo />
+        <a href="/welcome" aria-label="BRIXA">
+          <Logo />
+        </a>
         <div className="flex items-center gap-2">
           <ThemeToggle initialTheme={theme} />
           <LanguageToggle />
@@ -31,6 +33,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           signInError={error === "invalidCredentials" || error === "genericError" ? error : null}
           callbackFailed={error === "callback"}
           emailConfirmed={notice === "confirmed"}
+          startOnSignUp={signup === "1"}
         />
       </div>
     </main>

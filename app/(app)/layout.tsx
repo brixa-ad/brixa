@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, Clock, LogOut } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -15,13 +15,15 @@ import { DictationProvider } from "@/components/ui/Dictate";
 import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { SectionTabs } from "@/components/SectionTabs";
+import { SubscriptionView } from "@/components/subscription/SubscriptionView";
+import { fmt } from "@/lib/i18n/dictionaries";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getTheme } from "@/lib/theme-server";
 import { signOut } from "../login/actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [session, { t }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
+  const [session, { t, lang }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
 
   if (!session) {
     return (
@@ -35,6 +37,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const displayName = session.fullName || session.email;
+  // the trial is over and nothing is paid: the data stays, the work waits (BRIXA itself is never locked)
+  const sub = session.subscription;
+  const locked = sub.status === "expired" && !session.platformAdmin;
+  // the owner sees the days left of the trial, and the last week of a paid time
+  const daysLeft =
+    session.isOwner && (sub.status === "trial" || (sub.status === "active" && (sub.daysLeft ?? 99) <= 7)) ? sub.daysLeft : null;
   const brixOn = Boolean(process.env.ANTHROPIC_API_KEY);
   // the eight sections (and their pages) this person may open
   const menu = menuFor(session.isManager, brixOn, session.solo);
@@ -55,6 +63,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             subtitle={`${session.organizationName} · ${t.roles[session.role]}`}
             avatarPath={session.avatarPath}
             unread={unread ?? 0}
+            platformAdmin={session.platformAdmin}
           />
           <Link href="/" className="shrink-0">
             <Logo />
@@ -114,6 +123,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">
+        {daysLeft !== null && (
+          <Link
+            href="/subscription"
+            className={`mb-5 flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition print:hidden ${
+              daysLeft <= 5 ? "border-warning/40 bg-warning/10 text-fg hover:bg-warning/15" : "border-line bg-surface text-fg-2 hover:bg-raised"
+            }`}
+          >
+            <Clock className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+              {sub.status === "trial" ? (daysLeft <= 1 ? t.billing.trialLastDay : fmt(t.billing.trialLeft, { n: daysLeft })) : fmt(t.billing.paidLeft, { n: daysLeft })}
+            </span>
+            <span className="shrink-0 font-semibold text-accent-fg">{t.billing.seePlans} →</span>
+          </Link>
+        )}
         <PasskeyPrompt />
         <ServiceWorker />
         {/* dictation: the server writes recordings when a speech service key is set */}
@@ -121,7 +144,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Suspense>
           <SectionTabs sections={menu} />
         </Suspense>
-        <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
+        {locked ? (
+          <SubscriptionView session={session} t={t} lang={lang} locked />
+        ) : (
+          <DictationProvider server={Boolean(process.env.OPENAI_API_KEY)}>{children}</DictationProvider>
+        )}
       </main>
 
       {session.isOwner && session.kind === "agency" && <PendingLogo organizationId={session.organizationId} />}

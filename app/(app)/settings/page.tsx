@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { FileUp } from "lucide-react";
+import { Building2, CreditCard, FileUp } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { FollowUpRulesForm } from "@/components/followup/FollowUpRulesForm";
@@ -12,6 +12,8 @@ import { Card, buttonClass } from "@/components/ui/form";
 import { getAgency } from "@/lib/agency";
 import { TemplateEditor } from "@/components/marketing/TemplateEditor";
 import { cleanTemplate } from "@/lib/marketing";
+import { formatDate } from "@/lib/format";
+import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
@@ -25,7 +27,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SettingsPage() {
-  const [session, { t }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
+  const [session, { t, lang }, theme] = await Promise.all([getSession(), getI18n(), getTheme()]);
+  const sub = session!.subscription;
+  const subStatus =
+    sub.status === "comped"
+      ? t.billing.statusComped
+      : sub.status === "active"
+        ? fmt(t.billing.statusActive, { date: formatDate(sub.paidUntil!, lang) })
+        : sub.status === "trial"
+          ? fmt(t.billing.statusTrial, { date: formatDate(sub.trialEndsAt!, lang) })
+          : t.billing.statusExpired;
   const supabase = await createClient();
   const agency = session!.isOwner ? await getAgency(session!.organizationId) : null;
   const { data: rules } = session!.isLeader
@@ -49,6 +60,24 @@ export default async function SettingsPage() {
         </Card>
 
         <div className="space-y-6">
+          {session!.platformAdmin && (
+            <Card title={t.platform.title} description={t.platform.detailsHint}>
+              <Link href="/admin" className={buttonClass.primary}>
+                <Building2 className="size-4" />
+                {t.platform.menu}
+              </Link>
+            </Card>
+          )}
+
+          {session!.isOwner && (
+            <Card title={t.billing.title} description={subStatus} id="subscription">
+              <Link href="/subscription" className={buttonClass.secondary}>
+                <CreditCard className="size-4" />
+                {t.billing.seePlans}
+              </Link>
+            </Card>
+          )}
+
           <Card title={t.push.title} description={t.push.hint} id="push">
             <PushSettings />
           </Card>

@@ -30,13 +30,16 @@ export function LoginForm({
   signInError,
   callbackFailed,
   emailConfirmed,
+  startOnSignUp = false,
 }: {
   signInError: "invalidCredentials" | "genericError" | null;
   callbackFailed: boolean;
   emailConfirmed: boolean;
+  /** came from "Try it free" */
+  startOnSignUp?: boolean;
 }) {
   const { t } = useI18n();
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [mode, setMode] = useState<"signIn" | "signUp">(startOnSignUp ? "signUp" : "signIn");
   const [signUpState, signUpAction, signingUp] = useActionState<AuthState, FormData>(signUp, {});
   const [signingIn, setSigningIn] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -243,6 +246,27 @@ export function LoginForm({
           )}
         </Field>
 
+        {isSignUp && (
+          <label className="flex items-start gap-2.5 text-sm text-fg-2">
+            <input type="checkbox" name="acceptTerms" value="yes" required className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {t.auth.termsAgree}{" "}
+              <a href="/terms" target="_blank" className="font-medium text-accent-fg underline-offset-2 hover:underline">
+                {t.auth.termsLink}
+              </a>
+              ,{" "}
+              <a href="/privacy" target="_blank" className="font-medium text-accent-fg underline-offset-2 hover:underline">
+                {t.auth.privacyLink}
+              </a>{" "}
+              {t.auth.termsAnd}{" "}
+              <a href="/dpa" target="_blank" className="font-medium text-accent-fg underline-offset-2 hover:underline">
+                {t.auth.dpaLink}
+              </a>
+              .
+            </span>
+          </label>
+        )}
+
         {error && (
           <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
@@ -253,6 +277,7 @@ export function LoginForm({
           {pending && <Loader2 className="size-4 animate-spin" />}
           {pending ? t.common.loading : isSignUp ? t.auth.signUp : t.auth.signIn}
         </button>
+        {isSignUp && <p className="text-center text-xs text-muted">{t.auth.trialNote}</p>}
       </form>
 
       <p className="mt-4 text-center text-sm text-muted">

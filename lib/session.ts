@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { subscriptionOf, type Subscription, type SubscriptionRow } from "./subscription";
 import { createClient } from "./supabase/server";
 import type { Role } from "./types";
 
@@ -26,6 +27,10 @@ export type SessionContext = {
   kind: "agency" | "solo";
   /** a broker on their own, still alone: no team parts */
   solo: boolean;
+  /** the agency's trial or what it has paid (050) */
+  subscription: Subscription;
+  /** runs BRIXA itself: sees every agency */
+  platformAdmin: boolean;
 };
 
 /**
@@ -41,20 +46,21 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: membership }] = await Promise.all([
+  const [{ data: profile }, { data: membership }, { data: platformAdmin }] = await Promise.all([
     supabase.from("profiles").select("full_name, email, avatar_path, bottom_nav").eq("id", user.id).maybeSingle(),
     supabase
       .from("organization_members")
-      .select("organization_id, role, office_id, team_id, organizations(name, kind)")
+      .select("organization_id, role, office_id, team_id, organizations(name, kind, trial_ends_at, paid_until, comped, plan_code)")
       .eq("profile_id", user.id)
       .order("created_at")
       .limit(1)
       .maybeSingle(),
+    supabase.rpc("is_platform_admin"),
   ]);
 
   if (!membership) return null;
 
-  const org = membership.organizations as unknown as { name: string; kind: "agency" | "solo" } | null;
+  const org = membership.organizations as unknown as ({ name: string; kind: "agency" | "solo" } & SubscriptionRow) | null;
   const { count: members } = await supabase
     .from("organization_members")
     .select("profile_id", { count: "exact", head: true })
@@ -76,5 +82,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     teamId: membership.team_id ?? null,
     kind: org?.kind ?? "agency",
     solo: org?.kind === "solo" && (members ?? 0) <= 1,
+    subscription: subscriptionOf(org),
+    platformAdmin: platformAdmin === true,
   };
 });

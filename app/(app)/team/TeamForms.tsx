@@ -29,6 +29,7 @@ function useErrorText(state: TeamState) {
   if (state.error === "invalidEmail") return t.errors.invalidEmail;
   if (state.error === "generic") return t.errors.generic;
   if (state.error === "forbidden") return t.errors.forbidden;
+  if (state.error === "planLimit") return fmt(t.team.planLimit, { n: state.room ?? "" });
   return t.team[state.error];
 }
 

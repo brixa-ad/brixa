@@ -9,7 +9,9 @@ import type { Role } from "@/lib/types";
 import { isValidEmail } from "@/lib/validation";
 
 export type TeamState = {
-  error?: "invalidEmail" | "alreadyMember" | "alreadyInvited" | "forbidden" | "noOfficeYet" | "generic";
+  error?: "invalidEmail" | "alreadyMember" | "alreadyInvited" | "forbidden" | "noOfficeYet" | "generic" | "planLimit";
+  /** the package's room (planLimit) */
+  room?: number;
   success?: boolean;
 };
 
@@ -76,6 +78,8 @@ export async function inviteMember(_: TeamState, formData: FormData): Promise<Te
   });
 
   if (error) {
+    // the package has no room for one more (050)
+    if (error.message.includes("plan_limit")) return { error: "planLimit", room: Number(error.hint) || undefined };
     // 23505 = unique violation on the pending-invitation index
     if (error.code !== "23505") console.error("Invitation failed:", error.message);
     return { error: error.code === "23505" ? "alreadyInvited" : "generic" };

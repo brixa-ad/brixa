@@ -6,6 +6,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // Google Calendar) — both check their own secret token.
 const PUBLIC_PATHS = [
   "/login",
+  // what BRIXA is, for a visitor; the terms
+  "/welcome",
+  "/terms",
+  "/privacy",
+  "/dpa",
   "/auth",
   "/icon",
   "/apple-icon",
@@ -60,7 +65,8 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
   if (!isSignedIn && !isPublic) {
-    return redirectKeepingCookies(request, response, "/login");
+    // BRIXA's own address: a visitor sees what BRIXA is
+    return redirectKeepingCookies(request, response, pathname === "/" ? "/welcome" : "/login");
   }
 
   if (isSignedIn && pathname === "/login") {
