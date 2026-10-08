@@ -243,28 +243,32 @@ export function MessageBubble({
           </span>
         )}
         {selected && !deleted && (
-          <span className="mt-1 flex flex-wrap items-center gap-1 rounded-full border border-line bg-surface px-2 py-1 shadow-sm">
-            {REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => onReact(emoji)}
-                className={`grid size-8 place-items-center rounded-full text-lg transition hover:bg-raised ${emoji === myReaction ? "bg-accent-soft" : ""}`}
-                aria-label={`${t.chat.react} ${emoji}`}
-              >
-                {emoji}
+          <span className="mt-1 flex flex-col rounded-2xl border border-line bg-surface p-1 shadow-sm">
+            <span className="flex">
+              {REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => onReact(emoji)}
+                  className={`grid size-9 place-items-center rounded-full text-lg transition hover:bg-raised ${emoji === myReaction ? "bg-accent-soft" : ""}`}
+                  aria-label={`${t.chat.react} ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </span>
+            <span className="flex gap-1 border-t border-line-soft px-1 pt-1">
+              <button type="button" onClick={onReply} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-fg-2 hover:bg-raised">
+                <Reply className="size-3.5" />
+                {t.chat.reply}
               </button>
-            ))}
-            <button type="button" onClick={onReply} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-fg-2 hover:bg-raised">
-              <Reply className="size-3.5" />
-              {t.chat.reply}
-            </button>
-            {canDelete && (
-              <button type="button" onClick={onDelete} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10">
-                <Trash2 className="size-3.5" />
-                {t.chat.delete}
-              </button>
-            )}
+              {canDelete && (
+                <button type="button" onClick={onDelete} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10">
+                  <Trash2 className="size-3.5" />
+                  {t.chat.delete}
+                </button>
+              )}
+            </span>
           </span>
         )}
         <span className="mt-0.5 px-1 text-[11px] text-subtle">{time}</span>

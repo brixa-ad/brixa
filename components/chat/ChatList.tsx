@@ -215,6 +215,11 @@ export function ChatList({ chats, colleagues }: { chats: ChatSummary[]; colleagu
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
                         <span className={`truncate ${unread > 0 ? "font-bold" : "font-semibold"}`}>{chatTitle(chat, t)}</span>
+                        {(chat.kind === "office" || chat.kind === "team") && (
+                          <span className="shrink-0 rounded-full bg-raised px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted">
+                            {chat.kind === "office" ? C.unitOffice : C.unitTeam}
+                          </span>
+                        )}
                         {chat.shared && chat.kind !== "brixa" && <Globe className="size-3.5 shrink-0 text-brand-cyan" />}
                         {chat.muted && <BellOff className="size-3.5 shrink-0 text-subtle" />}
                       </span>

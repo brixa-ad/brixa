@@ -52,7 +52,15 @@ export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) 
     .sort((a, b) => a.name.localeCompare(b.name, "bg"));
 
   const other = chat.kind === "direct" ? people.find((p) => p.id !== session.userId) : undefined;
-  const subtitle = chat.kind === "direct" ? (other?.agency ?? t.chat.colleagues) : fmt(t.chat.peopleCount, { n: chat.count });
+  const count = fmt(t.chat.peopleCount, { n: chat.count });
+  const subtitle =
+    chat.kind === "direct"
+      ? (other?.agency ?? t.chat.colleagues)
+      : chat.kind === "office"
+        ? `${t.chat.unitOffice} · ${count}`
+        : chat.kind === "team"
+          ? `${t.chat.unitTeam} · ${count}`
+          : count;
 
   return (
     <ChatRoom

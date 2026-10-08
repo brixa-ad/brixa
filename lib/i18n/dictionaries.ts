@@ -885,6 +885,9 @@ const bg = {
     requestNote: "{name} ще види съобщенията ви, щом приеме заявката.",
     writeTo: "Лично съобщение",
     react: "Реакция",
+    yourMessage: "ваше съобщение",
+    unitOffice: "Офис",
+    unitTeam: "Екип",
   },
   billing: {
     title: "Абонамент",
@@ -3693,6 +3696,9 @@ const en: Dictionary = {
     requestNote: "{name} will see your messages once they accept the request.",
     writeTo: "Personal message",
     react: "React",
+    yourMessage: "your message",
+    unitOffice: "Office",
+    unitTeam: "Team",
   },
   billing: {
     title: "Subscription",

@@ -65,6 +65,11 @@ export function Composer({
   const fileInput = useRef<HTMLInputElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
 
+  // answering a message: straight to writing
+  useEffect(() => {
+    if (replyTo) area.current?.focus();
+  }, [replyTo]);
+
   // the recording's clock
   useEffect(() => {
     if (!recording) return;

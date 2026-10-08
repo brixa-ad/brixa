@@ -221,9 +221,9 @@ export function ChatRoom({
   const nameOf = (id: string | null) => (id === me ? C.you : (id && who.get(id)?.name) || "—");
 
   // "seen": in a personal chat, under my last message once the other has read it
-  const other = kind === "direct" ? people.find((p) => p.id !== me && p.status === "active") : undefined;
+  const other = kind === "direct" ? people.find((p) => p.id !== me && p.status !== "left") : undefined;
   const lastMine = [...messages].reverse().find((m) => m.sender_id === me && m.kind !== "system" && !m.deleted_at);
-  const seen = Boolean(other && lastMine && reads[other.id] && reads[other.id] >= lastMine.created_at);
+  const seen = Boolean(other?.status === "active" && lastMine && reads[other.id] && reads[other.id] >= lastMine.created_at);
   const typers = Object.values(typing);
 
   return (
@@ -298,7 +298,7 @@ export function ChatRoom({
                   onReact={(emoji) => react(m, emoji)}
                   onReply={() => {
                     setSelected(null);
-                    setReplyTo({ id: m.id, name: nameOf(m.sender_id), text: messageLine(m, t) });
+                    setReplyTo({ id: m.id, name: mine ? C.yourMessage : nameOf(m.sender_id), text: messageLine(m, t) });
                   }}
                   onDelete={() => {
                     if (!window.confirm(C.deleteConfirm)) return;
