@@ -48,6 +48,8 @@ export type ChatCard = {
   class?: string;
   budget_max?: number | null;
   org?: string;
+  /** a listing sent to another agency: its public link (/p/…) */
+  share?: string;
 };
 
 export type ChatMessage = {

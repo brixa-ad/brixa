@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Building2, FileText, Handshake, Reply, Trash2, UserRound } from "lucide-react";
+import { chatSharePhoto } from "@/app/(app)/chat/actions";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
 import { CHAT_BUCKET, REACTIONS, duration, fileSize, systemText, type ChatMessage } from "@/lib/chat";
@@ -32,6 +33,27 @@ export function useSignedUrl(bucket: string, path: string | null | undefined) {
       alive = false;
     };
   }, [bucket, path]);
+  return url;
+}
+
+const shared = new Map<string, Promise<string | null>>();
+
+/** The first photo of a listing another agency sent (through its public link). */
+function useSharePhoto(token: string | null | undefined) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    let pending = shared.get(token);
+    if (!pending) {
+      pending = chatSharePhoto(token);
+      shared.set(token, pending);
+    }
+    void pending.then((u) => alive && setUrl(u));
+    return () => {
+      alive = false;
+    };
+  }, [token]);
   return url;
 }
 
@@ -100,8 +122,16 @@ function Card({ message, mine, myOrg }: { message: ChatMessage; mine: boolean; m
   const card = message.card ?? {};
   // the listing's own photo, for its agency (another agency sees the facts only)
   const ownAgency = message.organization_id === myOrg;
-  const photo = useSignedUrl(PHOTO_BUCKET, ownAgency ? card.photo : null);
-  const href = ownAgency && message.ref_id ? `/${message.kind === "property" ? "properties" : message.kind === "client" ? "clients" : "deals"}/${message.ref_id}` : null;
+  const ownPhoto = useSignedUrl(PHOTO_BUCKET, ownAgency ? card.photo : null);
+  // another agency's listing: its photo and its public page, through the link sent with it
+  const sharedPhoto = useSharePhoto(!ownAgency && message.kind === "property" ? card.share : null);
+  const photo = ownPhoto ?? sharedPhoto;
+  const href =
+    ownAgency && message.ref_id
+      ? `/${message.kind === "property" ? "properties" : message.kind === "client" ? "clients" : "deals"}/${message.ref_id}`
+      : message.kind === "property" && card.share
+        ? `/p/${card.share}`
+        : null;
   const Icon = message.kind === "property" ? Building2 : message.kind === "client" ? UserRound : Handshake;
 
   const lines: string[] = [];

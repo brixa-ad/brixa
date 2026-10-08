@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { PHOTO_BUCKET } from "@/lib/photos";
 import { getSession } from "@/lib/session";
+import { anonymous } from "@/lib/share";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,4 +115,15 @@ export async function searchBrixaPeople(q: string): Promise<BrixaPerson[]> {
   if (!supabase || q.trim().length < 2) return [];
   const { data } = await supabase.rpc("search_brixa_people", { q: q.trim().slice(0, 60) });
   return (data ?? []) as BrixaPerson[];
+}
+
+/** The first photo of a listing sent to another agency, through its public link (photos stay private otherwise). */
+export async function chatSharePhoto(token: string): Promise<string | null> {
+  if (!UUID.test(token) || !(await getSession())) return null;
+  const supabase = anonymous();
+  const { data } = await supabase.rpc("shared_property", { share_token: token });
+  const path = (data as { property?: { photos?: string[] } } | null)?.property?.photos?.[0];
+  if (!path) return null;
+  const { data: signed } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrl(path, 3600);
+  return signed?.signedUrl ?? null;
 }
