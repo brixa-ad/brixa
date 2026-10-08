@@ -163,6 +163,8 @@ function Card({ message, mine, myOrg }: { message: ChatMessage; mine: boolean; m
               {line}
             </span>
           ))}
+          {/* it opens with a tap: say so */}
+          {href && <span className={`mt-1 block text-xs font-semibold ${mine ? "text-on-accent" : "text-accent-fg"}`}>{t.chat.open} →</span>}
         </span>
       </span>
     </span>
