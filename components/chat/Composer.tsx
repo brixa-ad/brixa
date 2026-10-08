@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Building2, Camera, FileText, Handshake, Mic, Paperclip, SendHorizontal, Square, UserRound, X } from "lucide-react";
+import { Building2, Camera, FileText, Handshake, Mic, Paperclip, Reply, SendHorizontal, Square, UserRound, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { CHAT_BUCKET, CHAT_MAX_BYTES, MESSAGE_COLUMNS, duration, type ChatMessage } from "@/lib/chat";
+import { fmt } from "@/lib/i18n/dictionaries";
 import { compressImage } from "@/lib/photos";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,6 +34,9 @@ export function Composer({
   shared,
   onSent,
   onPickCard,
+  replyTo,
+  onCancelReply,
+  onTyping,
 }: {
   room: string;
   me: string;
@@ -41,6 +45,11 @@ export function Composer({
   shared: boolean;
   onSent: (message: ChatMessage) => void;
   onPickCard: (kind: CardKind) => void;
+  /** the message being answered */
+  replyTo: { id: string; name: string; text: string } | null;
+  onCancelReply: () => void;
+  /** a key pressed: the others see "typing…" */
+  onTyping: () => void;
 }) {
   const { t } = useI18n();
   const C = t.chat;
@@ -67,11 +76,12 @@ export function Composer({
     const supabase = createClient();
     const { data, error: failed } = await supabase
       .from("chat_messages")
-      .insert({ room_id: room, sender_id: me, organization_id: myOrg, ...row })
+      .insert({ room_id: room, sender_id: me, organization_id: myOrg, reply_to: replyTo?.id ?? null, ...row })
       .select(MESSAGE_COLUMNS)
       .single();
     if (failed || !data) throw failed ?? new Error("not sent");
     onSent(data as ChatMessage);
+    onCancelReply();
   }
 
   async function sendText() {
@@ -178,6 +188,18 @@ export function Composer({
   return (
     <div className="border-t border-line bg-canvas/95 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur">
       {error && <p className="mb-1.5 px-1 text-sm text-danger">{error}</p>}
+      {replyTo && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border-l-2 border-accent bg-raised px-3 py-1.5 text-sm">
+          <Reply className="size-4 shrink-0 text-accent-fg" />
+          <span className="min-w-0 flex-1 truncate">
+            <span className="font-semibold">{fmt(C.replyingTo, { name: replyTo.name })}</span>
+            <span className="text-muted"> · {replyTo.text}</span>
+          </span>
+          <button type="button" onClick={onCancelReply} className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-surface" aria-label={t.common.cancel}>
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
       {menu && (
         <div className="mb-2 flex flex-wrap gap-2">
           {options.map((o) => (
@@ -235,7 +257,10 @@ export function Composer({
           <textarea
             ref={area}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              onTyping();
+            }}
             onKeyDown={(e) => {
               // on a computer Enter sends (Shift+Enter: a new line); on a phone Enter is a new line
               if (e.key === "Enter" && !e.shiftKey && !touch) {

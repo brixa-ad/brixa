@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/PageHeader";
 import { ChatList } from "@/components/chat/ChatList";
-import { NewChat, type Colleague } from "@/components/chat/NewChat";
+import type { Colleague } from "@/components/chat/NewChat";
 import type { ChatSummary } from "@/lib/chat";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -31,8 +31,8 @@ export default async function ChatPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t.chat.title} actions={colleagues.length > 0 ? <NewChat colleagues={colleagues} /> : undefined} />
-      <ChatList chats={(chats ?? []) as ChatSummary[]} />
+      <PageHeader title={t.chat.title} />
+      <ChatList chats={(chats ?? []) as ChatSummary[]} colleagues={colleagues} />
     </div>
   );
 }

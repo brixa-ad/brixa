@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { Modal } from "@/components/ui/Modal";
+import type { ChatKind } from "@/lib/chat";
 import { PeoplePicker, type Colleague } from "./NewChat";
 
 export type RoomPerson = { id: string; name: string; avatar_path: string | null; agency: string | null; status: "active" | "invited" | "left" };
@@ -24,7 +25,7 @@ export function RoomMenu({
   onClose,
 }: {
   room: string;
-  kind: "agency" | "group";
+  kind: ChatKind;
   title: string | null;
   muted: boolean;
   shared: boolean;

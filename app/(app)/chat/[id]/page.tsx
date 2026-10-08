@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import type { Colleague } from "@/components/chat/NewChat";
 import type { RoomPerson } from "@/components/chat/RoomMenu";
-import { chatTitle, MESSAGE_COLUMNS, type ChatMessage, type ChatSummary } from "@/lib/chat";
+import { chatTitle, MESSAGE_COLUMNS, type ChatMessage, type ChatSummary, type Reaction } from "@/lib/chat";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.chat.title };
 }
 
-/** A conversation: the last messages, the people in it, and the colleagues who could join. */
+/** A conversation: the last messages and their reactions, the people in it, and the colleagues who could join. */
 export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) {
   const { id } = await params;
   if (!UUID.test(id)) notFound();
@@ -39,18 +39,20 @@ export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) 
   if (!chat || !mine) notFound();
   if (chat.status === "invited") redirect("/chat");
 
-  const people = (peopleRaw ?? []) as RoomPerson[];
+  const messages = ((rows ?? []) as ChatMessage[]).reverse();
+  const { data: reactionRows } = messages.length
+    ? await supabase.from("chat_reactions").select("message_id, profile_id, emoji").in("message_id", messages.map((m) => m.id))
+    : { data: [] };
+
+  const people = (peopleRaw ?? []) as (RoomPerson & { last_read_at: string | null })[];
   const inRoom = new Set(people.filter((p) => p.status !== "left").map((p) => p.id));
   const colleagues: Colleague[] = ((members ?? []) as unknown as { profile_id: string; profiles: { full_name: string | null; email: string; avatar_path: string | null } | null }[])
     .filter((m) => !inRoom.has(m.profile_id))
     .map((m) => ({ id: m.profile_id, name: m.profiles?.full_name || m.profiles?.email || "—", avatar_path: m.profiles?.avatar_path ?? null }))
     .sort((a, b) => a.name.localeCompare(b.name, "bg"));
 
-  const others = people.filter((p) => p.id !== session.userId && p.status === "active");
-  const subtitle =
-    chat.kind === "agency" || others.length > 1
-      ? fmt(t.chat.peopleCount, { n: others.length + 1 })
-      : others[0]?.agency ?? others[0]?.name ?? t.chat.justYou;
+  const other = chat.kind === "direct" ? people.find((p) => p.id !== session.userId) : undefined;
+  const subtitle = chat.kind === "direct" ? (other?.agency ?? t.chat.colleagues) : fmt(t.chat.peopleCount, { n: chat.count });
 
   return (
     <ChatRoom
@@ -61,10 +63,13 @@ export default async function ChatRoomPage({ params }: PageProps<"/chat/[id]">) 
       muted={chat.muted}
       shared={chat.shared}
       me={session.userId}
+      myName={session.fullName || session.email}
       myOrg={mine.organization_id}
+      platformAdmin={session.platformAdmin}
       people={people}
       colleagues={colleagues}
-      initial={((rows ?? []) as ChatMessage[]).reverse()}
+      initial={messages}
+      initialReactions={(reactionRows ?? []) as Reaction[]}
     />
   );
 }

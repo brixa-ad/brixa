@@ -19,6 +19,8 @@ export type NotificationData = {
   /** a chat message's words, and the agency inviting to a conversation */
   text?: string;
   agency?: string;
+  /** a personal message request (not a group's invitation) */
+  direct?: boolean;
   /** a package an agency asked for, and whom to call */
   plan?: string;
   phone?: string | null;
@@ -97,7 +99,7 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "chat_message":
       return fmt(data.kind === "direct" ? t.notifications.chat_direct : t.notifications.chat_group, { ...vars, text: data.text ?? "" });
     case "chat_invite":
-      return fmt(t.notifications.chat_invite, { ...vars, agency: data.agency ?? "" });
+      return fmt(data.direct ? t.notifications.chat_request : t.notifications.chat_invite, { ...vars, agency: data.agency ?? "" });
     case "agency_signed_up":
       return fmt(data.kind === "solo" ? t.notifications.agency_signed_up_solo : t.notifications.agency_signed_up, vars);
     case "plan_requested":

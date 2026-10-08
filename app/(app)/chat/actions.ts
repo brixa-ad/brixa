@@ -94,3 +94,23 @@ export async function markChatRead(room: string) {
   if (!supabase || !UUID.test(room)) return;
   await supabase.rpc("mark_chat_read", { target_room: room });
 }
+
+/** A personal chat: with a colleague at once; with someone of another agency, a request they accept. */
+export async function startDirectChat(person: string): Promise<{ id?: string; error?: boolean }> {
+  const supabase = await client();
+  if (!supabase || !UUID.test(person)) return { error: true };
+  const { data, error } = await supabase.rpc("start_direct_chat", { person });
+  if (error) console.error("Starting a personal chat failed:", error.message);
+  revalidatePath("/chat");
+  return error ? { error: true } : { id: data as string };
+}
+
+export type BrixaPerson = { id: string; name: string; avatar_path: string | null; job_title: string | null; agency: string; same: boolean };
+
+/** Anyone in BRIXA by name or agency (colleagues first). */
+export async function searchBrixaPeople(q: string): Promise<BrixaPerson[]> {
+  const supabase = await client();
+  if (!supabase || q.trim().length < 2) return [];
+  const { data } = await supabase.rpc("search_brixa_people", { q: q.trim().slice(0, 60) });
+  return (data ?? []) as BrixaPerson[];
+}

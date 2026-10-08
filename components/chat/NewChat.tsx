@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus, Search } from "lucide-react";
+import { Check, Search, Users } from "lucide-react";
 import { createChatGroup } from "@/app/(app)/chat/actions";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
@@ -11,7 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 
 export type Colleague = { id: string; name: string; avatar_path: string | null };
 
-/** Colleagues to tick, with a search; shared by "New conversation" and "Add colleagues". */
+/** Colleagues to tick, with a search; shared by "New group" and "Add colleagues". */
 export function PeoplePicker({ people, chosen, onChange }: { people: Colleague[]; chosen: string[]; onChange: (ids: string[]) => void }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -51,8 +51,8 @@ export function PeoplePicker({ people, chosen, onChange }: { people: Colleague[]
   );
 }
 
-/** "New conversation": the colleagues, and a name if it's a group. */
-export function NewChat({ colleagues }: { colleagues: Colleague[] }) {
+/** "New group": the colleagues and the group's name. */
+export function NewGroup({ colleagues }: { colleagues: Colleague[] }) {
   const { t } = useI18n();
   const C = t.chat;
   const router = useRouter();
@@ -64,19 +64,18 @@ export function NewChat({ colleagues }: { colleagues: Colleague[] }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={buttonClass.primary}>
-        <Plus className="size-4" />
-        {C.newChat}
+      <button type="button" onClick={() => setOpen(true)} className={buttonClass.secondary}>
+        <Users className="size-4" />
+        {C.newGroup}
       </button>
       {open && (
-        <Modal title={C.newChat} onClose={() => setOpen(false)}>
-          <p className="mb-2 text-sm font-medium text-fg-2">{C.pickPeople}</p>
-          <PeoplePicker people={colleagues} chosen={chosen} onChange={setChosen} />
-          <label className="mt-4 block text-sm">
+        <Modal title={C.newGroup} onClose={() => setOpen(false)}>
+          <label className="block text-sm">
             <span className="mb-1.5 block font-medium text-fg-2">{C.groupName}</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} className={inputClass} />
-            <span className="mt-1 block text-xs text-muted">{C.groupNameHint}</span>
           </label>
+          <p className="mb-2 mt-4 text-sm font-medium text-fg-2">{C.pickPeople}</p>
+          <PeoplePicker people={colleagues} chosen={chosen} onChange={setChosen} />
           {failed && <p className="mt-3 text-sm text-danger">{t.errors.generic}</p>}
           <button
             type="button"

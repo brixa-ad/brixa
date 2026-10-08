@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Building2, FileText, Handshake, Trash2, UserRound } from "lucide-react";
+import { Building2, FileText, Handshake, Reply, Trash2, UserRound } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { useI18n } from "@/components/I18nProvider";
-import { CHAT_BUCKET, duration, fileSize, systemText, type ChatMessage } from "@/lib/chat";
+import { CHAT_BUCKET, REACTIONS, duration, fileSize, systemText, type ChatMessage } from "@/lib/chat";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { PHOTO_BUCKET } from "@/lib/photos";
 import { createClient } from "@/lib/supabase/client";
@@ -140,7 +140,7 @@ function Card({ message, mine, myOrg }: { message: ChatMessage; mine: boolean; m
   return href ? <Link href={href}>{body}</Link> : body;
 }
 
-/** One message: mine on the right, the others' on the left with who wrote it. */
+/** One message: mine on the right, the others' on the left with who wrote it; tap it to react, reply or take it back. */
 export function MessageBubble({
   message,
   mine,
@@ -149,8 +149,15 @@ export function MessageBubble({
   showSender,
   time,
   selected,
+  reactions,
+  myReaction,
+  quote,
+  canDelete,
   onSelect,
+  onReact,
+  onReply,
   onDelete,
+  onSender,
 }: {
   message: ChatMessage;
   mine: boolean;
@@ -160,8 +167,18 @@ export function MessageBubble({
   showSender: boolean;
   time: string;
   selected: boolean;
+  /** emoji → how many */
+  reactions: [string, number][];
+  myReaction: string | null;
+  /** the message it answers */
+  quote: { name: string; text: string } | null;
+  canDelete: boolean;
   onSelect: () => void;
+  onReact: (emoji: string) => void;
+  onReply: () => void;
   onDelete: () => void;
+  /** tapping someone's name or photo: a personal message */
+  onSender: (() => void) | null;
 }) {
   const { t } = useI18n();
   if (message.kind === "system") {
@@ -173,18 +190,31 @@ export function MessageBubble({
 
   return (
     <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"} ${showSender ? "mt-3" : "mt-0.5"}`}>
-      {!mine && <span className="w-8 shrink-0">{showSender && <Avatar path={sender?.avatar_path} name={sender?.name ?? "?"} size="sm" />}</span>}
+      {!mine && (
+        <span className="w-8 shrink-0">
+          {showSender && (
+            <button type="button" onClick={onSender ?? undefined} disabled={!onSender} aria-label={sender?.name}>
+              <Avatar path={sender?.avatar_path} name={sender?.name ?? "?"} size="sm" />
+            </button>
+          )}
+        </span>
+      )}
       <div className={`flex min-w-0 max-w-[80%] flex-col ${mine ? "items-end" : "items-start"}`}>
         {!mine && showSender && (
-          <span className="mb-0.5 px-1 text-xs font-medium text-muted">
+          <button type="button" onClick={onSender ?? undefined} disabled={!onSender} className="mb-0.5 px-1 text-left text-xs font-medium text-muted">
             {sender?.name ?? "—"}
             {sender?.agency && <span className="text-brand-cyan"> · {sender.agency}</span>}
+          </button>
+        )}
+        {quote && (
+          <span className={`mb-0.5 max-w-full truncate rounded-xl border-l-2 border-accent bg-raised px-3 py-1 text-xs text-muted ${mine ? "self-end" : ""}`}>
+            <span className="font-semibold text-fg-2">{quote.name}</span> {quote.text}
           </span>
         )}
-        {/* tapping one's own message offers to take it back */}
+        {/* tapping a message: react, reply, or take one's own back */}
         <div
-          onClick={mine && !deleted ? onSelect : undefined}
-          className={`min-w-0 max-w-full text-left ${mine && !deleted ? "cursor-pointer" : "cursor-default"} ${
+          onClick={deleted ? undefined : onSelect}
+          className={`relative min-w-0 max-w-full text-left ${deleted ? "cursor-default" : "cursor-pointer"} ${
             media && message.kind === "image"
               ? ""
               : `rounded-2xl px-3.5 py-2 ${mine ? "rounded-br-md bg-accent text-on-accent" : "rounded-bl-md bg-surface text-fg ring-1 ring-line"}`
@@ -202,15 +232,42 @@ export function MessageBubble({
             </span>
           )}
         </div>
-        <span className="mt-0.5 flex items-center gap-2 px-1 text-[11px] text-subtle">
-          {time}
-          {selected && mine && !deleted && (
-            <button type="button" onClick={onDelete} className="inline-flex items-center gap-1 font-semibold text-danger">
-              <Trash2 className="size-3" />
-              {t.chat.delete}
+        {reactions.length > 0 && (
+          <span className={`-mt-1.5 flex gap-0.5 rounded-full border border-line bg-surface px-1.5 py-0.5 text-xs shadow-xs ${mine ? "mr-2" : "ml-2"}`}>
+            {reactions.map(([emoji, n]) => (
+              <span key={emoji} className={emoji === myReaction ? "font-bold" : ""}>
+                {emoji}
+                {n > 1 && <span className="ml-0.5 text-muted">{n}</span>}
+              </span>
+            ))}
+          </span>
+        )}
+        {selected && !deleted && (
+          <span className="mt-1 flex flex-wrap items-center gap-1 rounded-full border border-line bg-surface px-2 py-1 shadow-sm">
+            {REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onReact(emoji)}
+                className={`grid size-8 place-items-center rounded-full text-lg transition hover:bg-raised ${emoji === myReaction ? "bg-accent-soft" : ""}`}
+                aria-label={`${t.chat.react} ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+            <button type="button" onClick={onReply} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-fg-2 hover:bg-raised">
+              <Reply className="size-3.5" />
+              {t.chat.reply}
             </button>
-          )}
-        </span>
+            {canDelete && (
+              <button type="button" onClick={onDelete} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10">
+                <Trash2 className="size-3.5" />
+                {t.chat.delete}
+              </button>
+            )}
+          </span>
+        )}
+        <span className="mt-0.5 px-1 text-[11px] text-subtle">{time}</span>
       </div>
     </div>
   );
