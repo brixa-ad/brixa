@@ -21,7 +21,7 @@ function readHidden(userId: string) {
 }
 
 /** The owner's checklist after signing up; gone once everything is done or it is hidden. */
-export function FirstSteps({ userId, steps, sampleOffer = false }: { userId: string; steps: FirstStep[]; sampleOffer?: boolean }) {
+export function FirstSteps({ userId, steps, sampleOffer = false, solo = false }: { userId: string; steps: FirstStep[]; sampleOffer?: boolean; solo?: boolean }) {
   const t = { firstSteps: firstStepsText[useI18n().lang] };
   const mounted = useMounted();
   const [closed, setClosed] = useState(false);
@@ -68,8 +68,8 @@ export function FirstSteps({ userId, steps, sampleOffer = false }: { userId: str
             >
               {step.done ? <CheckCircle2 className="size-5 shrink-0 text-success" /> : <Circle className="size-5 shrink-0 text-subtle" />}
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-medium ${step.done ? "text-muted line-through" : ""}`}>{t.firstSteps[step.key]}</span>
-                {!step.done && <span className="block text-xs text-muted">{t.firstSteps[`${step.key}Hint`]}</span>}
+                <span className={`block text-sm font-medium ${step.done ? "text-muted line-through" : ""}`}>{t.firstSteps[solo && step.key === "logo" ? "logoSolo" : step.key]}</span>
+                {!step.done && <span className="block text-xs text-muted">{t.firstSteps[solo && step.key === "logo" ? "logoSoloHint" : `${step.key}Hint`]}</span>}
               </span>
               {!step.done && <ChevronRight className="size-4 shrink-0 text-subtle" />}
             </Link>

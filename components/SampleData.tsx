@@ -47,10 +47,10 @@ export function SampleBanner() {
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
   return (
-    <div className="mb-5 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-3 text-sm print:hidden">
+    <div className="rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-3 py-2 text-sm print:hidden">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <FlaskConical className="size-4 shrink-0 text-brand-cyan" />
-        <span className="min-w-0 flex-1">{asking ? t.sample.removeConfirm : t.sample.banner}</span>
+        <span className="min-w-0 flex-1">{asking ? t.sample.removeConfirm : t.sample.bannerShort}</span>
         {asking ? (
           <span className="flex gap-2">
             <button
@@ -74,8 +74,8 @@ export function SampleBanner() {
             </button>
           </span>
         ) : (
-          <button type="button" onClick={() => setAsking(true)} className="font-semibold text-accent-fg hover:text-fg">
-            {t.sample.remove}
+          <button type="button" onClick={() => setAsking(true)} className="shrink-0 font-semibold text-accent-fg hover:text-fg">
+            {t.sample.removeShort}
           </button>
         )}
       </div>

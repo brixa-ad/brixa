@@ -87,10 +87,10 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
         backHref={back?.href}
         backLabel={back?.label}
         title={t.deals.title}
-        subtitle={session.isManager ? t.deals.subtitleManager : t.deals.subtitle}
+        subtitle={session.isManager && !session.solo ? t.deals.subtitleManager : t.deals.subtitle}
         actions={
           <>
-            {session.isManager && (
+            {session.isManager && members.length > 1 && (
               <BrokerPicker
                 value={broker}
                 selfId={session.userId}

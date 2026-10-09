@@ -10,6 +10,8 @@ import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
 import { FirstSteps } from "@/components/home/FirstSteps";
+import { SampleBanner } from "@/components/SampleData";
+import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { TodayWindow } from "@/components/home/TodayWindow";
 import { PushBanner } from "@/components/push/PushBanner";
 import { TemperatureItem } from "@/components/signals/SignalRows";
@@ -124,6 +126,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const missionList = missionRows(missionData, { done, total }, t);
 
   const stepsToday = upcoming.filter((step) => step.day === today);
+  const hourCard = numbers.hourValue !== null || numbers.needPerHour !== null;
+  // the trial's days, on Home (the last five show on every page)
+  const sub = session.subscription;
+  const trialLine =
+    session.isOwner && sub.status === "trial" && sub.daysLeft !== null && sub.daysLeft > 5 ? <TrialBanner status="trial" daysLeft={sub.daysLeft} t={t} /> : null;
   const heading = "mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-subtle";
 
   return (
@@ -216,13 +223,27 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </TodayWindow>
       )}
 
+      {/* ---- the trial (the last days show on every page) and the sample data ---- */}
+      {(trialLine || (session.sampleSince && session.isOwner)) && (
+        <div className="space-y-2">
+          {trialLine}
+          {session.sampleSince && session.isOwner && <SampleBanner />}
+        </div>
+      )}
+
       {/* ---- greeting + thought for the day ---- */}
       <section>
         <p className="text-sm font-medium capitalize text-muted">{dateLabel}</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
           {fmt(t.home.hello, { name: firstName })} <span aria-hidden>👋</span>
         </h1>
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* a new agency: what to do first, before anything else */}
+        {firstSteps && (
+          <div className="mt-4">
+            <FirstSteps userId={session.userId} steps={firstSteps.steps} sampleOffer={firstSteps.sampleOffer} solo={session.kind === "solo"} />
+          </div>
+        )}
+        <div className={`mt-4 grid grid-cols-1 gap-3 ${hourCard ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
           <figure className="flex gap-3 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur sm:p-5">
             <Quote className="size-5 shrink-0 text-accent-fg" />
             <div>
@@ -231,7 +252,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </div>
           </figure>
 
-          {/* ---- what my hour is worth (the details are in My business) ---- */}
+          {/* ---- what my hour is worth (the details are in My business); nothing to show yet: no card ---- */}
+          {hourCard && (
           <Link
             href="/business"
             className="block rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur transition hover:border-accent/50 sm:p-5"
@@ -254,10 +276,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               </p>
             )}
           </Link>
+          )}
         </div>
       </section>
 
-      {firstSteps && <FirstSteps userId={session.userId} steps={firstSteps.steps} sampleOffer={firstSteps.sampleOffer} />}
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
       <PushBanner />
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Bell, Clock, LogOut } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -16,9 +16,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SubscriptionView } from "@/components/subscription/SubscriptionView";
-import { SampleBanner } from "@/components/SampleData";
+import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { ChatButton } from "@/components/chat/ChatButton";
-import { fmt } from "@/lib/i18n/dictionaries";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getTheme } from "@/lib/theme-server";
@@ -128,21 +127,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 md:pb-8">
-        {daysLeft !== null && (
-          <Link
-            href="/subscription"
-            className={`mb-5 flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition print:hidden ${
-              daysLeft <= 5 ? "border-warning/40 bg-warning/10 text-fg hover:bg-warning/15" : "border-line bg-surface text-fg-2 hover:bg-raised"
-            }`}
-          >
-            <Clock className="size-4 shrink-0" />
-            <span className="min-w-0 flex-1">
-              {sub.status === "trial" ? (daysLeft <= 1 ? t.billing.trialLastDay : fmt(t.billing.trialLeft, { n: daysLeft })) : fmt(t.billing.paidLeft, { n: daysLeft })}
-            </span>
-            <span className="shrink-0 font-semibold text-accent-fg">{t.billing.seePlans} →</span>
-          </Link>
+        {/* the last days: on every page (before that, on Home) */}
+        {daysLeft !== null && daysLeft <= 5 && (sub.status === "trial" || sub.status === "active") && (
+          <div className="mb-5">
+            <TrialBanner status={sub.status} daysLeft={daysLeft} t={t} />
+          </div>
         )}
-        {session.sampleSince && session.isOwner && !locked && <SampleBanner />}
         <PasskeyPrompt />
         <ServiceWorker />
         {/* dictation: the server writes recordings when a speech service key is set */}

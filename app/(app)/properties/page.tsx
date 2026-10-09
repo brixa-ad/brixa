@@ -158,7 +158,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
         backHref={back?.href}
         backLabel={back?.label}
         title={title}
-        subtitle={t.list.subtitle}
+        subtitle={session.solo ? t.list.subtitleSolo : t.list.subtitle}
         actions={
           <>
             <Link href="/import?what=properties" className={buttonClass.secondary}>
@@ -243,7 +243,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                         : { code: row.status, label: t.options.status[row.status as keyof typeof t.options.status] ?? row.status },
                     exclusive: row.exclusive_contract,
                     offMarket: row.off_market,
-                    broker: brokerName
+                    // alone: every listing is theirs
+                    broker: brokerName && members.length > 1
                       ? { name: brokerName, avatarPath: row.broker?.avatar_path, level: level !== undefined ? t.game.levels[level] : null }
                       : null,
                     age: ago(row.created_at, lang),

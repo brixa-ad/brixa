@@ -106,7 +106,7 @@ export function PropertyFilters({
         ))}
       </select>
 
-      {!view && (
+      {!view && brokers.length > 1 && (
         <button
           type="button"
           aria-pressed={onlyMine}

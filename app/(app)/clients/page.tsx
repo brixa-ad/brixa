@@ -114,7 +114,7 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
         backHref={back?.href}
         backLabel={back?.label}
         title={{ buyer: t.nav.buyers, seller: t.nav.sellers, tenant: t.nav.tenants, landlord: t.nav.landlords, investor: t.clients.title, "": t.clients.title }[type]}
-        subtitle={session.isManager ? t.clients.subtitleManager : t.clients.subtitleBroker}
+        subtitle={session.solo ? t.clients.subtitleSolo : session.isManager ? t.clients.subtitleManager : t.clients.subtitleBroker}
         actions={
           <>
             <Link href="/import" className={buttonClass.secondary}>
