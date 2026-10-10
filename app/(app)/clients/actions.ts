@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { hasOffer, isOffering, isSeeking, validateClient, type ClientErrors, type ClientInput } from "@/lib/client-validation";
+import { hasFinancing, hasOffer, isOffering, isSeeking, validateClient, type ClientErrors, type ClientInput } from "@/lib/client-validation";
 import { parseEgn } from "@/lib/egn";
 import { CLIENT_STAGES, isOneOf } from "@/lib/options";
 import { getSession } from "@/lib/session";
@@ -99,7 +99,21 @@ async function prepare(input: ClientInput, clientId: string | null) {
         }
       : null;
 
-  return { ok: true as const, session, supabase, row, searchRow, offerRow };
+  // how a buyer pays (kept even when they stop searching: the bank's fee is income)
+  const f = input.financing;
+  const financingRow = hasFinancing(f)
+    ? {
+        loan: f.loan,
+        own_funds: f.ownFunds,
+        bank_amount: f.bankAmount,
+        bank_referred: f.bankReferred,
+        bank_name: f.bankReferred ? f.bankName.trim() || null : null,
+        bank_fee: f.bankReferred ? f.bankFee : null,
+        bank_fee_received_on: f.bankReferred && f.bankFee !== null ? f.bankFeeReceivedOn : null,
+      }
+    : null;
+
+  return { ok: true as const, session, supabase, row, searchRow, offerRow, financingRow };
 }
 
 async function saveSearch(
@@ -125,6 +139,19 @@ async function saveOffer(
     if (error) console.error("Saving offer failed:", error.message);
   } else {
     await supabase.from("client_offers").delete().eq("client_id", clientId);
+  }
+}
+
+async function saveFinancing(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  financingRow: Record<string, unknown> | null
+) {
+  if (financingRow) {
+    const { error } = await supabase.from("client_financing").upsert({ client_id: clientId, ...financingRow });
+    if (error) console.error("Saving financing failed:", error.message);
+  } else {
+    await supabase.from("client_financing").delete().eq("client_id", clientId);
   }
 }
 
@@ -166,7 +193,7 @@ async function duplicateFromError(
 export async function createClientRecord(input: ClientInput): Promise<ClientSaveResult> {
   const prepared = await prepare(input, null);
   if (!prepared.ok) return prepared;
-  const { session, supabase, row, searchRow, offerRow } = prepared;
+  const { session, supabase, row, searchRow, offerRow, financingRow } = prepared;
 
   const { data, error } = await supabase
     .from("clients")
@@ -185,6 +212,7 @@ export async function createClientRecord(input: ClientInput): Promise<ClientSave
   await Promise.all([
     saveSearch(supabase, data.id, searchRow),
     saveOffer(supabase, data.id, offerRow),
+    saveFinancing(supabase, data.id, financingRow),
     saveIdentity(supabase, data.id, session.organizationId, session.userId, input),
   ]);
   revalidatePath("/clients");
@@ -194,7 +222,7 @@ export async function createClientRecord(input: ClientInput): Promise<ClientSave
 export async function updateClientRecord(id: string, input: ClientInput): Promise<ClientSaveResult> {
   const prepared = await prepare(input, id);
   if (!prepared.ok) return prepared;
-  const { session, supabase, row, searchRow, offerRow } = prepared;
+  const { session, supabase, row, searchRow, offerRow, financingRow } = prepared;
 
   const { data, error } = await supabase.from("clients").update(row).eq("id", id).select("id").maybeSingle();
 
@@ -209,11 +237,21 @@ export async function updateClientRecord(id: string, input: ClientInput): Promis
   await Promise.all([
     saveSearch(supabase, id, searchRow),
     saveOffer(supabase, id, offerRow),
+    saveFinancing(supabase, id, financingRow),
     saveIdentity(supabase, id, session.organizationId, session.userId, input),
   ]);
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
   return { ok: true, id };
+}
+
+/** A short market note every month for this client (BRIXA writes it, the broker sends it). */
+export async function setMonthlyNews(id: string, on: boolean): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("clients").update({ monthly_news: on }).eq("id", id).select("id").maybeSingle();
+  if (error) console.error("Saving the monthly note failed:", error.message);
+  revalidatePath(`/clients/${id}`);
+  return { ok: Boolean(data) };
 }
 
 export async function setClientStage(id: string, stage: string) {

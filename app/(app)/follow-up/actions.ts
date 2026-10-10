@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logActivity } from "@/app/(app)/tasks/actions";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,19 @@ function refresh(clientId?: string) {
   revalidatePath("/follow-up");
   revalidatePath("/clients");
   if (clientId) revalidatePath(`/clients/${clientId}`);
+}
+
+/** A piece of market news: sent (into the client's history, as a message) or left out. */
+export async function settleNews(id: string, sent: boolean, note: string): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("settle_client_news", { target: id, sent });
+  if (error) console.error("Settling the news failed:", error.message);
+  if (data !== true) return { ok: false };
+  if (sent) {
+    const { data: row } = await supabase.from("client_news").select("client_id").eq("id", id).maybeSingle();
+    if (row) await logActivity({ type: "message", clientId: row.client_id, propertyId: null, note });
+  }
+  return { ok: true };
 }
 
 /** Take a free contact — the first broker to press wins. */

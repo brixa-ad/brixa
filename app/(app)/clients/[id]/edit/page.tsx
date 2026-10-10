@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClientForm } from "@/components/client/ClientForm";
 import { PageHeader } from "@/components/PageHeader";
-import { emptyOffer, emptySearch } from "@/lib/client-validation";
+import { emptyFinancing, emptyOffer, emptySearch } from "@/lib/client-validation";
 import { getClient, getClientFormLookups } from "@/lib/clients";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -52,6 +52,7 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
           brokerId: client.responsible_broker_id ?? "free",
           search: client.search ?? emptySearch(),
           offer: client.offer ?? emptyOffer(),
+          financing: client.financing ?? emptyFinancing(),
         }}
       />
     </>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, CalendarDays, LineChart, SlidersHorizontal } from "lucide-react";
+import { Building2, CalendarDays, Landmark, LineChart, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MarketDiffChip } from "@/components/market/MarketCard";
 import { MarketPriceEditor } from "@/components/market/MarketPriceEditor";
@@ -13,7 +13,9 @@ import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMarketOverview, getMarketPrices, getMarketTowns, type MarketOperation } from "@/lib/market";
 import { getMarketDay, getMarketHistory, type MarketCell } from "@/lib/market-daily";
+import { monthName } from "@/lib/news";
 import { getSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -30,14 +32,27 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
   const params = await searchParams;
   const operation: MarketOperation = params.op === "rent" ? "rent" : "sale";
   const session = (await getSession())!;
-  const [{ t, lang }, daily, overview, towns, prices] = await Promise.all([
+  const supabase = await createClient();
+  const [{ t, lang }, daily, overview, towns, prices, { data: rateRows }] = await Promise.all([
     getI18n(),
     getMarketDay(session.organizationId, operation),
     getMarketOverview(session.organizationId, operation),
     session.isLeader ? getMarketTowns(session.organizationId) : Promise.resolve([]),
     session.isLeader ? getMarketPrices(session.organizationId, operation) : Promise.resolve([]),
+    // the average rate on new mortgages (BNB), the last months
+    supabase.from("mortgage_rates").select("month, rate").order("month", { ascending: false }).limit(6),
   ]);
   const today = sofiaToday();
+  const rates = (rateRows ?? []).map((r) => ({ month: (r.month as string).slice(0, 7), rate: Number(r.rate) }));
+  const rate = rates[0] ?? null;
+  const rateBefore = rate
+    ? rates.find((r) => {
+        const [y, m] = rate.month.split("-").map(Number);
+        const back = new Date(Date.UTC(y, m - 4, 1));
+        return r.month === `${back.getUTCFullYear()}-${String(back.getUTCMonth() + 1).padStart(2, "0")}`;
+      })
+    : undefined;
+  const rateChange = rate && rateBefore ? Math.round((rate.rate - rateBefore.rate) * 100) / 100 : null;
   const unit = operation === "rent" ? t.market.perSqmMonth : t.market.perSqm;
   const sqm = (value: number | null) => (value === null ? "—" : `${formatNumber(value, lang)} ${unit}`);
 
@@ -92,6 +107,21 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
   return (
     <>
       <PageHeader title={t.market.title} subtitle={session.solo ? t.market.dailySubtitleSolo : t.market.dailySubtitle} actions={session.isLeader ? <RefreshMarketButton /> : undefined} />
+
+      {/* ---- the mortgage rate: what the buyers pay for money ---- */}
+      {rate && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
+          <Landmark className="size-4 shrink-0 text-brand-cyan" />
+          <span className="font-medium">{t.news.rateCard}:</span>
+          <span className="text-lg font-bold">{formatNumber(rate.rate, lang, 2)}%</span>
+          {rateChange !== null && rateChange !== 0 && (
+            <span className={`text-xs font-semibold ${rateChange < 0 ? "text-success" : "text-warning"}`}>
+              {fmt(t.news.rateChange, { change: `${rateChange > 0 ? "+" : "−"}${formatNumber(Math.abs(rateChange), lang, 2)}` })}
+            </span>
+          )}
+          <span className="w-full text-xs text-muted sm:w-auto">{fmt(t.news.rateCardHint, { month: monthName(rate.month, lang) })}</span>
+        </div>
+      )}
 
       {/* ---- sale / rent, the town, the type ---- */}
       <nav className="mb-3 flex gap-1 rounded-xl border border-line bg-surface p-1 sm:w-80">

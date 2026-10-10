@@ -49,7 +49,12 @@ export default async function BusinessPage() {
           {
             label: `${t.business.income} ${year}`,
             value: euro(b.income),
-            hint: b.pending > 0 ? fmt(t.business.pending, { amount: euro(b.pending) }) : fmt(t.business.incomeHint, { share: formatNumber(b.settings.commissionShare, lang) ?? "" }),
+            hint: [
+              b.pending > 0 ? fmt(t.business.pending, { amount: euro(b.pending) }) : fmt(t.business.incomeHint, { share: formatNumber(b.settings.commissionShare, lang) ?? "" }),
+              b.bankFees > 0 ? fmt(t.financing.fromBanks, { amount: euro(b.bankFees) }) : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
           },
           {
             label: t.business.spent,

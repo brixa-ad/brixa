@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ClientForm } from "@/components/client/ClientForm";
 import { PageHeader } from "@/components/PageHeader";
-import { emptyOffer, emptySearch } from "@/lib/client-validation";
+import { emptyFinancing, emptyOffer, emptySearch } from "@/lib/client-validation";
 import { getClientFormLookups } from "@/lib/clients";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -46,6 +46,7 @@ export default async function NewClientPage({ searchParams }: PageProps<"/client
           brokerId: session.isManager && free ? "free" : session.userId,
           search: emptySearch(),
           offer: emptyOffer(),
+          financing: emptyFinancing(),
         }}
       />
     </>

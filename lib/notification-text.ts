@@ -96,6 +96,17 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     case "contact_claimed":
     case "follow_ups_today":
       return fmt(t.notifications[type], vars);
+    case "market_news":
+      return fmt(
+        data.kind === "rates"
+          ? t.notifications.market_news_rates
+          : data.kind === "prices"
+            ? data.title
+              ? t.notifications.market_news_prices
+              : t.notifications.market_news_prices_many
+            : t.notifications.market_news_monthly,
+        vars
+      );
     case "chat_message":
       return fmt(data.kind === "direct" ? t.notifications.chat_direct : t.notifications.chat_group, { ...vars, text: data.text ?? "" });
     case "chat_invite":

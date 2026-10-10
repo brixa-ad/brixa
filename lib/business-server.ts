@@ -9,14 +9,14 @@ const sum = (list: number[]) => list.reduce((a, b) => a + b, 0);
 
 /**
  * A broker's year as a business (How to Get Rich in Real Estate): income (their share of the
- * commission of the deals they closed), expenses, the profit month by month, the budget this month,
+ * commission of the deals they closed, and of the banks' fees for the buyers they took there), expenses, the profit month by month, the budget this month,
  * and what "pay yourself first" puts aside.
  */
 export async function getBusiness(session: SessionContext, year: number, today: string) {
   const supabase = await createClient();
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
-  const [settingsRes, dealsRes, expensesRes] = await Promise.all([
+  const [settingsRes, dealsRes, expensesRes, feesRes] = await Promise.all([
     supabase.from("broker_finance").select("*").eq("profile_id", session.userId).maybeSingle(),
     supabase
       .from("deals")
@@ -35,6 +35,15 @@ export async function getBusiness(session: SessionContext, year: number, today: 
       .order("spent_on", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(2000),
+    // what banks paid for my buyers I took to them
+    supabase
+      .from("client_financing")
+      .select("bank_fee, bank_fee_received_on, client:clients!inner(responsible_broker_id, organization_id)")
+      .eq("client.responsible_broker_id", session.userId)
+      .eq("client.organization_id", session.organizationId)
+      .not("bank_fee", "is", null)
+      .gte("bank_fee_received_on", from)
+      .lte("bank_fee_received_on", to),
   ]);
 
   const s = settingsRes.data;
@@ -53,11 +62,19 @@ export async function getBusiness(session: SessionContext, year: number, today: 
     : DEFAULT_FINANCE;
 
   const share = settings.commissionShare / 100;
-  const deals = (dealsRes.data ?? []).map((d) => ({
-    month: (d.closed_on as string).slice(0, 7),
-    income: Number(d.commission ?? 0) * share,
-    confirmed: Boolean(d.confirmed_at),
+  const fees = (feesRes.data ?? []).map((f) => ({
+    month: (f.bank_fee_received_on as string).slice(0, 7),
+    income: Number(f.bank_fee ?? 0) * share,
+    confirmed: true,
   }));
+  const deals = [
+    ...(dealsRes.data ?? []).map((d) => ({
+      month: (d.closed_on as string).slice(0, 7),
+      income: Number(d.commission ?? 0) * share,
+      confirmed: Boolean(d.confirmed_at),
+    })),
+    ...fees,
+  ];
   const expenses = ((expensesRes.data ?? []) as Expense[]).map((e) => ({ ...e, amount: Number(e.amount) }));
 
   // month by month (the whole year so far)
@@ -85,6 +102,7 @@ export async function getBusiness(session: SessionContext, year: number, today: 
   return {
     settings,
     income,
+    bankFees: sum(fees.map((f) => f.income)),
     pending: sum(deals.filter((d) => !d.confirmed).map((d) => d.income)),
     spent,
     net: income - spent,

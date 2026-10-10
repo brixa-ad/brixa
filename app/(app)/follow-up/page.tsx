@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, Flame, PhoneCall } from "lucide-react";
+import { CalendarCheck, Flame, Newspaper, PhoneCall } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { ContactButtons } from "@/components/ContactButtons";
 import { AssignSelect, ContactedButton } from "@/components/followup/FollowUpControls";
 import { PageHeader } from "@/components/PageHeader";
+import { NewsList, type NewsItem } from "@/components/news/NewsList";
 import { SignalsBoard } from "@/components/signals/SignalsBoard";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { addDays, sofiaDay, sofiaToday } from "@/lib/dates";
@@ -13,6 +14,8 @@ import { formatDate, formatDayMonth } from "@/lib/format";
 import { fmt, locale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getMyPeople } from "@/lib/lookups";
+import { isNewsKind, newsText, newsTitle, type NewsData } from "@/lib/news";
+import { firstName } from "@/lib/programs";
 import type { ClientClass } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -45,21 +48,36 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
 
   const supabase = await createClient();
 
-  // two views: who to contact, and the signals
-  const view = params.view === "signals" ? "signals" : "calls";
-  const viewHref = (v: "calls" | "signals") => {
+  // three views: who to contact, the signals, and the market news ready to send
+  const view = params.view === "signals" || params.view === "news" ? params.view : "calls";
+  const viewHref = (v: "calls" | "signals" | "news") => {
     const qs = new URLSearchParams();
-    if (v === "signals") qs.set("view", "signals");
+    if (v !== "calls") qs.set("view", v);
     if (typeof params.broker === "string") qs.set("broker", params.broker);
     const s = qs.toString();
     return s ? `/follow-up?${s}` : "/follow-up";
   };
+  // the news waiting to be sent (whose: as the list below)
+  const newsSince = addDays(today, -30);
+  const newsQuery = (columns: string, head = false) => {
+    let q = supabase
+      .from("client_news")
+      .select(columns, head ? { count: "exact", head: true } : undefined)
+      .eq("organization_id", session.organizationId)
+      .is("sent_at", null)
+      .is("skipped_at", null)
+      .gte("created_on", newsSince);
+    if (broker !== "all") q = q.eq("client.responsible_broker_id", broker);
+    return q;
+  };
+  const { count: newsCount } = await newsQuery("id, client:clients!inner(responsible_broker_id)", true);
   const viewTabs = (t: Dictionary) => (
-    <nav className="mb-5 inline-flex rounded-lg border border-line bg-surface p-0.5">
+    <nav className="mb-5 inline-flex max-w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5">
       {(
         [
           ["calls", PhoneCall, t.followUp.viewCalls],
           ["signals", Flame, t.followUp.viewSignals],
+          ["news", Newspaper, t.followUp.viewNews],
         ] as const
       ).map(([v, Icon, label]) => (
         <Link
@@ -72,10 +90,67 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
         >
           <Icon className="size-4" />
           {label}
+          {v === "news" && (newsCount ?? 0) > 0 && (
+            <span className={`rounded-full px-1.5 text-[11px] font-semibold ${view === v ? "bg-on-accent/20" : "bg-accent text-on-accent"}`}>{newsCount}</span>
+          )}
         </Link>
       ))}
     </nav>
   );
+  if (view === "news") {
+    const [{ t, lang }, { data: rows }, members] = await Promise.all([
+      getI18n(),
+      newsQuery("id, kind, data, created_on, client:clients!inner(id, full_name, phone, email, responsible_broker_id)")
+        .order("created_on", { ascending: false })
+        .limit(300),
+      session.isManager ? getMyPeople(supabase) : Promise.resolve([]),
+    ]);
+    const signer = session.fullName || session.email;
+    const items: NewsItem[] = (
+      (rows ?? []) as unknown as {
+        id: string;
+        kind: string;
+        data: NewsData;
+        created_on: string;
+        client: { id: string; full_name: string; phone: string | null; email: string | null };
+      }[]
+    )
+      .filter((row) => isNewsKind(row.kind))
+      .map((row) => {
+        const kind = row.kind as Parameters<typeof newsTitle>[0];
+        return {
+          id: row.id,
+          clientId: row.client.id,
+          name: row.client.full_name,
+          phone: row.client.phone,
+          email: row.client.email,
+          kind,
+          title: newsTitle(kind, row.data, t, lang),
+          date: formatDate(row.created_on, lang),
+          text: newsText(kind, row.data, { name: firstName(row.client.full_name), broker: signer }, t, lang, today),
+        };
+      });
+    return (
+      <>
+        <PageHeader
+          title={t.followUp.title}
+          subtitle={t.news.subtitle}
+          actions={
+            session.isManager ? (
+              <BrokerPicker
+                value={broker}
+                selfId={session.userId}
+                members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
+                allByDefault
+              />
+            ) : undefined
+          }
+        />
+        {viewTabs(t)}
+        <NewsList items={items} />
+      </>
+    );
+  }
   if (view === "signals") {
     const [{ t, lang }, members] = await Promise.all([
       getI18n(),

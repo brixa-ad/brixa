@@ -16,6 +16,7 @@ export function MessageSender({
   email,
   subject,
   compact = false,
+  onSend,
 }: {
   text: string;
   phone: string | null | undefined;
@@ -23,6 +24,8 @@ export function MessageSender({
   subject?: string;
   /** a short line of buttons, no text box (the greetings list) */
   compact?: boolean;
+  /** the message went out (with its final words) */
+  onSend?: (text: string) => void;
 }) {
   const { t } = useI18n();
   const [text, setText] = useState(initial);
@@ -53,7 +56,10 @@ export function MessageSender({
         {phone && (
           <button
             type="button"
-            onClick={() => copy(() => (window.location.href = viberHref(phone)), "viber")}
+            onClick={() => {
+              onSend?.(text);
+              void copy(() => (window.location.href = viberHref(phone)), "viber");
+            }}
             className={compact ? button : `${buttonClass.primary}`}
           >
             <MessageCircle className="size-4" />
@@ -61,19 +67,19 @@ export function MessageSender({
           </button>
         )}
         {smsHref && (
-          <a href={smsHref} className={button}>
+          <a href={smsHref} onClick={() => onSend?.(text)} className={button}>
             <MessageSquareText className="size-4" />
             {t.programs.sms}
           </a>
         )}
         {phone && (
-          <a href={whatsappHref(phone, text)} target="_blank" rel="noreferrer" className={button}>
+          <a href={whatsappHref(phone, text)} target="_blank" rel="noreferrer" onClick={() => onSend?.(text)} className={button}>
             <Send className="size-4" />
             {t.programs.whatsapp}
           </a>
         )}
         {mailHref && (
-          <a href={mailHref} className={button}>
+          <a href={mailHref} onClick={() => onSend?.(text)} className={button}>
             <Mail className="size-4" />
             {t.programs.email}
           </a>

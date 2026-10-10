@@ -11,6 +11,7 @@ import { QuickLog } from "@/components/client/QuickLog";
 import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
 import { ProgramCard, type ClientProgram } from "@/components/program/ProgramCard";
+import { MonthlyNewsToggle } from "@/components/news/MonthlyNewsToggle";
 import { SecretValue } from "@/components/client/SecretValue";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
@@ -127,6 +128,35 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .order("received_at", { ascending: false })
       .limit(5),
   ]);
+  // market news for them, waiting to be sent
+  const { count: newsWaiting } = await supabase
+    .from("client_news")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", id)
+    .is("sent_at", null)
+    .is("skipped_at", null);
+  // how a buyer pays
+  const fin = client.financing;
+  const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "";
+  const financingLines: [string, string][] = fin
+    ? ([
+        fin.loan ? [t.financing.loan, t.financing.loanStates[fin.loan]] : null,
+        fin.ownFunds !== null ? [t.financing.ownFundsShort, euro(fin.ownFunds)] : null,
+        fin.bankAmount !== null && fin.loan !== "none" ? [t.financing.bankAmountShort, euro(fin.bankAmount)] : null,
+        fin.ownFunds !== null && fin.bankAmount !== null && fin.loan !== "none"
+          ? [t.financing.totalShort, euro(fin.ownFunds + fin.bankAmount)]
+          : null,
+        fin.bankReferred
+          ? [t.financing.bankShort, [fin.bankName, t.financing.referredShort].filter(Boolean).join(" · ")]
+          : null,
+        fin.bankReferred && fin.bankFee !== null
+          ? [
+              t.financing.feeShort,
+              `${euro(fin.bankFee)} · ${fin.bankFeeReceivedOn ? fmt(t.financing.feeReceived, { date: formatDate(fin.bankFeeReceivedOn, lang) }) : t.financing.feePending}`,
+            ]
+          : null,
+      ].filter(Boolean) as [string, string][])
+    : [];
   const programs = (programRows ?? []) as ClientProgram[];
   const listings = (listingRows ?? []) as { id: string; title: string }[];
   const deals = toDeals(dealRows);
@@ -444,6 +474,21 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             </Card>
           )}
 
+          {/* market news: the monthly note they get (the rest comes by itself) */}
+          {canEdit && !isFree && (
+            <Card title={t.news.cardTitle}>
+              <div className="space-y-3">
+                <MonthlyNewsToggle clientId={client.id} on={client.monthly_news} />
+                <p className="text-xs text-muted">{t.news.autoHint}</p>
+                {(newsWaiting ?? 0) > 0 && (
+                  <Link href="/follow-up?view=news" className="inline-flex items-center gap-1 text-sm font-semibold text-accent-fg hover:underline">
+                    {fmt(t.news.waiting, { count: newsWaiting ?? 0 })} →
+                  </Link>
+                )}
+              </div>
+            </Card>
+          )}
+
           <ProgramCard
             programs={programs}
             openTask={programTask ? { id: programTask.id, due_date: programTask.due_date } : null}
@@ -599,6 +644,31 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
                     {t.clients.addSearch}
                   </Link>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* a buyer: how they'll pay */}
+          {(financingLines.length > 0 || (isSeeking(client.types) && client.search?.operation === "sale")) && (
+            <Card title={t.financing.title}>
+              {financingLines.length > 0 ? (
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                  {financingLines.map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs text-muted">{label}</dt>
+                      <dd className="mt-0.5 font-medium">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted">{t.financing.none}</p>
+                  {canEdit && (
+                    <Link href={`/clients/${client.id}/edit`} className={buttonClass.secondary}>
+                      {t.financing.add}
+                    </Link>
+                  )}
                 </div>
               )}
             </Card>

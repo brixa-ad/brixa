@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { emptySearch, type OfferInput, type SearchInput } from "./client-validation";
+import { LOAN_STATES, emptySearch, type FinancingInput, type OfferInput, type SearchInput } from "./client-validation";
 import { fetchAllSettlements, getMyPeople } from "./lookups";
 import { CURRENCIES, isOneOf, type ClientClass, type ClientStage, type ClientType } from "./options";
 import { createClient } from "./supabase/server";
@@ -31,6 +31,30 @@ type OfferRow = {
   price: number | string | null;
   currency: string;
 };
+
+type FinancingRow = {
+  loan: string | null;
+  own_funds: number | string | null;
+  bank_amount: number | string | null;
+  bank_referred: boolean;
+  bank_name: string | null;
+  bank_fee: number | string | null;
+  bank_fee_received_on: string | null;
+};
+
+export function financingFromRow(row: FinancingRow | null): FinancingInput | null {
+  if (!row) return null;
+  const amount = (value: number | string | null) => (value === null ? null : Number(value));
+  return {
+    loan: isOneOf(LOAN_STATES, row.loan) ? row.loan : null,
+    ownFunds: amount(row.own_funds),
+    bankAmount: amount(row.bank_amount),
+    bankReferred: row.bank_referred,
+    bankName: row.bank_name ?? "",
+    bankFee: amount(row.bank_fee),
+    bankFeeReceivedOn: row.bank_fee_received_on,
+  };
+}
 
 export function offerFromRow(row: OfferRow | null): OfferInput | null {
   if (!row) return null;
@@ -63,11 +87,14 @@ export type ClientDetail = {
   birth_month: number | null;
   /** when the next contact is due (null: free contact, closed deal or lost) */
   follow_up_at: string | null;
+  /** gets a short market note every month */
+  monthly_news: boolean;
   created_at: string;
   updated_at: string;
   broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
   search: SearchInput | null;
   offer: OfferInput | null;
+  financing: FinancingInput | null;
 };
 
 const num = (value: number | string | null) => (value === null ? null : Number(value));
@@ -97,10 +124,11 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
     .from("clients")
     .select(
       `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
-      notes, birth_day, birth_month, follow_up_at, created_at, updated_at,
+      notes, birth_day, birth_month, follow_up_at, monthly_news, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
       search:client_searches(*),
-      offer:client_offers(*)`
+      offer:client_offers(*),
+      financing:client_financing(*)`
     )
     .eq("id", id)
     .maybeSingle();
@@ -115,11 +143,14 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
   const searchRow = Array.isArray(rawSearch) ? (rawSearch[0] ?? null) : rawSearch;
   const rawOffer = data.offer as unknown as OfferRow | OfferRow[] | null;
   const offerRow = Array.isArray(rawOffer) ? (rawOffer[0] ?? null) : rawOffer;
+  const rawFinancing = data.financing as unknown as FinancingRow | FinancingRow[] | null;
+  const financingRow = Array.isArray(rawFinancing) ? (rawFinancing[0] ?? null) : rawFinancing;
 
   return {
-    ...(data as unknown as Omit<ClientDetail, "search" | "offer">),
+    ...(data as unknown as Omit<ClientDetail, "search" | "offer" | "financing">),
     search: searchFromRow(searchRow),
     offer: offerFromRow(offerRow),
+    financing: financingFromRow(financingRow),
   };
 });
 

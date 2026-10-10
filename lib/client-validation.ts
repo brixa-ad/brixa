@@ -42,6 +42,21 @@ export type OfferInput = {
   currency: Currency;
 };
 
+export const LOAN_STATES = ["approved", "applying", "none"] as const;
+export type LoanState = (typeof LOAN_STATES)[number];
+
+/** How a buyer pays: the loan, their own money and the bank's, and the bank we took them to. */
+export type FinancingInput = {
+  loan: LoanState | null;
+  ownFunds: number | null;
+  bankAmount: number | null;
+  bankReferred: boolean;
+  bankName: string;
+  /** what the bank pays us for them, and the day it came (YYYY-MM-DD) */
+  bankFee: number | null;
+  bankFeeReceivedOn: string | null;
+};
+
 export type ClientInput = {
   fullName: string;
   phone: string;
@@ -64,11 +79,15 @@ export type ClientInput = {
   search: SearchInput;
   /** only saved when the client is a seller / landlord */
   offer: OfferInput;
+  financing: FinancingInput;
 };
 
 export type ClientErrors = Partial<
   Record<
-    keyof Omit<ClientInput, "search" | "offer"> | `search.${keyof SearchInput}` | `offer.${keyof OfferInput}`,
+    | keyof Omit<ClientInput, "search" | "offer" | "financing">
+    | `search.${keyof SearchInput}`
+    | `offer.${keyof OfferInput}`
+    | `financing.${keyof FinancingInput}`,
     ErrorCode
   >
 >;
@@ -99,6 +118,15 @@ export function emptyOffer(): OfferInput {
 /** Anything filled in beyond the defaults? */
 export function hasOffer(offer: OfferInput) {
   return Boolean(offer.subtypeId || offer.settlementId || offer.area !== null || offer.rooms !== null || offer.price !== null);
+}
+
+export function emptyFinancing(): FinancingInput {
+  return { loan: null, ownFunds: null, bankAmount: null, bankReferred: false, bankName: "", bankFee: null, bankFeeReceivedOn: null };
+}
+
+/** Anything filled in? */
+export function hasFinancing(f: FinancingInput) {
+  return Boolean(f.loan || f.ownFunds !== null || f.bankAmount !== null || f.bankReferred || f.bankName.trim() || f.bankFee !== null || f.bankFeeReceivedOn);
 }
 
 export function emptySearch(): SearchInput {
@@ -179,6 +207,15 @@ export function validateClient(input: ClientInput): ClientErrors {
     checkRange(errors, "areaMin", "areaMax", s.areaMin, s.areaMax);
     checkRange(errors, "roomsMin", "roomsMax", s.roomsMin, s.roomsMax, true);
   }
+
+  const f = input.financing;
+  if (f.loan !== null && !isOneOf(LOAN_STATES, f.loan)) errors["financing.loan"] = "invalid";
+  for (const key of ["ownFunds", "bankAmount", "bankFee"] as const) {
+    const value = f[key];
+    if (value !== null && !(Number.isFinite(value) && value >= 0 && value < 1e11)) errors[`financing.${key}`] = "positive";
+  }
+  if (f.bankName.trim().length > 80) errors["financing.bankName"] = "tooLong";
+  if (f.bankFeeReceivedOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(f.bankFeeReceivedOn)) errors["financing.bankFeeReceivedOn"] = "invalid";
 
   if (isOffering(input.types)) {
     const o = input.offer;

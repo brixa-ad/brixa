@@ -29,13 +29,15 @@ import {
   type ClientType,
 } from "@/lib/options";
 import { CLASS_ICONS } from "./ClassBadge";
+import { FinancingFields, fromFinancingDraft, toFinancingDraft, type FinancingDraft } from "./FinancingFields";
 import { OfferFields, type OfferDraft } from "./OfferFields";
 import { SearchFields } from "./SearchFields";
 
 type NumKey = "budgetMin" | "budgetMax" | "areaMin" | "areaMax" | "roomsMin" | "roomsMax";
-type Draft = Omit<ClientInput, "search" | "offer"> & {
+type Draft = Omit<ClientInput, "search" | "offer" | "financing"> & {
   search: Omit<SearchInput, NumKey> & Record<NumKey, string>;
   offer: OfferDraft;
+  financing: FinancingDraft;
 };
 
 const text = (n: number | null) => (n === null ? "" : String(n));
@@ -52,7 +54,7 @@ function toDraft(input: ClientInput): Draft {
   const search = { ...input.search } as unknown as Draft["search"];
   for (const key of NUM_KEYS) search[key] = input.search[key] === null ? "" : String(input.search[key]);
   const offer: OfferDraft = { ...input.offer, area: text(input.offer.area), rooms: text(input.offer.rooms), price: text(input.offer.price) };
-  return { ...input, search, offer };
+  return { ...input, search, offer, financing: toFinancingDraft(input.financing) };
 }
 
 function parse(value: string) {
@@ -64,7 +66,7 @@ function toInput(draft: Draft): ClientInput {
   const search = { ...draft.search } as unknown as SearchInput;
   for (const key of NUM_KEYS) search[key] = parse(draft.search[key]);
   const offer = { ...draft.offer, area: parse(draft.offer.area), rooms: parse(draft.offer.rooms), price: parse(draft.offer.price) };
-  return { ...draft, search, offer };
+  return { ...draft, search, offer, financing: fromFinancingDraft(draft.financing) };
 }
 
 export function ClientForm({
@@ -118,6 +120,10 @@ export function ClientForm({
 
   function setSearch<K extends keyof Draft["search"]>(key: K, value: Draft["search"][K]) {
     setDraft((d) => ({ ...d, search: { ...d.search, [key]: value } }));
+  }
+
+  function setFinancing<K extends keyof FinancingDraft>(key: K, value: FinancingDraft[K]) {
+    setDraft((d) => ({ ...d, financing: { ...d.financing, [key]: value } }));
   }
 
   function setOffer<K extends keyof OfferDraft>(key: K, value: OfferDraft[K]) {
@@ -421,6 +427,13 @@ export function ClientForm({
       {seeking && (
         <Card title={t.clients.sectionSearch}>
           <SearchFields search={draft.search} onChange={setSearch} lookups={lookups} error={(key) => err(`search.${key}`)} />
+        </Card>
+      )}
+
+      {/* a buyer: how they'll pay */}
+      {seeking && draft.search.operation === "sale" && (
+        <Card title={t.financing.title} description={t.financing.hint}>
+          <FinancingFields financing={draft.financing} onChange={setFinancing} error={(key) => err(`financing.${key}`)} />
         </Card>
       )}
 
