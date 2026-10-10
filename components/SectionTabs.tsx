@@ -11,7 +11,7 @@ import { NavIcon } from "./NavIcon";
  * under them the open tab's quick filters (All | Buyers | Sellers…). Only on the pages themselves —
  * not on a task, a client or a form inside them.
  */
-export function SectionTabs({ sections }: { sections: MenuSection[] }) {
+export function SectionTabs({ sections, solo = false }: { sections: MenuSection[]; solo?: boolean }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,7 +57,7 @@ export function SectionTabs({ sections }: { sections: MenuSection[] }) {
                   active ? "border-accent bg-accent-soft text-accent-fg" : "border-line text-muted hover:border-line-strong hover:text-fg"
                 }`}
               >
-                {named(t.menu.chips, page)}
+                {(solo && (t.menu.chipsSolo as Partial<Record<NavKey, string>>)[page]) || named(t.menu.chips, page)}
               </Link>
             );
           })}

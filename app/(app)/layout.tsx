@@ -138,7 +138,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* dictation: the server writes recordings when a speech service key is set */}
         {/* the tabs read the address's query (/clients?type=seller) */}
         <Suspense>
-          <SectionTabs sections={menu} />
+          <SectionTabs sections={menu} solo={session.solo} />
         </Suspense>
         {locked ? (
           <SubscriptionView session={session} t={t} lang={lang} locked />

@@ -35,7 +35,7 @@ export default async function ProfilePage() {
     <>
       <PageHeader
         title={t.profile.title}
-        subtitle={t.profile.subtitle}
+        subtitle={session.solo ? t.profile.subtitleSolo : t.profile.subtitle}
         actions={
           <Link href={`/team/${session.userId}`} className={buttonClass.secondary}>
             <Eye className="size-4" />
@@ -53,11 +53,13 @@ export default async function ProfilePage() {
           {/* On the phone the top bar has no room for these */}
           <div className="space-y-3 md:hidden">
             <div className="divide-y divide-line-soft overflow-hidden rounded-2xl border border-line bg-surface">
-              <Link href="/team" className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium">
-                <Users className="size-4 text-muted" />
-                <span className="flex-1">{t.nav.team}</span>
-                <ChevronRight className="size-4 text-faint" />
-              </Link>
+              {!session.solo && (
+                <Link href="/team" className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium">
+                  <Users className="size-4 text-muted" />
+                  <span className="flex-1">{t.nav.team}</span>
+                  <ChevronRight className="size-4 text-faint" />
+                </Link>
+              )}
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <span className="text-sm font-medium">{t.profile.language}</span>
                 <LanguageToggle />

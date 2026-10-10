@@ -9,7 +9,7 @@ import { buttonClass, inputClass } from "@/components/ui/form";
 const FIELDS = ["firstHours", "daysA", "daysB", "daysC", "releaseDays"] as const;
 
 /** Managers: the agency's follow-up deadlines. */
-export function FollowUpRulesForm({ initial }: { initial: FollowUpRules }) {
+export function FollowUpRulesForm({ initial, solo = false }: { initial: FollowUpRules; solo?: boolean }) {
   const { t } = useI18n();
   const [values, setValues] = useState<Record<(typeof FIELDS)[number], string>>(
     () => Object.fromEntries(FIELDS.map((f) => [f, String(initial[f])])) as Record<(typeof FIELDS)[number], string>
@@ -27,7 +27,8 @@ export function FollowUpRulesForm({ initial }: { initial: FollowUpRules }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        {FIELDS.map((field) => (
+        {/* alone: a client never goes to anyone else */}
+        {FIELDS.filter((field) => !(solo && field === "releaseDays")).map((field) => (
           <label key={field} className={`block text-xs font-medium text-muted ${field === "releaseDays" ? "col-span-2" : ""}`}>
             {labels[field]}
             <input
@@ -43,7 +44,7 @@ export function FollowUpRulesForm({ initial }: { initial: FollowUpRules }) {
           </label>
         ))}
       </div>
-      <p className="text-xs text-muted">{t.followUp.rulesHint}</p>
+      <p className="text-xs text-muted">{solo ? t.followUp.rulesHintSolo : t.followUp.rulesHint}</p>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"

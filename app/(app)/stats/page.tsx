@@ -60,7 +60,7 @@ export default async function AgencyStatsPage({ searchParams }: PageProps<"/stat
       <div className="print:hidden">
         <PageHeader title={t.stats.title} subtitle={t.stats.subtitle} />
       </div>
-      <StatsNav tab="agency" range={range} title={t.stats.agencyTitle} agencyName={session.organizationName} t={t} lang={lang} />
+      <StatsNav tab="agency" range={range} title={session.solo ? t.stats.soloTitle : t.stats.agencyTitle} agencyName={session.organizationName} t={t} lang={lang} />
 
       {/* ---- the deals in BRIXA ---- */}
       <SectionTitle icon={Handshake}>{t.stats.sectionBrixa}</SectionTitle>

@@ -187,7 +187,7 @@ export default async function FollowUpPage({ searchParams }: PageProps<"/follow-
                   <div className="flex w-full items-center justify-end gap-1.5 sm:w-auto">
                     <ContactButtons phone={r.phone} email={r.email} clientId={r.id} compact />
                     <ContactedButton clientId={r.id} />
-                    {session.isManager && (
+                    {session.isManager && memberList.length > 1 && (
                       <AssignSelect
                         clientId={r.id}
                         current={r.responsible_broker_id}

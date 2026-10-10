@@ -112,7 +112,7 @@ export function AgencySettingsForm({
 
       {/* contact details */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {field("name", t.agency.name, { maxLength: 120 })}
+        {field("name", values.kind === "solo" ? t.agency.nameSolo : t.agency.name, { maxLength: 120 })}
         {field("phone", t.agency.phone, { type: "tel", maxLength: 40 })}
         {field("email", t.agency.email, { type: "email", maxLength: 200 })}
         {field("website", t.agency.website, { maxLength: 200, placeholder: "yavlena.bg" })}

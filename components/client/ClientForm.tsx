@@ -309,6 +309,8 @@ export function ClientForm({
                 </select>
               )}
             </Field>
+            {/* alone: every client is theirs */}
+            {lookups.members.length > 1 && (
             <Field label={t.clients.broker} error={err("brokerId")} hint={canAssignBroker ? undefined : t.form.brokerLocked}>
               {(props) => (
                 <select
@@ -327,6 +329,7 @@ export function ClientForm({
                 </select>
               )}
             </Field>
+            )}
           </div>
 
           <Field label={t.programs.birthdayLabel} hint={t.programs.birthdayHint} error={err("birthDay")}>

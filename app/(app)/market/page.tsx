@@ -91,7 +91,7 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
 
   return (
     <>
-      <PageHeader title={t.market.title} subtitle={t.market.dailySubtitle} actions={session.isLeader ? <RefreshMarketButton /> : undefined} />
+      <PageHeader title={t.market.title} subtitle={session.solo ? t.market.dailySubtitleSolo : t.market.dailySubtitle} actions={session.isLeader ? <RefreshMarketButton /> : undefined} />
 
       {/* ---- sale / rent, the town, the type ---- */}
       <nav className="mb-3 flex gap-1 rounded-xl border border-line bg-surface p-1 sm:w-80">

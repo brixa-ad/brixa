@@ -35,6 +35,7 @@ export default async function NewPropertyPage() {
         organizationId={session.organizationId}
         userId={session.userId}
         canAssignBroker={session.isManager}
+        solo={session.solo}
       />
     </>
   );

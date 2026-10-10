@@ -24,8 +24,9 @@ type Tab = (typeof TABS)[number];
 
 export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   const params = await searchParams;
-  const tab: Tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : "today";
   const session = (await getSession())!;
+  const tabs: readonly Tab[] = session.solo ? TABS.filter((key) => key !== "given") : TABS;
+  const tab: Tab = tabs.includes(params.tab as Tab) ? (params.tab as Tab) : "today";
   const supabase = await createClient();
   const today = sofiaToday();
   const { t, lang } = await getI18n();
@@ -81,7 +82,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
         backHref={back?.href}
         backLabel={back?.label}
         title={t.tasks.title}
-        subtitle={session.isManager ? t.tasks.subtitleManager : t.tasks.subtitle}
+        subtitle={session.solo ? t.tasks.subtitleSolo : session.isManager ? t.tasks.subtitleManager : t.tasks.subtitle}
         actions={
           <>
             {session.isManager && (
@@ -103,7 +104,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
       />
 
       <nav className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
-        {TABS.map((key) => (
+        {tabs.map((key) => (
           <Link
             key={key}
             href={tabHref(key)}

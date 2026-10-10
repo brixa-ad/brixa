@@ -914,7 +914,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             ]}
           />
 
-          {property.responsible_broker_id && property.broker && (
+          {/* alone: both cards would be about themselves */}
+          {property.responsible_broker_id && property.broker && !session?.solo && (
             <BrokerPanel
               person={{ name: brokerName, avatarPath: property.broker.avatar_path }}
               level={brokerLevel}
@@ -928,7 +929,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             />
           )}
 
-          {agency && <AgencyPanel name={agency.name} logoUrl={agency.logoUrl} href="/properties" linkLabel={t.listing.agencyListings} />}
+          {agency && !session?.solo && <AgencyPanel name={agency.name} logoUrl={agency.logoUrl} href="/properties" linkLabel={t.listing.agencyListings} />}
 
           {/* ---- who to reach, floating at the bottom ---- */}
           {contact && <ContactBar person={contact.person} sub={contact.sub} phone={contact.phone} t={t} inApp />}

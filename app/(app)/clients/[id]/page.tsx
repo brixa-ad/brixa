@@ -224,7 +224,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               </span>
             )}
             {isFree && <ClaimButton clientId={client.id} />}
-            {session.isManager && (
+            {session.isManager && members.length > 1 && (
               <AssignSelect
                 clientId={client.id}
                 current={client.responsible_broker_id}

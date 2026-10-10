@@ -131,8 +131,8 @@ export function navKeysFor(isManager: boolean, brix = false, solo = false): NavK
     (key) =>
       ((key !== "goals" && key !== "stats" && key !== "teamReport") || isManager) &&
       (key !== "brix" || brix) &&
-      // working alone: no team (own targets are set in My plan), no free contacts, no colleagues
-      !(solo && (key === "team" || key === "goals" || key === "contacts" || key === "colleaguesProperties"))
+      // working alone: no team (own targets are set in My plan), no team report, no free contacts, no colleagues
+      !(solo && (key === "team" || key === "goals" || key === "teamReport" || key === "contacts" || key === "colleaguesProperties"))
   );
 }
 

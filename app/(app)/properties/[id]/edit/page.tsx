@@ -86,7 +86,8 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
           initialValues={toFormValues(property)}
           organizationId={session.organizationId}
           userId={session.userId}
-        canAssignBroker={session.isManager}
+          canAssignBroker={session.isManager}
+          solo={session.solo}
           coverUrl={property.photos[0]?.url}
           existingPhotoCount={property.photos.length}
         />

@@ -50,6 +50,7 @@ export function PropertyForm({
   coverUrl,
   existingPhotoCount = 0,
   canAssignBroker,
+  solo = false,
 }: {
   mode: "create" | "edit";
   lookups: FormLookups;
@@ -61,6 +62,8 @@ export function PropertyForm({
   existingPhotoCount?: number;
   /** managers pick the responsible broker; brokers always own what they create */
   canAssignBroker: boolean;
+  /** a broker working on their own: "you", not "the agency" */
+  solo?: boolean;
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -492,7 +495,7 @@ export function PropertyForm({
                     error={errorText("commissionRate")}
                     decimal
                     hint={[
-                      fmt(t.form.commissionDefault, { value: rateLabel(dealKind, defaultRate, t.units.months) }),
+                      fmt(solo ? t.form.commissionDefaultSolo : t.form.commissionDefault, { value: rateLabel(dealKind, defaultRate, t.units.months) }),
                       commission !== null ? `${t.form.expectedCommission}: ${formatPrice(commission, "EUR", lang)}` : null,
                     ]
                       .filter(Boolean)
@@ -507,6 +510,8 @@ export function PropertyForm({
           <Card title={t.form.sectionContract} id="contract">
             <div className="space-y-5">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {/* alone: every listing is theirs */}
+                {lookups.members.length > 1 && (
                 <Field
                   label={t.form.broker}
                   error={errorText("brokerId")}
@@ -528,8 +533,9 @@ export function PropertyForm({
                     </select>
                   )}
                 </Field>
+                )}
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 md:mt-6">
+                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 ${lookups.members.length > 1 ? "md:mt-6" : ""}`}>
                   <input
                     type="checkbox"
                     checked={values.exclusiveContract}
@@ -539,7 +545,7 @@ export function PropertyForm({
                   <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition peer-checked:bg-accent peer-focus-visible:ring-3 peer-focus-visible:ring-accent/35 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow after:transition peer-checked:after:translate-x-4" />
                   <span>
                     <span className="block text-sm font-medium text-fg">{t.form.exclusive}</span>
-                    <span className="block text-xs text-muted">{t.form.exclusiveHint}</span>
+                    <span className="block text-xs text-muted">{solo ? t.form.exclusiveHintSolo : t.form.exclusiveHint}</span>
                   </span>
                 </label>
 
@@ -553,7 +559,7 @@ export function PropertyForm({
                   <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition peer-checked:bg-accent peer-focus-visible:ring-3 peer-focus-visible:ring-accent/35 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow after:transition peer-checked:after:translate-x-4" />
                   <span>
                     <span className="block text-sm font-medium text-fg">{t.form.offMarket}</span>
-                    <span className="block text-xs text-muted">{t.form.offMarketHint}</span>
+                    <span className="block text-xs text-muted">{solo ? t.form.offMarketHintSolo : t.form.offMarketHint}</span>
                   </span>
                 </label>
               </div>

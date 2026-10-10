@@ -83,7 +83,7 @@ export default async function SettingsPage() {
           </Card>
 
           {agency && (
-            <Card title={t.agency.title} description={t.agency.hint} id="agency">
+            <Card title={session!.solo ? t.agency.titleSolo : t.agency.title} description={t.agency.hint} id="agency">
               <AgencySettingsForm
                 organizationId={agency.id}
                 logoUrl={agency.logoUrl}
@@ -136,6 +136,7 @@ export default async function SettingsPage() {
                   daysC: rules.follow_up_days_c,
                   releaseDays: rules.release_after_days,
                 }}
+                solo={session!.solo}
               />
             </Card>
           )}

@@ -27,6 +27,9 @@ export function BrokerPicker({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
+  // alone: there's no one else to look at
+  if (members.length <= 1) return null;
+
   return (
     <select
       aria-label={t.tasks.filterBroker}

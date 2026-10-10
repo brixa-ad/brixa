@@ -80,7 +80,7 @@ export default async function ClosedDealsPage({ searchParams }: PageProps<"/clos
     <>
       <PageHeader
         title={t.closedDeals.title}
-        subtitle={t.closedDeals.subtitle}
+        subtitle={session.solo ? t.closedDeals.subtitleSolo : t.closedDeals.subtitle}
         actions={
           session.isManager ? (
             <Link href="/closed-deals/new" className={buttonClass.primary}>
