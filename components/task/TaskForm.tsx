@@ -188,6 +188,8 @@ export function TaskForm({
             </Field>
           </div>
 
+          {/* alone: every task is theirs */}
+          {lookups.members.length > 1 && (
           <Field label={t.tasks.fieldAssignee} error={err("assignedTo")} hint={canAssign ? undefined : t.form.brokerLocked}>
             {(props) => (
               <select
@@ -205,6 +207,7 @@ export function TaskForm({
               </select>
             )}
           </Field>
+          )}
 
           <Field label={t.tasks.fieldDescription} required error={err("description")}>
             {(props) => (

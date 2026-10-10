@@ -407,6 +407,8 @@ export function DealForm({
             )}
           </div>
 
+          {/* alone: every deal is theirs */}
+          {lookups.members.length > 1 && (
           <Field
             label={t.deals.fieldBroker}
             error={err("brokerId")}
@@ -428,6 +430,7 @@ export function DealForm({
               </select>
             )}
           </Field>
+          )}
 
           <Field label={t.deals.fieldNotes} required error={err("notes")}>
             {(props) => (
