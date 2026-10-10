@@ -722,7 +722,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   <span className="font-normal text-subtle">{matches.length}</span>
                 </span>
               }
-              description={t.clients.matchesHint}
+              description={session.solo ? t.clients.matchesHintSolo : t.clients.matchesHint}
             >
               {matches.length === 0 ? (
                 <div className="flex items-center gap-3 rounded-xl bg-raised px-4 py-6 text-sm text-muted">
