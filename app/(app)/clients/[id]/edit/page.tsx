@@ -53,6 +53,9 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
           search: client.search ?? emptySearch(),
           offer: client.offer ?? emptyOffer(),
           financing: client.financing ?? emptyFinancing(),
+          timeline: client.timeline,
+          decider: client.decider,
+          motive: client.motive ?? "",
         }}
       />
     </>

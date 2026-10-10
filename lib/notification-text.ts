@@ -24,6 +24,8 @@ export type NotificationData = {
   /** a package an agency asked for, and whom to call */
   plan?: string;
   phone?: string | null;
+  /** speed to lead: the listing that fits */
+  property?: string;
   /** an analysis opened again (another day) */
   again?: boolean;
   /** work handed over */
@@ -104,9 +106,16 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
             ? data.title
               ? t.notifications.market_news_prices
               : t.notifications.market_news_prices_many
-            : t.notifications.market_news_monthly,
+            : data.kind === "lanes"
+              ? t.notifications.market_news_lanes
+              : t.notifications.market_news_monthly,
         vars
       );
+    case "speed_to_lead":
+      return fmt(data.kind === "cheaper" ? t.notifications.speed_to_lead_cheaper : t.notifications.speed_to_lead_new, {
+        ...vars,
+        property: data.property ?? "",
+      });
     case "chat_message":
       return fmt(data.kind === "direct" ? t.notifications.chat_direct : t.notifications.chat_group, { ...vars, text: data.text ?? "" });
     case "chat_invite":

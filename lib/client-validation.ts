@@ -42,6 +42,14 @@ export type OfferInput = {
   currency: Currency;
 };
 
+/** When they'll buy or sell: it puts them in a lane (A hot, B warm, C cold). */
+export const TIMELINES = ["now", "soon", "later"] as const;
+export type Timeline = (typeof TIMELINES)[number];
+export const TIMELINE_CLASS: Record<Timeline, ClientClass> = { now: "A", soon: "B", later: "C" };
+export const DECIDERS = ["alone", "partner", "others"] as const;
+export type Decider = (typeof DECIDERS)[number];
+export const MOTIVE_MAX = 300;
+
 export const LOAN_STATES = ["approved", "applying", "none"] as const;
 export type LoanState = (typeof LOAN_STATES)[number];
 
@@ -67,6 +75,10 @@ export type ClientInput = {
   /** who referred the client (a referral or an external broker) */
   referrer: string;
   stage: ClientStage;
+  /** qualifying: when, who decides, why */
+  timeline: Timeline | null;
+  decider: Decider | null;
+  motive: string;
   notes: string;
   /** a birthday for greetings: both or neither (an ЕГН fills it in) */
   birthDay: number | null;
@@ -196,6 +208,9 @@ export function validateClient(input: ClientInput): ClientErrors {
   if (input.source !== null && !isOneOf(CLIENT_SOURCES, input.source)) errors.source = "invalid";
   if (input.referrer.trim().length > 120) errors.referrer = "tooLong";
   if (!isOneOf(CLIENT_STAGES, input.stage)) errors.stage = "invalid";
+  if (input.timeline !== null && !isOneOf(TIMELINES, input.timeline)) errors.timeline = "invalid";
+  if (input.decider !== null && !isOneOf(DECIDERS, input.decider)) errors.decider = "invalid";
+  if (input.motive.trim().length > MOTIVE_MAX) errors.motive = "tooLong";
   if (!input.notes.trim()) errors.notes = "required";
   else if (input.notes.length > NOTES_MAX) errors.notes = "tooLong";
 

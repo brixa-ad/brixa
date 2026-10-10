@@ -14,14 +14,14 @@ function refresh(clientId?: string) {
 }
 
 /** A piece of market news: sent (into the client's history, as a message) or left out. */
-export async function settleNews(id: string, sent: boolean, note: string): Promise<{ ok: boolean }> {
+export async function settleNews(id: string, sent: boolean, note: string, how: "message" | "call" = "message"): Promise<{ ok: boolean }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("settle_client_news", { target: id, sent });
   if (error) console.error("Settling the news failed:", error.message);
   if (data !== true) return { ok: false };
   if (sent) {
     const { data: row } = await supabase.from("client_news").select("client_id").eq("id", id).maybeSingle();
-    if (row) await logActivity({ type: "message", clientId: row.client_id, propertyId: null, note });
+    if (row) await logActivity({ type: how, clientId: row.client_id, propertyId: null, note });
   }
   return { ok: true };
 }

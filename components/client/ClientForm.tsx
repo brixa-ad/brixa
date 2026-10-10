@@ -10,7 +10,11 @@ import { NoteArea } from "@/components/ui/Dictate";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import type { ClientFormLookups } from "@/lib/clients";
 import {
+  DECIDERS,
+  MOTIVE_MAX,
   NOTES_MAX,
+  TIMELINES,
+  TIMELINE_CLASS,
   isOffering,
   isSeeking,
   validateClient,
@@ -262,6 +266,28 @@ export function ClientForm({
             </p>
           </div>
 
+          {/* qualifying: the "when" puts them in a lane */}
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.qualify.timeline}</span>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup">
+              {([null, ...TIMELINES] as const).map((when) => (
+                <button
+                  key={when ?? "unknown"}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.timeline === when}
+                  onClick={() => setDraft((d) => ({ ...d, timeline: when, clientClass: when ? TIMELINE_CLASS[when] : d.clientClass }))}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                    draft.timeline === when ? "border-accent bg-accent text-on-accent" : "border-line-strong text-fg-2 hover:border-subtle"
+                  }`}
+                >
+                  {when ? t.qualify.timelines[when] : t.qualify.timelineUnknown}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted">{t.qualify.timelineHint}</p>
+          </div>
+
           <div>
             <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.clients.clientClass}</span>
             <div className="grid grid-cols-3 gap-2" role="radiogroup">
@@ -289,6 +315,40 @@ export function ClientForm({
               })}
             </div>
             <p className="mt-1.5 text-xs text-muted">{t.signals.classFormHint}</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.qualify.decider}</span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup">
+                {DECIDERS.map((who) => (
+                  <button
+                    key={who}
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.decider === who}
+                    onClick={() => set("decider", draft.decider === who ? null : who)}
+                    className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                      draft.decider === who ? "border-accent bg-accent text-on-accent" : "border-line-strong text-fg-2 hover:border-subtle"
+                    }`}
+                  >
+                    {t.qualify.deciders[who]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Field label={t.qualify.motive} error={err("motive")}>
+              {(props) => (
+                <input
+                  {...props}
+                  value={draft.motive}
+                  maxLength={MOTIVE_MAX}
+                  placeholder={t.qualify.motivePlaceholder}
+                  onChange={(e) => set("motive", e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </Field>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

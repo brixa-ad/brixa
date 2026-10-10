@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: PageProps<"/clients/[id]">): 
 
 export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
   const { id } = await params;
-  const { from } = await searchParams;
+  const { from, contact } = await searchParams;
   const [{ t, lang }, client, session] = await Promise.all([getI18n(), getClient(id), getSession()]);
   if (!client || !session) notFound();
 
@@ -299,7 +299,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             </div>
             {(client.phone || client.email) && (
               <div className="mt-3">
-                <ContactButtons phone={client.phone} email={client.email} clientId={canEdit ? client.id : null} />
+                {/* a push's "Call" / "Viber" button (speed to lead) lands here with ?contact=… */}
+                <ContactButtons
+                  phone={client.phone}
+                  email={client.email}
+                  clientId={canEdit ? client.id : null}
+                  open={contact === "call" || contact === "viber" || contact === "email" ? contact : null}
+                />
               </div>
             )}
 
@@ -311,6 +317,25 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                   {brokerName}
                 </dd>
               </div>
+              {/* qualifying: when, who decides, why */}
+              {client.timeline && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.qualify.timelineShort}</dt>
+                  <dd className="text-right font-medium">{t.qualify.timelines[client.timeline]}</dd>
+                </div>
+              )}
+              {client.decider && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.qualify.deciderShort}</dt>
+                  <dd className="text-right font-medium">{t.qualify.deciders[client.decider]}</dd>
+                </div>
+              )}
+              {client.motive && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.qualify.motiveShort}</dt>
+                  <dd className="text-right font-medium">{client.motive}</dd>
+                </div>
+              )}
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t.clients.source}</dt>
                 <dd className="text-right font-medium">

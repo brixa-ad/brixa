@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { CheckCircle2, Landmark, Newspaper, TrendingUp, X } from "lucide-react";
+import { CheckCircle2, HeartCrack, Landmark, Lightbulb, MapPinned, Newspaper, Phone, PhoneCall, TrendingUp, X } from "lucide-react";
 import { settleNews } from "@/app/(app)/follow-up/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { MessageSender } from "@/components/program/MessageSender";
+import { buttonClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
+import { telHref } from "@/lib/phone";
 import type { NewsKind } from "@/lib/news";
 
 export type NewsItem = {
@@ -21,7 +23,16 @@ export type NewsItem = {
   text: string;
 };
 
-const ICONS = { rates: Landmark, prices: TrendingUp, monthly: Newspaper } as const;
+const ICONS = {
+  rates: Landmark,
+  prices: TrendingUp,
+  monthly: Newspaper,
+  warm_analysis: MapPinned,
+  warm_rates: Landmark,
+  warm_call: PhoneCall,
+  tips: Lightbulb,
+  breakup: HeartCrack,
+} as const;
 
 /** The market news ready to send: each with its text, sent in one tap (or left out). */
 export function NewsList({ items }: { items: NewsItem[] }) {
@@ -57,7 +68,11 @@ function NewsRow({ item }: { item: NewsItem }) {
 
   const settle = (sent: boolean, text = item.text) =>
     startTransition(async () => {
-      const result = await settleNews(item.id, sent, fmt(t.news.logNote, { title: item.title, text }));
+      // the lane's call goes into the history as a call
+      const result =
+        item.kind === "warm_call"
+          ? await settleNews(item.id, sent, t.news.warmCallLog, "call")
+          : await settleNews(item.id, sent, fmt(t.news.logNote, { title: item.title, text }));
       if (result.ok) setDone(sent ? "sent" : "skipped");
     });
 
@@ -81,7 +96,25 @@ function NewsRow({ item }: { item: NewsItem }) {
         </p>
       ) : (
         <div className="mt-3 space-y-2">
-          <MessageSender text={item.text} phone={item.phone} email={item.email} onSend={(text) => settle(true, text)} />
+          {item.kind === "warm_call" ? (
+            // a call: what to say, and the button that calls
+            <div className="space-y-2.5">
+              <p className="rounded-xl bg-raised/60 p-3 text-sm leading-relaxed text-fg-2">{item.text}</p>
+              {item.phone ? (
+                <a href={telHref(item.phone)} onClick={() => settle(true)} className={`${buttonClass.primary} w-full`}>
+                  <Phone className="size-4" />
+                  {t.news.call}
+                </a>
+              ) : (
+                <button type="button" disabled={pending} onClick={() => settle(true)} className={`${buttonClass.secondary} w-full`}>
+                  <CheckCircle2 className="size-4" />
+                  {t.news.called}
+                </button>
+              )}
+            </div>
+          ) : (
+            <MessageSender text={item.text} phone={item.phone} email={item.email} onSend={(text) => settle(true, text)} />
+          )}
           <div className="flex justify-end">
             <button
               type="button"

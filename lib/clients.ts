@@ -3,6 +3,7 @@ import { cache } from "react";
 import { LOAN_STATES, emptySearch, type FinancingInput, type OfferInput, type SearchInput } from "./client-validation";
 import { fetchAllSettlements, getMyPeople } from "./lookups";
 import { CURRENCIES, isOneOf, type ClientClass, type ClientStage, type ClientType } from "./options";
+import type { Decider, Timeline } from "./client-validation";
 import { createClient } from "./supabase/server";
 import type { Category, Feature, Member, Region, Settlement, Subtype } from "./types";
 
@@ -89,6 +90,10 @@ export type ClientDetail = {
   follow_up_at: string | null;
   /** gets a short market note every month */
   monthly_news: boolean;
+  /** qualifying: when, who decides, why */
+  timeline: Timeline | null;
+  decider: Decider | null;
+  motive: string | null;
   created_at: string;
   updated_at: string;
   broker: { full_name: string | null; email: string; avatar_path: string | null } | null;
@@ -124,7 +129,7 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
     .from("clients")
     .select(
       `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
-      notes, birth_day, birth_month, follow_up_at, monthly_news, created_at, updated_at,
+      notes, birth_day, birth_month, follow_up_at, monthly_news, timeline, decider, motive, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
       search:client_searches(*),
       offer:client_offers(*),

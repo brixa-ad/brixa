@@ -47,6 +47,9 @@ export default async function NewClientPage({ searchParams }: PageProps<"/client
           search: emptySearch(),
           offer: emptyOffer(),
           financing: emptyFinancing(),
+          timeline: null,
+          decider: null,
+          motive: "",
         }}
       />
     </>

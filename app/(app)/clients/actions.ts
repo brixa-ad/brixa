@@ -58,6 +58,9 @@ async function prepare(input: ClientInput, clientId: string | null) {
     source: input.source,
     referrer: hasReferrer(input.source) ? input.referrer.trim() || null : null,
     stage: input.stage,
+    timeline: input.timeline,
+    decider: input.decider,
+    motive: input.motive.trim() || null,
     notes: input.notes.trim() || null,
     // the ЕГН knows the birthday
     birth_day: parseEgn(input.egn)?.day ?? input.birthDay,
