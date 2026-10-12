@@ -11,6 +11,11 @@ export async function loadSampleData(): Promise<{ ok: boolean }> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("load_sample_data");
   if (error) console.error("Loading the samples failed:", error.message);
+  // …with what a broker fills in: when, who decides, why, the financing, and a few ready messages
+  if (!error) {
+    const { error: enrichError } = await supabase.rpc("enrich_sample_data");
+    if (enrichError) console.error("Filling in the samples failed:", enrichError.message);
+  }
   revalidatePath("/", "layout");
   return { ok: !error };
 }

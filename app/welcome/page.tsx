@@ -5,15 +5,18 @@ import {
   CalendarCheck,
   Check,
   Eye,
-  FileUp,
   Globe,
   Handshake,
   Home,
+  Landmark,
+  MessagesSquare,
   Phone,
+  Route,
   Star,
   Trophy,
   Users,
   UsersRound,
+  Zap,
 } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
@@ -34,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const FEATURE_ICONS = [Users, Home, Handshake, CalendarCheck, Star, Globe, UsersRound, Trophy, FileUp];
+const FEATURE_ICONS = [Users, Route, Landmark, Zap, Home, Handshake, CalendarCheck, Star, Globe, MessagesSquare, UsersRound, Trophy];
 
 /** What BRIXA is, for a visitor: what it does, how to start, the packages, and "try it free". */
 export default async function WelcomePage() {
