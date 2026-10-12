@@ -1,4 +1,5 @@
 import { ClipboardList,
+  FileCheck2,
   ArchiveX,
   BadgeCheck,
   BarChart3,
@@ -71,6 +72,7 @@ const ICONS: Record<NavKey | MenuKey, React.ComponentType<LucideProps>> = {
   market: TrendingUp,
   partnerSearches: UserSearch,
   closedDeals: BadgeCheck,
+  saleDocs: FileCheck2,
   team: UsersRound,
   goals: Target,
   teamReport: ClipboardList,

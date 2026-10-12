@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
-import { Card } from "@/components/ui/form";
+import { Card, buttonClass } from "@/components/ui/form";
 import { sofiaDay } from "@/lib/dates";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
@@ -52,7 +53,14 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={P.title} />
+      <PageHeader
+        title={P.title}
+        actions={
+          <Link href="/admin/documents" className={buttonClass.secondary}>
+            Документи за продажба — данни
+          </Link>
+        }
+      />
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {tiles.map((tile) => (
