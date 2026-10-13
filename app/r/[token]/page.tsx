@@ -334,7 +334,7 @@ export default async function OwnerReportPage({ params }: PageProps<"/r/[token]"
         <Timeline data={data} t={t} lang={lang} />
       </Section>
 
-      {broker && <BrokerCard broker={broker} subject={`${t.report.pageTitle}: ${p.title}`} t={t} />}
+      {broker && <BrokerCard broker={broker} officePhone={agency?.phone} subject={`${t.report.pageTitle}: ${p.title}`} t={t} />}
       {agency && <AgencyFooter agency={agency} />}
     </main>
   );

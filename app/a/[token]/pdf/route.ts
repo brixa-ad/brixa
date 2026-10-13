@@ -2,6 +2,7 @@ import { getSharedAnalysis } from "@/lib/analysis-share";
 import { pdfResponse, renderAnalysisPdf, specsLine } from "@/lib/analysis-doc";
 import { localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
+import { socialTexts } from "@/lib/socials";
 
 /** The PDF of a sent analysis (the same as the broker's). */
 export async function GET(_: Request, ctx: RouteContext<"/a/[token]/pdf">) {
@@ -33,7 +34,7 @@ export async function GET(_: Request, ctx: RouteContext<"/a/[token]/pdf">) {
       agencyName: agency.name,
       agencyContacts: [agency.name, agency.phone, agency.email, agency.website].filter(Boolean).join(" · "),
       logoUrl: agency.logoUrl,
-      broker: broker ? `${t.rating.pdf.broker}: ${[broker.name, broker.phone, broker.email].filter(Boolean).join(" · ")}` : null,
+      broker: broker ? `${t.rating.pdf.broker}: ${[broker.name, broker.phone || agency.phone, broker.email, ...socialTexts(broker.socials)].filter(Boolean).join(" · ")}` : null,
       photoUrl: p.photoUrl,
     },
     t,

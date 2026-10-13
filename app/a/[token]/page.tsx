@@ -197,7 +197,7 @@ export default async function SharedAnalysisPage({ params }: PageProps<"/a/[toke
 
       <p className="mt-5 text-xs text-subtle">{P.disclaimer}</p>
 
-      {broker && <BrokerCard broker={{ ...broker, job_title: null }} subject={`${audience === "owner" ? P.ownerTitle : P.buyerTitle}: ${p.title}`} t={t} />}
+      {broker && <BrokerCard broker={{ ...broker, job_title: null }} officePhone={agency.phone} subject={`${audience === "owner" ? P.ownerTitle : P.buyerTitle}: ${p.title}`} t={t} />}
       <AgencyFooter agency={agency} />
     </main>
   );

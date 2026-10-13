@@ -36,6 +36,8 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
   if (!listing) notFound();
 
   const { property: p, photos, broker, agency } = listing;
+  // with no phone of their own, the office's
+  const brokerPhone = broker?.phone || agency?.phone || null;
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
     code ? ((t.options[group] as Record<string, string>)[code] ?? code) : null;
   const facts: [string, string | null][] = [
@@ -124,7 +126,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
             </Panel>
           )}
           {broker && (
-            <ContactBar person={{ name: broker.name, avatarUrl: broker.avatarUrl }} sub={broker.job_title ?? agency?.name ?? null} phone={broker.phone} t={t} />
+            <ContactBar person={{ name: broker.name, avatarUrl: broker.avatarUrl }} sub={broker.job_title ?? agency?.name ?? null} phone={brokerPhone} t={t} />
           )}
         </div>
 
@@ -134,9 +136,10 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
               person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
               level={broker.job_title}
               rows={[
-                ...(broker.phone ? [{ icon: Phone, label: t.partners.phone, value: broker.phone }] : []),
+                ...(brokerPhone ? [{ icon: Phone, label: t.partners.phone, value: brokerPhone }] : []),
                 { icon: Mail, label: t.partners.email, value: broker.email },
               ]}
+              socials={broker.socials}
             />
           )}
           <div className="rounded-3xl border border-accent/30 bg-accent-soft/30 p-5">

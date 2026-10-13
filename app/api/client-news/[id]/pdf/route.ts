@@ -6,6 +6,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { isNewsKind, type NewsData } from "@/lib/news";
 import { hasPdf, renderNewsPdf } from "@/lib/news-doc";
 import { firstName } from "@/lib/programs";
+import { parseSocials } from "@/lib/socials";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,7 +28,7 @@ export async function GET(_: Request, ctx: RouteContext<"/api/client-news/[id]/p
   const [{ t, lang }, agency, { data: me }, { data: rateRows }] = await Promise.all([
     getI18n(),
     getAgency(session.organizationId),
-    supabase.from("profiles").select("full_name, email, phone, job_title, avatar_path").eq("id", session.userId).maybeSingle(),
+    supabase.from("profiles").select("full_name, email, phone, job_title, avatar_path, socials").eq("id", session.userId).maybeSingle(),
     supabase.from("mortgage_rates").select("month, rate").order("month", { ascending: false }).limit(6),
   ]);
   const name = me?.full_name || session.fullName || session.email;
@@ -45,9 +46,11 @@ export async function GET(_: Request, ctx: RouteContext<"/api/client-news/[id]/p
       broker: {
         name,
         role: me?.job_title ?? null,
-        phone: me?.phone ?? null,
+        // with no phone of their own, the office's
+        phone: me?.phone || agency?.phone || null,
         email: me?.email ?? session.email,
         photoUrl: avatarUrl(me?.avatar_path),
+        socials: parseSocials(me?.socials),
       },
       rates: ((rateRows ?? []) as { month: string; rate: number }[]).map((r) => ({ month: r.month.slice(0, 7), rate: Number(r.rate) })),
       today: sofiaToday(),

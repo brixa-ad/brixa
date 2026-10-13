@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { validateProfile, type ProfileErrors, type ProfileInput } from "@/lib/profile";
 import { getSession } from "@/lib/session";
+import { SOCIAL_KEYS, socialLink, type Socials } from "@/lib/socials";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateProfile(
@@ -16,6 +17,12 @@ export async function updateProfile(
 
   const areas = [...new Set(input.areas.map((area) => area.trim()).filter(Boolean))];
 
+  const socials: Socials = {};
+  for (const key of SOCIAL_KEYS) {
+    const link = socialLink(key, input.socials[key] ?? "");
+    if (link) socials[key] = link;
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
@@ -25,6 +32,7 @@ export async function updateProfile(
       job_title: input.jobTitle.trim() || null,
       bio: input.bio.trim() || null,
       areas,
+      socials,
     })
     .eq("id", session.userId);
 

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
+import { parseSocials, type Socials } from "./socials";
 import { parseAnalysis, type Analysis } from "./analysis";
 import { PHOTO_BUCKET } from "./photos";
 import { UUID, anonymous } from "./share";
@@ -27,7 +28,7 @@ export type SharedAnalysis = {
     expectedRent: number | null;
     rentEstimate: RentEstimate | null;
   };
-  broker: { name: string; email: string; phone: string | null; avatarUrl: string | null } | null;
+  broker: { name: string; email: string; phone: string | null; avatarUrl: string | null; socials: Socials } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null };
 };
 
@@ -44,7 +45,7 @@ export const getSharedAnalysis = cache(async (token: string): Promise<SharedAnal
     audience: "owner" | "buyer";
     analysis: unknown;
     property: Record<string, unknown>;
-    broker: { name: string; email: string; phone: string | null; avatar_path: string | null } | null;
+    broker: { name: string; email: string; phone: string | null; avatar_path: string | null; socials?: unknown } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null };
   };
   if (raw.unavailable) return "unavailable";
@@ -79,7 +80,7 @@ export const getSharedAnalysis = cache(async (token: string): Promise<SharedAnal
       expectedRent: num(p.expected_rent),
       rentEstimate: parseEstimate(p.rent_estimate),
     },
-    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
+    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) },
   };
 });

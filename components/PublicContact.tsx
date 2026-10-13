@@ -1,10 +1,12 @@
 import { Globe, Mail, MessageCircle, Phone } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { PrintButton } from "@/components/PublicPageTools";
+import { SocialLinks } from "@/components/SocialLinks";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { telHref, viberHref, whatsappHref } from "@/lib/phone";
+import type { Socials } from "@/lib/socials";
 
-type Broker = { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null };
+type Broker = { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null; socials?: Socials };
 type Agency = { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null };
 
 /** The agency's logo (or name) and the PDF button, on top of a public page. */
@@ -23,8 +25,19 @@ export function PublicHeader({ agency }: { agency: Agency | null }) {
   );
 }
 
-/** Who to call: the broker, with call / Viber / WhatsApp / email. */
-export function BrokerCard({ broker, subject, t }: { broker: Broker; subject: string; t: Dictionary }) {
+/** Who to call: the broker, with call / Viber / WhatsApp / email and their social networks. With no phone of their own, the office's. */
+export function BrokerCard({
+  broker,
+  subject,
+  t,
+  officePhone,
+}: {
+  broker: Broker;
+  subject: string;
+  t: Dictionary;
+  officePhone?: string | null;
+}) {
+  const phone = broker.phone || officePhone || null;
   const button =
     "inline-flex items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm font-semibold";
   return (
@@ -41,14 +54,21 @@ export function BrokerCard({ broker, subject, t }: { broker: Broker; subject: st
         <div className="min-w-0">
           <p className="font-semibold">{broker.name}</p>
           {broker.job_title && <p className="text-sm text-muted">{broker.job_title}</p>}
-          {broker.phone && <p className="text-sm text-fg-2">{broker.phone}</p>}
-          <p className="hidden text-sm text-fg-2 print:block">{broker.email}</p>
+          {phone && (
+            <a href={telHref(phone)} className="block text-sm font-medium text-fg-2">
+              {phone}
+              {!broker.phone && <span className="font-normal text-muted"> · {t.share.officePhone}</span>}
+            </a>
+          )}
+          <a href={`mailto:${broker.email}`} className="block truncate text-sm text-fg-2">
+            {broker.email}
+          </a>
         </div>
       </div>
       <div className="no-print mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {broker.phone && (
+        {phone && (
           <a
-            href={telHref(broker.phone)}
+            href={telHref(phone)}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-on-accent"
           >
             <Phone className="size-4" />
@@ -72,6 +92,7 @@ export function BrokerCard({ broker, subject, t }: { broker: Broker; subject: st
           {t.share.email}
         </a>
       </div>
+      <SocialLinks socials={broker.socials} className="mt-3" />
     </section>
   );
 }

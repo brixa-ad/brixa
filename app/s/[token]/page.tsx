@@ -81,7 +81,7 @@ export default async function SharedSearchPage({ params }: PageProps<"/s/[token]
         </section>
       )}
 
-      {data.broker && <BrokerCard broker={data.broker} subject={t.searchShare.pageTitle} t={t} />}
+      {data.broker && <BrokerCard broker={data.broker} officePhone={data.agency?.phone} subject={t.searchShare.pageTitle} t={t} />}
       {data.agency && <AgencyFooter agency={data.agency} />}
     </main>
   );

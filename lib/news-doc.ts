@@ -5,6 +5,7 @@ import { formatNumber } from "./format";
 import { fmt, locale, type Dictionary, type Lang } from "./i18n/dictionaries";
 import { monthName, newsHasPdf, newsText, payment, type NewsData, type NewsKind } from "./news";
 import { NewsPdf, type NewsPdfProps } from "./pdf/news-pdf";
+import { SOCIAL_KEYS, SOCIAL_LABEL, shortLink, type Socials } from "./socials";
 
 export const hasPdf = newsHasPdf;
 
@@ -14,7 +15,7 @@ export type NewsDocInput = {
   createdOn: string;
   client: { name: string; firstName: string };
   agency: { name: string; logoUrl: string | null; contacts: string };
-  broker: { name: string; role: string | null; phone: string | null; email: string | null; photoUrl: string | null };
+  broker: { name: string; role: string | null; phone: string | null; email: string | null; photoUrl: string | null; socials: Socials };
   /** the last months' average mortgage rates, newest first */
   rates: { month: string; rate: number }[];
   today: string;
@@ -122,7 +123,19 @@ export async function renderNewsPdf(input: NewsDocInput, t: Dictionary, lang: La
       bigText,
       letter,
       cta: { title: cta.title, line: contactLine },
-      broker: { ...input.broker, photo, initials: initials(input.broker.name) },
+      broker: {
+        name: input.broker.name,
+        role: input.broker.role,
+        phone: input.broker.phone,
+        email: input.broker.email,
+        photo,
+        initials: initials(input.broker.name),
+        socials: SOCIAL_KEYS.filter((key) => input.broker.socials[key]).map((key) => ({
+          label: SOCIAL_LABEL[key],
+          text: shortLink(input.broker.socials[key]!),
+          url: input.broker.socials[key]!,
+        })),
+      },
     })
   );
 }

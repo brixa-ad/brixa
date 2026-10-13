@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
+import { parseSocials, type Socials } from "./socials";
 import { UUID, anonymous } from "./share";
 
 export type SharedSearch = {
@@ -22,7 +23,7 @@ export type SharedSearch = {
   };
   comment: string | null;
   shared_at: string;
-  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
+  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null; socials: Socials } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null } | null;
 };
 
@@ -34,7 +35,7 @@ export const getSharedSearch = cache(async (token: string): Promise<SharedSearch
   const { data, error } = await anonymous().rpc("shared_search", { share_token: token });
   if (error || !data) return null;
   const raw = data as Omit<SharedSearch, "broker" | "agency"> & {
-    broker: (Omit<NonNullable<SharedSearch["broker"]>, "avatarUrl"> & { avatar_path: string | null }) | null;
+    broker: (Omit<NonNullable<SharedSearch["broker"]>, "avatarUrl" | "socials"> & { avatar_path: string | null; socials?: unknown }) | null;
     agency: (Omit<NonNullable<SharedSearch["agency"]>, "logoUrl"> & { logo_path: string | null }) | null;
   };
   return {
@@ -47,7 +48,7 @@ export const getSharedSearch = cache(async (token: string): Promise<SharedSearch
       area_min: num(raw.search.area_min),
       area_max: num(raw.search.area_max),
     },
-    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
+    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: raw.agency ? { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) } : null,
   };
 });

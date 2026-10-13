@@ -1,3 +1,4 @@
+import { SOCIAL_KEYS, socialLink, type SocialKey } from "./socials";
 import type { ErrorCode } from "./validation";
 
 export type ProfileInput = {
@@ -6,9 +7,13 @@ export type ProfileInput = {
   jobTitle: string;
   bio: string;
   areas: string[];
+  /** as typed: a link or @name per network */
+  socials: Record<SocialKey, string>;
 };
 
-export type ProfileErrors = Partial<Record<keyof ProfileInput, ErrorCode>>;
+export type ProfileErrors = Partial<Record<Exclude<keyof ProfileInput, "socials">, ErrorCode>> & {
+  socials?: Partial<Record<SocialKey, ErrorCode>>;
+};
 
 export const PROFILE_LIMITS = { fullName: 100, phone: 40, jobTitle: 80, bio: 1000, areas: 20, area: 60 };
 
@@ -32,6 +37,13 @@ export function validateProfile(input: ProfileInput): ProfileErrors {
   ) {
     errors.areas = "tooLong";
   }
+
+  const socials: Partial<Record<SocialKey, ErrorCode>> = {};
+  for (const key of SOCIAL_KEYS) {
+    const value = (input.socials[key] ?? "").trim();
+    if (value && !socialLink(key, value)) socials[key] = "invalidLink";
+  }
+  if (Object.keys(socials).length > 0) errors.socials = socials;
 
   return errors;
 }

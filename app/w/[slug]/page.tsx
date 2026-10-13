@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Globe, Mail, MapPin, Phone, Star } from "lucide-react";
 import { ListingCard } from "@/components/listing/ListingCard";
+import { SocialLinks } from "@/components/SocialLinks";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
@@ -154,6 +155,7 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
                       {m.phone}
                     </a>
                   )}
+                  <SocialLinks socials={m.socials} className="mt-2" />
                 </div>
               </li>
             ))}

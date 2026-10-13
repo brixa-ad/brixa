@@ -12,7 +12,7 @@ import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
 import { ProgramCard, type ClientProgram } from "@/components/program/ProgramCard";
 import { MonthlyNewsToggle } from "@/components/news/MonthlyNewsToggle";
-import { NewsRow, type NewsItem } from "@/components/news/NewsList";
+import { NewsHistory, NewsRow, type NewsItem, type SettledNewsItem } from "@/components/news/NewsList";
 import { isNewsKind, newsText, newsTitle, type NewsData } from "@/lib/news";
 import { SecretValue } from "@/components/client/SecretValue";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
@@ -130,32 +130,41 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .order("received_at", { ascending: false })
       .limit(5),
   ]);
-  // the follow-up messages BRIXA wrote for them, waiting to be sent (the last month's)
+  // the follow-up messages BRIXA wrote for them: waiting to be sent (the last month's), and the ones already sent or left out
   const { data: newsRows } = await supabase
     .from("client_news")
-    .select("id, kind, data, created_on")
+    .select("id, kind, data, created_on, sent_at, skipped_at")
     .eq("client_id", id)
-    .is("sent_at", null)
-    .is("skipped_at", null)
-    .gte("created_on", addDays(sofiaToday(), -30))
-    .order("created_on", { ascending: false });
+    .gte("created_on", addDays(sofiaToday(), -120))
+    .order("created_on", { ascending: false })
+    .limit(40);
   const signer = session.fullName || session.email;
-  const messages: NewsItem[] = ((newsRows ?? []) as { id: string; kind: string; data: NewsData; created_on: string }[])
-    .filter((row) => isNewsKind(row.kind))
-    .map((row) => {
-      const kind = row.kind as Parameters<typeof newsTitle>[0];
-      return {
-        id: row.id,
-        clientId: client.id,
-        name: client.full_name,
-        phone: client.phone,
-        email: client.email,
-        kind,
-        title: newsTitle(kind, row.data, t, lang),
-        date: formatDate(row.created_on, lang),
-        text: newsText(kind, row.data, { name: firstName(client.full_name), broker: signer }, t, lang, sofiaToday()),
-      };
-    });
+  type NewsDbRow = { id: string; kind: string; data: NewsData; created_on: string; sent_at: string | null; skipped_at: string | null };
+  const toItem = (row: NewsDbRow): NewsItem => {
+    const kind = row.kind as Parameters<typeof newsTitle>[0];
+    return {
+      id: row.id,
+      clientId: client.id,
+      name: client.full_name,
+      phone: client.phone,
+      email: client.email,
+      kind,
+      title: newsTitle(kind, row.data, t, lang),
+      date: formatDate(row.created_on, lang),
+      text: newsText(kind, row.data, { name: firstName(client.full_name), broker: signer }, t, lang, sofiaToday()),
+    };
+  };
+  const newsList = ((newsRows ?? []) as NewsDbRow[]).filter((row) => isNewsKind(row.kind));
+  const monthAgo = addDays(sofiaToday(), -30);
+  const messages = newsList.filter((row) => !row.sent_at && !row.skipped_at && row.created_on >= monthAgo).map(toItem);
+  const settledMessages: SettledNewsItem[] = newsList
+    .filter((row) => row.sent_at || row.skipped_at)
+    .sort((a, b) => (b.sent_at ?? b.skipped_at)!.localeCompare((a.sent_at ?? a.skipped_at)!))
+    .map((row) => ({
+      ...toItem(row),
+      status: row.sent_at ? "sent" : "skipped",
+      when: formatDate((row.sent_at ?? row.skipped_at)!, lang),
+    }));
   // how a buyer pays
   const fin = client.financing;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "";
@@ -532,6 +541,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                     ))}
                   </ul>
                 )}
+                {settledMessages.length > 0 && <NewsHistory items={settledMessages} />}
               </div>
             </Card>
           )}

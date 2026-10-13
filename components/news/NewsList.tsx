@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore, useTransition } from "react";
-import { CheckCircle2, FileDown, HeartCrack, Landmark, Lightbulb, Loader2, MapPinned, Newspaper, Phone, PhoneCall, Share2, TrendingUp, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, FileDown, HeartCrack, Landmark, Lightbulb, Loader2, MapPinned, Newspaper, Phone, PhoneCall, Share2, TrendingUp, X } from "lucide-react";
 import { settleNews } from "@/app/(app)/follow-up/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { MessageSender } from "@/components/program/MessageSender";
@@ -176,6 +176,70 @@ export function NewsRow({ item }: { item: NewsItem }) {
           </div>
         </div>
       )}
+    </li>
+  );
+}
+
+export type SettledNewsItem = NewsItem & { status: "sent" | "skipped"; when: string };
+
+/** The messages already sent (or left out): what they said, and the document — to send again or print. */
+export function NewsHistory({ items }: { items: SettledNewsItem[] }) {
+  const { t } = useI18n();
+  const [all, setAll] = useState(false);
+  const shown = all ? items : items.slice(0, 3);
+  return (
+    <div className="space-y-2 border-t border-line-soft pt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t.news.history}</p>
+      <ul className="space-y-2">
+        {shown.map((item) => (
+          <SettledRow key={item.id} item={item} />
+        ))}
+      </ul>
+      {items.length > shown.length && (
+        <button type="button" onClick={() => setAll(true)} className="text-sm font-medium text-accent-fg hover:underline">
+          {fmt(t.news.showAll, { count: items.length })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SettledRow({ item }: { item: SettledNewsItem }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const Icon = ICONS[item.kind];
+  return (
+    <li className="rounded-xl border border-line bg-surface p-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <Icon className="size-4 text-accent-fg" />
+          {item.title}
+        </span>
+        <span className={`ml-auto inline-flex items-center gap-1 text-xs font-medium ${item.status === "sent" ? "text-success" : "text-muted"}`}>
+          {item.status === "sent" ? <CheckCircle2 className="size-3.5" /> : <X className="size-3.5" />}
+          {fmt(item.status === "sent" ? t.news.sentOn : t.news.skippedOn, { date: item.when })}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-fg-2 transition hover:bg-raised"
+        >
+          <ChevronDown className={`size-4 transition ${open ? "rotate-180" : ""}`} />
+          {open ? t.news.hideText : t.news.showText}
+        </button>
+        {newsHasPdf(item.kind) && <PdfButtons id={item.id} name={`${item.title} - ${item.name}`} onShared={() => {}} />}
+      </div>
+      {open &&
+        (item.kind === "warm_call" ? (
+          <p className="mt-2 rounded-xl bg-raised/60 p-3 text-sm leading-relaxed text-fg-2">{item.text}</p>
+        ) : (
+          <div className="mt-2">
+            <MessageSender text={item.text} phone={item.phone} email={item.email} />
+          </div>
+        ))}
     </li>
   );
 }

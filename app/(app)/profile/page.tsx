@@ -7,6 +7,7 @@ import { PasskeyManager } from "@/components/passkey/PasskeyManager";
 import { Card, buttonClass } from "@/components/ui/form";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
+import { SOCIAL_KEYS, parseSocials, type SocialKey } from "@/lib/socials";
 import { createClient } from "@/lib/supabase/server";
 import { AvatarUploader } from "./AvatarUploader";
 import { signOut } from "../../login/actions";
@@ -24,12 +25,13 @@ export default async function ProfilePage() {
     getI18n(),
     supabase
       .from("profiles")
-      .select("full_name, phone, job_title, bio, areas, avatar_path")
+      .select("full_name, phone, job_title, bio, areas, avatar_path, socials")
       .eq("id", session.userId)
       .single(),
   ]);
 
   const name = profile?.full_name || session.email;
+  const socials = parseSocials(profile?.socials);
 
   return (
     <>
@@ -82,6 +84,7 @@ export default async function ProfilePage() {
               jobTitle: profile?.job_title ?? "",
               bio: profile?.bio ?? "",
               areas: profile?.areas ?? [],
+              socials: Object.fromEntries(SOCIAL_KEYS.map((key) => [key, socials[key] ?? ""])) as Record<SocialKey, string>,
             }}
           />
         </Card>

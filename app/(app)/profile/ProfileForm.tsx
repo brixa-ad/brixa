@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Plus, X } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { Field, buttonClass, inputClass } from "@/components/ui/form";
 import { PROFILE_LIMITS, validateProfile, type ProfileErrors, type ProfileInput } from "@/lib/profile";
+import { SOCIAL_COLOR, SOCIAL_KEYS, SOCIAL_LABEL } from "@/lib/socials";
 import { updateProfile } from "./actions";
 
 export function ProfileForm({ initial }: { initial: ProfileInput }) {
@@ -15,7 +16,7 @@ export function ProfileForm({ initial }: { initial: ProfileInput }) {
   const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
   const [pending, startTransition] = useTransition();
 
-  const errorText = (field: keyof ProfileInput) => (errors[field] ? t.errors[errors[field]!] : undefined);
+  const errorText = (field: Exclude<keyof ProfileInput, "socials">) => (errors[field] ? t.errors[errors[field]!] : undefined);
 
   function set<K extends keyof ProfileInput>(key: K, value: ProfileInput[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -155,6 +156,39 @@ export function ProfileForm({ initial }: { initial: ProfileInput }) {
           </div>
         )}
       </Field>
+
+      <fieldset className="space-y-3 border-t border-line-soft pt-5">
+        <legend className="text-sm font-semibold">{t.profile.socials}</legend>
+        <p className="text-xs text-muted">{t.profile.socialsHint}</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {SOCIAL_KEYS.map((key) => (
+            <Field
+              key={key}
+              label={
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full" style={{ backgroundColor: SOCIAL_COLOR[key] }} aria-hidden />
+                  {SOCIAL_LABEL[key]}
+                </span>
+              }
+              error={errors.socials?.[key] ? t.errors[errors.socials[key]!] : undefined}
+            >
+              {(props) => (
+                <input
+                  {...props}
+                  value={values.socials[key]}
+                  maxLength={300}
+                  inputMode="url"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder={t.profile.socialPlaceholder[key]}
+                  onChange={(e) => set("socials", { ...values.socials, [key]: e.target.value })}
+                  className={inputClass}
+                />
+              )}
+            </Field>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line-soft pt-5">
         {status === "saved" && (

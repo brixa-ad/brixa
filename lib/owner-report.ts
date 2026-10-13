@@ -3,6 +3,7 @@ import { cache } from "react";
 import { logoUrl } from "./agency";
 import { toMarketFacts, type MarketFacts } from "./market";
 import { avatarUrl } from "./avatar";
+import { parseSocials, type Socials } from "./socials";
 import { PHOTO_BUCKET } from "./photos";
 import { UUID, anonymous } from "./share";
 
@@ -30,7 +31,7 @@ export type OwnerReport = {
   prices: { at: string; old: number | null; new: number | null; currency: string }[];
   /** the price against the market (aggregates only) */
   market: MarketFacts | null;
-  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
+  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null; socials: Socials } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null } | null;
 };
 
@@ -45,7 +46,7 @@ export const getOwnerReport = cache(async (token: string): Promise<OwnerReport |
 
   type Raw = Omit<OwnerReport, "property" | "broker" | "agency"> & {
     property: Omit<OwnerReport["property"], "coverUrl"> & { cover: string | null };
-    broker: (Omit<NonNullable<OwnerReport["broker"]>, "avatarUrl"> & { avatar_path: string | null }) | null;
+    broker: (Omit<NonNullable<OwnerReport["broker"]>, "avatarUrl" | "socials"> & { avatar_path: string | null; socials?: unknown }) | null;
     agency: (Omit<NonNullable<OwnerReport["agency"]>, "logoUrl"> & { logo_path: string | null }) | null;
   };
   const raw = data as Raw;
@@ -78,7 +79,7 @@ export const getOwnerReport = cache(async (token: string): Promise<OwnerReport |
     in_progress: raw.in_progress.map((s) => ({ ...s, count: Number(s.count) })),
     prices: raw.prices.map((p) => ({ ...p, old: num(p.old), new: num(p.new) })),
     market: toMarketFacts(raw.market),
-    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
+    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: raw.agency ? { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) } : null,
   };
 });

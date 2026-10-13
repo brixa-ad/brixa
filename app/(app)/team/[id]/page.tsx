@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { BadgeGrid } from "@/components/game/BadgeGrid";
 import { PlayerCard } from "@/components/game/PlayerCard";
 import { PageHeader } from "@/components/PageHeader";
+import { SocialLinks } from "@/components/SocialLinks";
 import { StatusBadge } from "@/components/property/StatusBadge";
 import { Card, buttonClass } from "@/components/ui/form";
 import { sofiaToday } from "@/lib/dates";
@@ -16,6 +17,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { leads } from "@/lib/hierarchy";
 import { getHierarchy } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
+import { parseSocials } from "@/lib/socials";
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/types";
 
@@ -56,7 +58,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("full_name, email, phone, job_title, bio, areas, avatar_path")
+      .select("full_name, email, phone, job_title, bio, areas, avatar_path, socials")
       .eq("id", id)
       .maybeSingle(),
     // Listings are shared across the agency, so every colleague sees these.
@@ -136,6 +138,7 @@ export default async function MemberPage({ params }: PageProps<"/team/[id]">) {
               <Mail className="size-4 text-accent-fg" />
               <span className="truncate font-medium">{profile.email}</span>
             </a>
+            <SocialLinks socials={parseSocials(profile.socials)} className="px-3 pt-2" />
           </div>
 
           {isSelf && (

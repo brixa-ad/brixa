@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
+import { parseSocials, type Socials } from "./socials";
 import { PHOTO_BUCKET } from "./photos";
 import type { Tap } from "./signals";
 import { parseEstimate, type RentEstimate } from "./yield";
@@ -38,7 +39,7 @@ export type SharedListing = {
     stars: Stars | null;
   };
   photos: string[];
-  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null } | null;
+  broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null; socials: Socials } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null } | null;
 };
 
@@ -66,7 +67,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
 
   const raw = data as {
     property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
-    broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
+    broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null; socials?: unknown } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null } | null;
   };
   const { photos: paths, ...property } = raw.property;
@@ -90,7 +91,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
       stars: goodStars(raw.property.rating),
     },
     photos,
-    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
+    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: raw.agency ? { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) } : null,
   };
 });

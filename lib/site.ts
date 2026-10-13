@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { logoUrl } from "./agency";
 import { avatarUrl } from "./avatar";
+import { parseSocials, type Socials } from "./socials";
 import { PHOTO_BUCKET } from "./photos";
 import type { Stars } from "./rating";
 import { anonymous, goodStars, type SharedListing } from "./share";
@@ -40,7 +41,7 @@ export type Site = {
     about: string | null;
   };
   listings: SiteListing[];
-  team: { name: string; phone: string | null; email: string; job_title: string | null; avatarUrl: string | null }[];
+  team: { name: string; phone: string | null; email: string; job_title: string | null; avatarUrl: string | null; socials: Socials }[];
 };
 
 /** The public website of an agency (null: no such address, or it's turned off). */
@@ -52,7 +53,7 @@ export const getSite = cache(async (slug: string): Promise<Site | null> => {
   const raw = data as {
     agency: Site["agency"] & { logo_path: string | null };
     listings: (Omit<SiteListing, "photoUrl" | "stars"> & { photo: string | null; stars?: unknown })[];
-    team: (Omit<Site["team"][number], "avatarUrl"> & { avatar_path: string | null })[];
+    team: (Omit<Site["team"][number], "avatarUrl" | "socials"> & { avatar_path: string | null; socials?: unknown })[];
   };
 
   // the cover photos, for a week (the site's listings' photos are open while the site is on)
@@ -72,7 +73,7 @@ export const getSite = cache(async (slug: string): Promise<Site | null> => {
       area: l.area === null ? null : Number(l.area),
       photoUrl: photo ? (urls.get(photo) ?? null) : null,
     })),
-    team: raw.team.map(({ avatar_path, ...m }) => ({ ...m, avatarUrl: avatarUrl(avatar_path) })),
+    team: raw.team.map(({ avatar_path, socials, ...m }) => ({ ...m, avatarUrl: avatarUrl(avatar_path), socials: parseSocials(socials) })),
   };
 });
 
@@ -84,7 +85,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
   if (error || !data) return null;
   const raw = data as {
     property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
-    broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null } | null;
+    broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null; socials?: unknown } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null };
   };
   const { photos: paths, ...property } = raw.property;
@@ -105,7 +106,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
       stars: goodStars(raw.property.rating),
     },
     photos,
-    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path) } : null,
+    broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) },
   };
 });

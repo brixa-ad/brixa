@@ -1,5 +1,5 @@
 import "server-only";
-import { Document, Image as Picture, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Link, Image as Picture, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 // the fonts (Inter, with Cyrillic and €) are registered there
 import "./analysis-pdf";
 import type { PdfImage } from "./analysis-pdf";
@@ -49,6 +49,8 @@ const s = StyleSheet.create({
   name: { fontSize: 13, fontWeight: 700, color: C.ink },
   role: { fontSize: 9, color: C.muted, marginTop: 1 },
   contact: { fontSize: 10, color: C.ink, marginTop: 3 },
+  socials: { fontSize: 8.5, color: C.muted, marginTop: 4, lineHeight: 1.4 },
+  socialLink: { color: C.accent, textDecoration: "none" },
   foot: { position: "absolute", left: 40, right: 40, bottom: 22, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: C.muted, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
 });
 
@@ -66,7 +68,16 @@ export type NewsPdfProps = {
   bigText: string | null;
   letter: string | null;
   cta: { title: string; line: string };
-  broker: { name: string; role: string | null; phone: string | null; email: string | null; photo: PdfImage; initials: string };
+  broker: {
+    name: string;
+    role: string | null;
+    phone: string | null;
+    email: string | null;
+    photo: PdfImage;
+    initials: string;
+    /** the social networks: "Instagram", "instagram.com/anton", the link */
+    socials: { label: string; text: string; url: string }[];
+  };
 };
 
 /** A piece of news or an analysis for a client, on A4: the agency's logo, the numbers, the letter, a call to action and the broker. */
@@ -128,6 +139,19 @@ export function NewsPdf(p: NewsPdfProps) {
             {p.broker.role && <Text style={s.role}>{p.broker.role}</Text>}
             {p.broker.phone && <Text style={s.contact}>{p.broker.phone}</Text>}
             {p.broker.email && <Text style={[s.contact, { marginTop: 1 }]}>{p.broker.email}</Text>}
+            {p.broker.socials.length > 0 && (
+              <Text style={s.socials}>
+                {p.broker.socials.map((x, i) => (
+                  <Text key={x.url}>
+                    {i > 0 ? "   ·   " : ""}
+                    {x.label}:{" "}
+                    <Link src={x.url} style={s.socialLink}>
+                      {x.text}
+                    </Link>
+                  </Text>
+                ))}
+              </Text>
+            )}
           </View>
         </View>
 

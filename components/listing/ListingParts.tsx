@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Check, MessageCircle, Phone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { SocialLinks } from "@/components/SocialLinks";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { telHref, viberHref, whatsappHref } from "@/lib/phone";
+import type { Socials } from "@/lib/socials";
 
 /** A round button floating on a listing's photo (back, share…). */
 export const floatingButton = "grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/65";
@@ -121,6 +123,7 @@ export function BrokerPanel({
   rows,
   href,
   linkLabel,
+  socials,
 }: {
   person: Person;
   /** the broker's level, or their job title */
@@ -128,7 +131,9 @@ export function BrokerPanel({
   rows: { icon: LucideIcon; label: string; value: string }[];
   href?: string;
   linkLabel?: string;
+  socials?: Socials;
 }) {
+  const hasSocials = Object.keys(socials ?? {}).length > 0;
   return (
     <section className="overflow-hidden rounded-3xl border border-line bg-surface">
       <div className="flex items-center gap-4 bg-raised/50 p-5 sm:p-6">
@@ -138,9 +143,10 @@ export function BrokerPanel({
           <p className="mt-0.5 text-2xl font-bold leading-tight tracking-tight">{person.name}</p>
         </div>
       </div>
-      {(rows.length > 0 || href) && (
+      {(rows.length > 0 || href || hasSocials) && (
         <div className="p-5 sm:p-6">
           {rows.length > 0 && <DetailRows rows={rows} />}
+          <SocialLinks socials={socials} className={rows.length > 0 ? "mt-4" : ""} />
           {href && linkLabel && (
             <Link href={href} className="mt-5 block rounded-full bg-raised py-3 text-center text-sm font-semibold transition hover:bg-overlay">
               {linkLabel}

@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { CalendarDays, DoorClosed, MapPin } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { VisitorSignIn } from "@/components/openhouse/VisitorSignIn";
+import { SocialLinks } from "@/components/SocialLinks";
 import { logoUrl } from "@/lib/agency";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { hhmm, weekdayDate } from "@/lib/open-houses";
 import { anonymous, UUID } from "@/lib/share";
+import { parseSocials } from "@/lib/socials";
 
 type PublicHouse = {
   title: string;
@@ -24,7 +26,7 @@ type PublicHouse = {
   ends_at: string;
   cancelled: boolean;
   open: boolean;
-  broker: { name: string; phone: string | null } | null;
+  broker: { name: string; phone: string | null; socials?: unknown } | null;
   agency: { name: string; logo_path: string | null } | null;
 };
 
@@ -100,6 +102,7 @@ export default async function OpenHouseSignInPage({ params }: PageProps<"/o/[tok
           {house.broker.phone ? ` · ${house.broker.phone}` : ""}
         </p>
       )}
+      {house.broker && <SocialLinks socials={parseSocials(house.broker.socials)} className="mt-3 justify-center" />}
     </main>
   );
 }

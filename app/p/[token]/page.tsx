@@ -38,6 +38,8 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
   if (!listing) notFound();
 
   const { property: p, photos, broker, agency } = listing;
+  // with no phone of their own, the office's
+  const brokerPhone = broker?.phone || agency?.phone || null;
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
     code ? ((t.options[group] as Record<string, string>)[code] ?? code) : null;
   const facts: [string, string | null][] = [
@@ -136,9 +138,10 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
             person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
             level={broker.job_title}
             rows={[
-              ...(broker.phone ? [{ icon: Phone, label: t.partners.phone, value: broker.phone }] : []),
+              ...(brokerPhone ? [{ icon: Phone, label: t.partners.phone, value: brokerPhone }] : []),
               { icon: Mail, label: t.partners.email, value: broker.email },
             ]}
+            socials={broker.socials}
           />
         )}
 
@@ -159,7 +162,7 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
           <ContactBar
             person={{ name: broker.name, avatarUrl: broker.avatarUrl }}
             sub={broker.job_title ?? agency?.name ?? null}
-            phone={broker.phone}
+            phone={brokerPhone}
             t={t}
           />
         )}

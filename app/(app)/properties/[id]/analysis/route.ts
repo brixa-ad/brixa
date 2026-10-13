@@ -6,6 +6,7 @@ import { localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getProperty } from "@/lib/properties";
 import { getSession } from "@/lib/session";
+import { parseSocials, socialTexts } from "@/lib/socials";
 import { createClient } from "@/lib/supabase/server";
 import { parseEstimate } from "@/lib/yield";
 
@@ -60,7 +61,7 @@ export async function GET(request: Request, ctx: RouteContext<"/properties/[id]/
       agencyContacts: [agencyName, agency?.phone, agency?.email, agency?.website].filter(Boolean).join(" · "),
       logoUrl: agency?.logoUrl ?? null,
       broker: property.broker
-        ? `${t.rating.pdf.broker}: ${[property.broker.full_name || property.broker.email, property.broker.phone, property.broker.email].filter(Boolean).join(" · ")}`
+        ? `${t.rating.pdf.broker}: ${[property.broker.full_name || property.broker.email, property.broker.phone || agency?.phone, property.broker.email, ...socialTexts(parseSocials(property.broker.socials))].filter(Boolean).join(" · ")}`
         : null,
       photoUrl: property.photos[0]?.url ?? null,
     },
