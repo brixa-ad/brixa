@@ -24,6 +24,8 @@ export type NotificationData = {
   /** a package an agency asked for, and whom to call */
   plan?: string;
   phone?: string | null;
+  /** a task's reminder: whom it's about (the client or the colleague) */
+  client?: string;
   /** speed to lead: the listing that fits */
   property?: string;
   /** an analysis opened again (another day) */
@@ -188,4 +190,23 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
     default:
       return vars.title;
   }
+}
+
+/**
+ * What the phone shows (the lock screen too): a reminder says what to do and with whom —
+ * "📞 Обадете се на Георги Петров · 10:00" over the task — the rest: BRIXA over the text.
+ */
+export function pushContent(type: string, data: NotificationData, t: Dictionary, lang: Lang) {
+  if (type === "task_reminder" && data.kind && data.title) {
+    const time = data.time ?? "";
+    const kinds = t.options.taskType as Record<string, string>;
+    const title =
+      data.kind === "call"
+        ? data.client
+          ? fmt(t.notifications.reminder_call, { client: data.client, time })
+          : fmt(t.notifications.reminder_call_nobody, { time })
+        : fmt(t.notifications.reminder_other, { kind: kinds[data.kind] ?? kinds.other, time });
+    return { title, body: data.title };
+  }
+  return { title: "BRIXA", body: notificationText(type, data, t, lang) };
 }

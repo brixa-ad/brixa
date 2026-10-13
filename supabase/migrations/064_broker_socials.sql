@@ -1,14 +1,16 @@
 -- =====================================================================
--- BRIXA — migration 064: the broker's social networks
+-- BRIXA — migration 064: the broker's social networks; reminders that say whom to call
 --   Each broker adds their Facebook, Instagram, TikTok, LinkedIn and YouTube in
 --   their profile; they show with the broker wherever a client can contact them:
 --   a shared listing, a search, an analysis, the owner's report, the open house,
 --   the agency's website.
+--   A task's reminder now carries the task's kind and the client (or colleague),
+--   so the phone shows "Обадете се на Георги Петров" on the lock screen.
 -- Run once in Supabase → SQL Editor → New query → Run (after 063).
 -- =====================================================================
 
 alter table public.profiles
-  add column socials jsonb not null default '{}'::jsonb
+  add column if not exists socials jsonb not null default '{}'::jsonb
     check (jsonb_typeof(socials) = 'object' and pg_column_size(socials) < 4000);
 
 -- the public pages bring them along with the broker
@@ -415,3 +417,49 @@ as $$
     and p.status in ('active', 'reserved') and p.operation_type in ('sale', 'rent')
     and not p.off_market and not p.sample;
 $$;
+
+-- the reminder 15 minutes before a task: with its kind and whom it's about
+create or replace function public.notify_task_reminders(at_time timestamptz default now())
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  local_now timestamp := at_time at time zone 'Europe/Sofia';
+  now_time time := local_now::time;
+  today date := local_now::date;
+  task record;
+  sent integer := 0;
+begin
+  for task in
+    select t.id, t.organization_id, t.assigned_to, t.title, t.due_time, t.type,
+      coalesce(c.full_name, pa.full_name) as person
+    from public.tasks t
+    left join public.clients c on c.id = t.client_id
+    left join public.partners pa on pa.id = t.partner_id
+    where t.status = 'open'
+      and t.due_date = today
+      and t.due_time is not null
+      and (t.reminded_on is null or t.reminded_on < today)
+      and t.due_time > now_time
+      and t.due_time - interval '15 minutes' <= now_time
+  loop
+    perform public.notify(
+      task.organization_id, task.assigned_to, null, 'task_reminder',
+      jsonb_strip_nulls(jsonb_build_object(
+        'title', task.title,
+        'time', to_char(task.due_time, 'HH24:MI'),
+        'kind', task.type,
+        'client', task.person
+      )),
+      '/tasks/' || task.id
+    );
+    update public.tasks set reminded_on = today where id = task.id;
+    sent := sent + 1;
+  end loop;
+  return sent;
+end;
+$$;
+
+revoke execute on function public.notify_task_reminders(timestamptz) from public, anon, authenticated;

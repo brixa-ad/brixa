@@ -15196,3 +15196,50 @@ as $$
     and p.status in ('active', 'reserved') and p.operation_type in ('sale', 'rent')
     and not p.off_market and not p.sample;
 $$;
+
+-- (064)
+-- the reminder 15 minutes before a task: with its kind and whom it's about
+create or replace function public.notify_task_reminders(at_time timestamptz default now())
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  local_now timestamp := at_time at time zone 'Europe/Sofia';
+  now_time time := local_now::time;
+  today date := local_now::date;
+  task record;
+  sent integer := 0;
+begin
+  for task in
+    select t.id, t.organization_id, t.assigned_to, t.title, t.due_time, t.type,
+      coalesce(c.full_name, pa.full_name) as person
+    from public.tasks t
+    left join public.clients c on c.id = t.client_id
+    left join public.partners pa on pa.id = t.partner_id
+    where t.status = 'open'
+      and t.due_date = today
+      and t.due_time is not null
+      and (t.reminded_on is null or t.reminded_on < today)
+      and t.due_time > now_time
+      and t.due_time - interval '15 minutes' <= now_time
+  loop
+    perform public.notify(
+      task.organization_id, task.assigned_to, null, 'task_reminder',
+      jsonb_strip_nulls(jsonb_build_object(
+        'title', task.title,
+        'time', to_char(task.due_time, 'HH24:MI'),
+        'kind', task.type,
+        'client', task.person
+      )),
+      '/tasks/' || task.id
+    );
+    update public.tasks set reminded_on = today where id = task.id;
+    sent := sent + 1;
+  end loop;
+  return sent;
+end;
+$$;
+
+revoke execute on function public.notify_task_reminders(timestamptz) from public, anon, authenticated;

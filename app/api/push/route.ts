@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { dictionaries, isLang } from "@/lib/i18n/dictionaries";
-import { notificationLink, notificationText, type NotificationData } from "@/lib/notification-text";
+import { notificationLink, pushContent, type NotificationData } from "@/lib/notification-text";
 
 /** Who is sending (shown to the browser's push service). */
 const SUBJECT = "https://brixa-yavlena.vercel.app";
@@ -67,8 +67,7 @@ export async function POST(request: Request) {
         ...(row.email ? [{ action: "email", title: t.contact.email }] : []),
       ];
       const payload = JSON.stringify({
-        title: "BRIXA",
-        body: notificationText(row.type, row.data ?? {}, t, lang),
+        ...pushContent(row.type, row.data ?? {}, t, lang),
         url,
         // a conversation's messages replace each other on the phone
         tag: row.type === "chat_message" ? (row.link ?? id) : id,

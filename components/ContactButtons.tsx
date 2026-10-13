@@ -20,12 +20,15 @@ export function ContactButtons({
   clientId,
   open,
   compact = false,
+  big = false,
 }: {
   phone: string | null | undefined;
   email: string | null | undefined;
   clientId?: string | null;
   open?: ContactKind | null;
   compact?: boolean;
+  /** tall buttons, for a call's task: easy to hit on the phone */
+  big?: boolean;
 }) {
   const { t } = useI18n();
   const [used, setUsed] = useState<ContactKind | null>(null);
@@ -52,7 +55,7 @@ export function ContactButtons({
 
   return (
     <div className="space-y-3">
-      <div className={`flex flex-wrap gap-2 ${compact ? "" : "[&>a]:flex-1"}`}>
+      <div className={`flex flex-wrap gap-2 ${compact ? "" : "[&>a]:flex-1"} ${big ? "[&>a]:min-h-14 [&>a]:text-base [&>a:first-child]:basis-full" : ""}`}>
         {links.map(({ kind, href, label, icon: Icon }) => (
           <a
             key={kind}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, CalendarDays, CheckCircle2, Clock, Contact, Gift, Pencil, User } from "lucide-react";
+import { Building2, CalendarDays, CheckCircle2, Clock, Contact, Gift, Link2, Pencil, Phone, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MessageSender } from "@/components/program/MessageSender";
@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/format";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { isOneOf } from "@/lib/options";
+import { phoneIn } from "@/lib/phone";
 import { getSession } from "@/lib/session";
 import { getTask, personName } from "@/lib/tasks";
 
@@ -37,6 +38,11 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
   const canComplete = task.assigned_to === session.userId || canEdit;
   // a program's step or a greeting: the ready text comes with send buttons
   const isStep = task.program_id !== null || task.occasion !== null;
+  // a call to make: whom, and the number (the client's, the colleague's, or one written in the task) — on top
+  const callFirst = !done && task.type === "call";
+  const callee = task.client ?? task.partner;
+  const calleePhone = task.client?.phone ?? task.partner?.phone ?? phoneIn(task.title) ?? phoneIn(task.description);
+  const openContact = isOneOf(CONTACT_KINDS, contact) ? contact : null;
 
   return (
     <>
@@ -63,6 +69,50 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
           ) : undefined
         }
       />
+
+      {callFirst && (
+        <section className="mb-6 rounded-3xl border border-accent/30 bg-accent-soft/40 p-5 sm:p-6">
+          <p className="text-sm font-medium text-accent-fg">{t.tasks.callNow}</p>
+          <p className="mt-0.5 text-2xl font-bold tracking-tight">{callee?.full_name ?? task.title}</p>
+          {calleePhone && (
+            <p className="mt-1 text-lg font-medium tabular-nums text-fg-2">
+              {calleePhone}
+              {task.due_time && <span className="text-base font-normal text-muted"> · {task.due_time.slice(0, 5)}</span>}
+            </p>
+          )}
+          {calleePhone ? (
+            <div className="mt-4 max-w-xl">
+              <ContactButtons
+                phone={calleePhone}
+                email={task.client?.email ?? null}
+                clientId={task.client?.id ?? null}
+                open={openContact}
+                big
+              />
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm text-muted">{callee ? t.tasks.callNoPhone : t.tasks.callNoClient}</p>
+              {task.client ? (
+                <Link href={`/clients/${task.client.id}/edit`} className={buttonClass.primary}>
+                  <Phone className="size-4" />
+                  {t.tasks.addPhone}
+                </Link>
+              ) : task.partner ? (
+                <Link href={`/partners/${task.partner.id}`} className={buttonClass.primary}>
+                  <Phone className="size-4" />
+                  {t.tasks.addPhone}
+                </Link>
+              ) : canEdit ? (
+                <Link href={`/tasks/${id}/edit`} className={buttonClass.primary}>
+                  <Link2 className="size-4" />
+                  {t.tasks.linkClient}
+                </Link>
+              ) : null}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
@@ -156,7 +206,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
                   {(task.partner.agency || task.partner.phone) && (
                     <p className="mt-1 text-sm text-muted">{[task.partner.agency, task.partner.phone].filter(Boolean).join(" · ")}</p>
                   )}
-                  {task.partner.phone && (
+                  {task.partner.phone && !callFirst && (
                     <div className="mt-4">
                       <ContactButtons phone={task.partner.phone} email={null} />
                     </div>
@@ -171,14 +221,11 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
                     {task.client.full_name}
                   </Link>
                   {task.client.phone && <p className="mt-1 text-sm text-muted">{task.client.phone}</p>}
-                  <div className="mt-4">
-                    <ContactButtons
-                      phone={task.client.phone}
-                      email={task.client.email}
-                      clientId={task.client.id}
-                      open={isOneOf(CONTACT_KINDS, contact) ? contact : null}
-                    />
-                  </div>
+                  {!callFirst && (
+                    <div className="mt-4">
+                      <ContactButtons phone={task.client.phone} email={task.client.email} clientId={task.client.id} open={openContact} />
+                    </div>
+                  )}
                 </Card>
               )}
               {task.property && (
