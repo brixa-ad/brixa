@@ -1,4 +1,4 @@
-import { formatPrice } from "./format";
+import { formatDate, formatPrice } from "./format";
 import { fmt, type Dictionary, type Lang } from "./i18n/dictionaries";
 
 export type NotificationData = {
@@ -30,6 +30,8 @@ export type NotificationData = {
   property?: string;
   /** an analysis opened again (another day) */
   again?: boolean;
+  /** a payment's or a renewal's day */
+  date?: string;
   /** work handed over */
   clients?: number;
   properties?: number;
@@ -129,6 +131,19 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(data.direct ? t.notifications.chat_request : t.notifications.chat_invite, { ...vars, agency: data.agency ?? "" });
     case "agency_signed_up":
       return fmt(data.kind === "solo" ? t.notifications.agency_signed_up_solo : t.notifications.agency_signed_up, vars);
+    case "payment_received":
+    case "payment_failed":
+    case "subscription_renews":
+    case "subscription_ends":
+    case "trial_ends": {
+      const tomorrow = data.days === 1 && (type === "subscription_ends" || type === "trial_ends");
+      return fmt(tomorrow ? t.notifications[`${type}_tomorrow`] : t.notifications[type], {
+        ...vars,
+        date: data.date ? formatDate(data.date, lang) : "",
+      });
+    }
+    case "card_payment":
+      return fmt(t.notifications.card_payment, { ...vars, plan: data.plan ? ` (${data.plan})` : "" });
     case "plan_requested":
       return fmt(t.notifications.plan_requested, { ...vars, plan: data.plan ?? "", phone: data.phone ? ` · ${data.phone}` : "" });
     case "analysis_viewed":

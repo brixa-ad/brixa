@@ -20,6 +20,8 @@ const PUBLIC_PATHS = [
   "/manifest.webmanifest",
   "/sw.js",
   "/api/push",
+  // Stripe: payments by card (the database checks its signature)
+  "/api/stripe",
   "/api/calendar",
   // shared listings: anyone with the link
   "/p",

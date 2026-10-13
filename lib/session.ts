@@ -54,7 +54,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     supabase.from("profiles").select("full_name, email, avatar_path, bottom_nav").eq("id", user.id).maybeSingle(),
     supabase
       .from("organization_members")
-      .select("organization_id, role, office_id, team_id, organizations(name, kind, trial_ends_at, paid_until, comped, plan_code, sample_since, terms_version)")
+      .select("organization_id, role, office_id, team_id, organizations(name, kind, trial_ends_at, paid_until, comped, plan_code, sample_since, terms_version, stripe_subscription_id, auto_renew, payment_failed_at, billing_interval)")
       .eq("profile_id", user.id)
       .order("created_at")
       .limit(1)

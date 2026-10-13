@@ -1,14 +1,29 @@
-import { Lock, Mail, Phone } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { AlertTriangle, CheckCircle2, CreditCard, FileText, Lock, Mail, Phone } from "lucide-react";
+import { formatDate, formatPrice } from "@/lib/format";
 import { fmt, type Dictionary, type Lang } from "@/lib/i18n/dictionaries";
 import { telHref } from "@/lib/phone";
 import type { SessionContext } from "@/lib/session";
-import { toPlan, type Plan, type PlatformDetails } from "@/lib/subscription";
+import { cardOf, cardPaymentsOn, stripeClient } from "@/lib/stripe";
+import { priceFor, toPlan, type Plan, type PlatformDetails } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
+import { BillingActions } from "./BillingActions";
 import { PlanCards } from "./PlanCards";
 
 /** Where the agency stands, the packages, and how to reach BRIXA — the Subscription page, and the screen once the trial ends. */
-export async function SubscriptionView({ session, t, lang, locked = false }: { session: SessionContext; t: Dictionary; lang: Lang; locked?: boolean }) {
+export async function SubscriptionView({
+  session,
+  t,
+  lang,
+  locked = false,
+  notice = null,
+}: {
+  session: SessionContext;
+  t: Dictionary;
+  lang: Lang;
+  locked?: boolean;
+  /** back from Stripe: paid, or the package changed */
+  notice?: "paid" | "changed" | null;
+}) {
   const B = t.billing;
   const supabase = await createClient();
   const [{ data: planRows }, { data: details }, { count: people }] = await Promise.all([
@@ -19,6 +34,36 @@ export async function SubscriptionView({ session, t, lang, locked = false }: { s
   const plans = ((planRows ?? []) as Plan[]).map(toPlan);
   const brixa = details as PlatformDetails | null;
   const sub = session.subscription;
+  // paying by card: the card on Stripe, and what the agency has paid
+  const stripe = stripeClient();
+  const cardOn = cardPaymentsOn();
+  const [subRow, payments] = session.isOwner
+    ? await Promise.all([
+        supabase.from("organizations").select("stripe_subscription_id").eq("id", session.organizationId).maybeSingle(),
+        supabase
+          .from("payments")
+          .select("id, amount, currency, plan_code, billing_interval, period_end, invoice_url, invoice_pdf, method, created_at")
+          .eq("organization_id", session.organizationId)
+          .order("created_at", { ascending: false })
+          .limit(12),
+      ])
+    : [null, null];
+  const subscriptionId = (subRow?.data as { stripe_subscription_id: string | null } | null)?.stripe_subscription_id ?? null;
+  const card = stripe && subscriptionId ? await cardOf(stripe, subscriptionId) : null;
+  const myPlan = plans.find((p) => p.code === sub.planCode) ?? null;
+  const nextAmount = myPlan ? formatPrice(priceFor(myPlan, sub.interval ?? "month"), "EUR", lang) : null;
+  const paid = (payments?.data ?? []) as {
+    id: string;
+    amount: number;
+    currency: string;
+    plan_code: string | null;
+    billing_interval: string | null;
+    period_end: string | null;
+    invoice_url: string | null;
+    invoice_pdf: string | null;
+    method: string;
+    created_at: string;
+  }[];
 
   const status =
     sub.status === "comped"
@@ -45,13 +90,77 @@ export async function SubscriptionView({ session, t, lang, locked = false }: { s
           <p className="mt-1 text-lg font-semibold">{status}</p>
           {people !== null && <p className="mt-1 text-sm text-muted">{fmt(B.people, { n: people })}</p>}
           {sub.status === "trial" && <p className="mt-3 max-w-2xl text-sm text-fg-2">{B.trialInfo}</p>}
+          {session.isOwner && sub.card && (
+            <div className="mt-4 border-t border-line-soft pt-4">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <CreditCard className="size-4 text-accent-fg" />
+                {B.cardTitle}
+                {card && <span className="font-normal text-muted">· {fmt(B.cardLine, { brand: card.brand.toUpperCase(), last4: card.last4 })}</span>}
+                {sub.interval && <span className="font-normal text-muted">· {sub.interval === "year" ? B.intervalYear : B.intervalMonth}</span>}
+              </p>
+              {sub.paidUntil && (
+                <p className="mt-1 text-sm text-fg-2">
+                  {sub.autoRenew
+                    ? fmt(B.renewsOn, { date: formatDate(sub.paidUntil, lang), amount: nextAmount ?? "" })
+                    : fmt(B.endsOn, { date: formatDate(sub.paidUntil, lang) })}
+                </p>
+              )}
+              {sub.failing && (
+                <p className="mt-3 flex items-start gap-2 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    <strong className="font-semibold">{B.failingTitle}.</strong> {B.failingText}
+                  </span>
+                </p>
+              )}
+              <BillingActions autoRenew={sub.autoRenew} failing={sub.failing} />
+            </div>
+          )}
         </section>
+      )}
+
+      {notice && (
+        <p className="flex items-center gap-2 rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">
+          <CheckCircle2 className="size-4 shrink-0" />
+          {notice === "paid" ? B.paidThanks : B.changed}
+        </p>
       )}
 
       {(session.isOwner || !locked) && plans.length > 0 && (
         <section>
           <h2 className="mb-3 text-base font-semibold">{B.plans}</h2>
-          <PlanCards plans={plans} current={sub.status === "active" ? sub.planCode : null} people={people} canRequest={session.isOwner && sub.status !== "comped"} />
+          <PlanCards
+            plans={plans}
+            current={sub.status === "active" ? sub.planCode : null}
+            people={people}
+            canRequest={session.isOwner && sub.status !== "comped"}
+            card={{ on: cardOn, subscribed: sub.card, interval: sub.interval }}
+          />
+        </section>
+      )}
+
+      {paid.length > 0 && (
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6">
+          <h2 className="text-base font-semibold">{B.paymentsTitle}</h2>
+          <ul className="mt-3 divide-y divide-line-soft text-sm">
+            {paid.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
+                <span className="w-28 text-muted">{formatDate(p.created_at, lang)}</span>
+                <span className="font-semibold">{formatPrice(Number(p.amount), p.currency, lang)}</span>
+                <span className="text-muted">
+                  {[plans.find((plan) => plan.code === p.plan_code)?.name, p.billing_interval === "year" ? B.intervalYear : p.billing_interval === "month" ? B.intervalMonth : null, p.period_end && fmt(B.paidTill, { date: formatDate(p.period_end, lang) })]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                {(p.invoice_pdf ?? p.invoice_url) && (
+                  <a href={p.invoice_pdf ?? p.invoice_url ?? undefined} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-medium text-accent-fg">
+                    <FileText className="size-4" />
+                    {B.receipt}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

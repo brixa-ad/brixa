@@ -18,7 +18,7 @@ import { SectionTabs } from "@/components/SectionTabs";
 import { SubscriptionView } from "@/components/subscription/SubscriptionView";
 import { LEGAL_VERSION, legalDate } from "@/lib/legal";
 import { TermsBanner } from "@/components/legal/TermsBanner";
-import { TrialBanner } from "@/components/subscription/TrialBanner";
+import { PaymentFailedBanner, TrialBanner } from "@/components/subscription/TrialBanner";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const locked = sub.status === "expired" && !session.platformAdmin;
   // the owner sees the days left of the trial, and the last week of a paid time
   const daysLeft =
-    session.isOwner && (sub.status === "trial" || (sub.status === "active" && (sub.daysLeft ?? 99) <= 7)) ? sub.daysLeft : null;
+    session.isOwner && (sub.status === "trial" || (sub.status === "active" && !sub.autoRenew && (sub.daysLeft ?? 99) <= 7)) ? sub.daysLeft : null;
   const brixOn = Boolean(process.env.ANTHROPIC_API_KEY);
   // the eight sections (and their pages) this person may open
   const menu = menuFor(session.isManager, brixOn, session.solo);
@@ -133,6 +133,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {daysLeft !== null && daysLeft <= 5 && (sub.status === "trial" || sub.status === "active") && (
           <div className="mb-5">
             <TrialBanner status={sub.status} daysLeft={daysLeft} t={t} />
+          </div>
+        )}
+        {session.isOwner && sub.failing && sub.status !== "comped" && (
+          <div className="mb-5">
+            <PaymentFailedBanner t={t} />
           </div>
         )}
         {/* the terms changed: the owner accepts them for the agency */}

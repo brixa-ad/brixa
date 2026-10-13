@@ -10,13 +10,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** The agency's trial or package, the packages, and BRIXA's contacts. */
-export default async function SubscriptionPage() {
-  const [session, { t, lang }] = await Promise.all([getSession(), getI18n()]);
+export default async function SubscriptionPage({ searchParams }: PageProps<"/subscription">) {
+  const [session, { t, lang }, query] = await Promise.all([getSession(), getI18n(), searchParams]);
   if (!session) return null;
   return (
     <div className="space-y-6">
       <PageHeader title={t.billing.title} backHref="/settings" backLabel={t.nav.settings} />
-      <SubscriptionView session={session} t={t} lang={lang} />
+      <SubscriptionView session={session} t={t} lang={lang} notice={query.paid ? "paid" : query.changed ? "changed" : null} />
     </div>
   );
 }

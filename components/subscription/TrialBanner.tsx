@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
 import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
 
 /** One line: the trial's (or the paid time's) days left, and the packages. */
@@ -17,6 +17,20 @@ export function TrialBanner({ status, daysLeft, t }: { status: "trial" | "active
         {status === "trial" ? (daysLeft <= 1 ? t.billing.trialLastDayShort : fmt(t.billing.trialLeftShort, { n: daysLeft })) : fmt(t.billing.paidLeftShort, { n: daysLeft })}
       </span>
       <span className="shrink-0 font-semibold text-accent-fg">{t.billing.plansShort} →</span>
+    </Link>
+  );
+}
+
+/** The card's payment didn't go through: change the card (Subscription). */
+export function PaymentFailedBanner({ t }: { t: Dictionary }) {
+  return (
+    <Link
+      href="/subscription"
+      className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-fg transition hover:bg-danger/15 print:hidden"
+    >
+      <AlertTriangle className="size-4 shrink-0 text-danger" />
+      <span className="min-w-0 flex-1 truncate">{t.billing.failingBanner}</span>
+      <span className="shrink-0 font-semibold text-accent-fg">{t.billing.changeCard} →</span>
     </Link>
   );
 }

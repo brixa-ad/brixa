@@ -59,6 +59,7 @@ const PARTS: Part[] = [
   { table: "broker_plans", sheet: "Планове", order: "id", org: true },
   { table: "broker_finance", sheet: "Финанси на брокери", order: "id", org: true },
   { table: "broker_expenses", sheet: "Разходи", order: "id", org: true },
+  { table: "payments", sheet: "Плащания към BRIXA", order: "id", org: true },
 ];
 
 /** Keys to links, not data: left out (the terms, section 18 — security data). */

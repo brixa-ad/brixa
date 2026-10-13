@@ -94,3 +94,12 @@ export async function saveDetails(input: {
   revalidatePath("/admin");
   return error ? { ok: false, error: "generic" } : { ok: true };
 }
+
+/** Save (or clear) the webhook's signing secret from Stripe — kept in the database, out of the API's reach. */
+export async function saveStripeSecret(secret: string): Promise<{ ok: boolean }> {
+  const supabase = await adminClient();
+  if (!supabase) return { ok: false };
+  const { data, error } = await supabase.rpc("set_stripe_webhook_secret", { secret: secret.trim() });
+  if (error) console.error("Saving Stripe's secret failed:", error.message);
+  return { ok: data === true };
+}
