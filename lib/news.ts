@@ -9,6 +9,9 @@ import { fmt, locale, type Dictionary, type Lang } from "./i18n/dictionaries";
 export const NEWS_KINDS = ["rates", "prices", "monthly", "warm_analysis", "warm_rates", "warm_call", "tips", "breakup"] as const;
 export type NewsKind = (typeof NEWS_KINDS)[number];
 export const isNewsKind = (value: unknown): value is NewsKind => (NEWS_KINDS as readonly unknown[]).includes(value);
+/** The kinds that make a document (a call and the break-up are personal, not a document). */
+export const NEWS_PDF_KINDS: NewsKind[] = ["rates", "warm_rates", "prices", "monthly", "warm_analysis", "tips"];
+export const newsHasPdf = (kind: string) => (NEWS_PDF_KINDS as string[]).includes(kind);
 
 export type NewsData = {
   // the rates fell
@@ -47,7 +50,7 @@ function sinceName(day: string, lang: Lang, today: string) {
 }
 
 /** A loan's monthly payment (annuity), for the example in the text. */
-function payment(amount: number, ratePercent: number, months: number) {
+export function payment(amount: number, ratePercent: number, months: number) {
   const i = ratePercent / 100 / 12;
   return i === 0 ? amount / months : (amount * i) / (1 - Math.pow(1 + i, -months));
 }

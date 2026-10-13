@@ -49,7 +49,7 @@ export function specsLine(
 }
 
 /** A photo or a logo for the PDF (JPEG or PNG only; anything else is left out). */
-async function pdfImage(url: string | null | undefined): Promise<PdfImage> {
+export async function pdfImage(url: string | null | undefined): Promise<PdfImage> {
   if (!url) return null;
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) });

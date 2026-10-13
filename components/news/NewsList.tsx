@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { CheckCircle2, HeartCrack, Landmark, Lightbulb, MapPinned, Newspaper, Phone, PhoneCall, TrendingUp, X } from "lucide-react";
+import { useState, useSyncExternalStore, useTransition } from "react";
+import { CheckCircle2, FileDown, HeartCrack, Landmark, Lightbulb, Loader2, MapPinned, Newspaper, Phone, PhoneCall, Share2, TrendingUp, X } from "lucide-react";
 import { settleNews } from "@/app/(app)/follow-up/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { MessageSender } from "@/components/program/MessageSender";
 import { buttonClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { telHref } from "@/lib/phone";
-import type { NewsKind } from "@/lib/news";
+import { newsHasPdf, type NewsKind } from "@/lib/news";
 
 export type NewsItem = {
   id: string;
@@ -56,6 +56,53 @@ export function NewsList({ items }: { items: NewsItem[] }) {
           <NewsRow key={item.id} item={item} />
         ))}
       </ul>
+    </div>
+  );
+}
+
+// only phones (and some browsers) can share a file
+const canShareFiles = () => {
+  try {
+    return typeof navigator.canShare === "function" && navigator.canShare({ files: [new File([""], "x.pdf", { type: "application/pdf" })] });
+  } catch {
+    return false;
+  }
+};
+const noSubscription = () => () => {};
+
+/** The message as a document: download it, or share the file straight from the phone. */
+function PdfButtons({ id, name, onShared }: { id: string; name: string; onShared: () => void }) {
+  const { t } = useI18n();
+  const href = `/api/client-news/${id}/pdf`;
+  const canShare = useSyncExternalStore(noSubscription, canShareFiles, () => false);
+  const [busy, setBusy] = useState(false);
+
+  async function share() {
+    setBusy(true);
+    try {
+      const blob = await (await fetch(href)).blob();
+      const file = new File([blob], `${name.replace(/[\\/:*?"<>|]+/g, " ").slice(0, 100)}.pdf`, { type: "application/pdf" });
+      await navigator.share({ files: [file], title: name });
+      onShared();
+    } catch {
+      // closed the share sheet
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a href={href} className={buttonClass.secondary}>
+        <FileDown className="size-4" />
+        {t.newsPdf.download}
+      </a>
+      {canShare && (
+        <button type="button" disabled={busy} onClick={share} className={buttonClass.secondary}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Share2 className="size-4" />}
+          {t.newsPdf.share}
+        </button>
+      )}
     </div>
   );
 }
@@ -115,6 +162,7 @@ export function NewsRow({ item }: { item: NewsItem }) {
           ) : (
             <MessageSender text={item.text} phone={item.phone} email={item.email} onSend={(text) => settle(true, text)} />
           )}
+          {newsHasPdf(item.kind) && <PdfButtons id={item.id} name={`${item.title} - ${item.name}`} onShared={() => settle(true)} />}
           <div className="flex justify-end">
             <button
               type="button"
