@@ -111,6 +111,11 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
               : t.notifications.market_news_monthly,
         vars
       );
+    case "client_message":
+      return fmt(t.notifications.client_message, {
+        ...vars,
+        kind: (t.news.kinds as Record<string, string>)[data.kind ?? ""] ?? "",
+      });
     case "speed_to_lead":
       return fmt(data.kind === "cheaper" ? t.notifications.speed_to_lead_cheaper : t.notifications.speed_to_lead_new, {
         ...vars,

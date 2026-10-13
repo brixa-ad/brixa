@@ -12,6 +12,8 @@ import { ShareSearchDialog } from "@/components/client/ShareSearchDialog";
 import { ContactButtons } from "@/components/ContactButtons";
 import { ProgramCard, type ClientProgram } from "@/components/program/ProgramCard";
 import { MonthlyNewsToggle } from "@/components/news/MonthlyNewsToggle";
+import { NewsRow, type NewsItem } from "@/components/news/NewsList";
+import { isNewsKind, newsText, newsTitle, type NewsData } from "@/lib/news";
 import { SecretValue } from "@/components/client/SecretValue";
 import { AssignSelect, ClaimButton } from "@/components/followup/FollowUpControls";
 import { DealCard } from "@/components/deal/DealCard";
@@ -32,7 +34,7 @@ import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { describeOffer, describeSearch } from "@/lib/search-describe";
 import { createClient } from "@/lib/supabase/server";
-import { sofiaToday } from "@/lib/dates";
+import { addDays, sofiaToday } from "@/lib/dates";
 import { TASK_SELECT, byDue, personName, type TaskRow } from "@/lib/tasks";
 import { DEAL_SELECT, toDeals } from "@/lib/deals";
 import { nameDayIn } from "@/lib/namedays";
@@ -128,13 +130,32 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       .order("received_at", { ascending: false })
       .limit(5),
   ]);
-  // market news for them, waiting to be sent
-  const { count: newsWaiting } = await supabase
+  // the follow-up messages BRIXA wrote for them, waiting to be sent (the last month's)
+  const { data: newsRows } = await supabase
     .from("client_news")
-    .select("id", { count: "exact", head: true })
+    .select("id, kind, data, created_on")
     .eq("client_id", id)
     .is("sent_at", null)
-    .is("skipped_at", null);
+    .is("skipped_at", null)
+    .gte("created_on", addDays(sofiaToday(), -30))
+    .order("created_on", { ascending: false });
+  const signer = session.fullName || session.email;
+  const messages: NewsItem[] = ((newsRows ?? []) as { id: string; kind: string; data: NewsData; created_on: string }[])
+    .filter((row) => isNewsKind(row.kind))
+    .map((row) => {
+      const kind = row.kind as Parameters<typeof newsTitle>[0];
+      return {
+        id: row.id,
+        clientId: client.id,
+        name: client.full_name,
+        phone: client.phone,
+        email: client.email,
+        kind,
+        title: newsTitle(kind, row.data, t, lang),
+        date: formatDate(row.created_on, lang),
+        text: newsText(kind, row.data, { name: firstName(client.full_name), broker: signer }, t, lang, sofiaToday()),
+      };
+    });
   // how a buyer pays
   const fin = client.financing;
   const euro = (value: number) => formatPrice(value, "EUR", lang) ?? "";
@@ -499,16 +520,17 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             </Card>
           )}
 
-          {/* market news: the monthly note they get (the rest comes by itself) */}
+          {/* follow-up: on for the clients the broker chose — the messages wait here, ready to send */}
           {canEdit && !isFree && (
             <Card title={t.news.cardTitle}>
               <div className="space-y-3">
-                <MonthlyNewsToggle clientId={client.id} on={client.monthly_news} />
-                <p className="text-xs text-muted">{t.news.autoHint}</p>
-                {(newsWaiting ?? 0) > 0 && (
-                  <Link href="/follow-up?view=news" className="inline-flex items-center gap-1 text-sm font-semibold text-accent-fg hover:underline">
-                    {fmt(t.news.waiting, { count: newsWaiting ?? 0 })} →
-                  </Link>
+                <MonthlyNewsToggle clientId={client.id} on={client.auto_follow_up} />
+                {messages.length > 0 && (
+                  <ul className="space-y-3">
+                    {messages.map((item) => (
+                      <NewsRow key={item.id} item={item} />
+                    ))}
+                  </ul>
                 )}
               </div>
             </Card>

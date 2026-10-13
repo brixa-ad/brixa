@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { Download, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { setDocStatus } from "@/app/(app)/documents/actions";
 import { deletePropertyDocument, documentsChanged } from "@/app/(app)/properties/documents";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
@@ -24,11 +25,17 @@ export function PropertyDocuments({
   organizationId,
   userId,
   documents,
+  docCode = null,
+  compact = false,
 }: {
   propertyId: string;
   organizationId: string;
   userId: string;
   documents: PropertyDocument[];
+  /** the checklist's document these files are (uploading one marks it "we have it") */
+  docCode?: string | null;
+  /** inside a checklist row: no hint, a small button */
+  compact?: boolean;
 }) {
   const { t, lang } = useI18n();
   const input = useRef<HTMLInputElement>(null);
@@ -68,6 +75,7 @@ export function PropertyDocuments({
         size_bytes: file.size,
         mime_type: file.type || null,
         uploaded_by: userId,
+        doc_code: docCode,
       });
       if (rowError) {
         console.error("Saving a document failed:", rowError.message);
@@ -78,13 +86,14 @@ export function PropertyDocuments({
     setUploading(false);
     if (input.current) input.current.value = "";
     if (failed) setError(t.documents.failed);
+    else if (docCode) await setDocStatus(propertyId, docCode, "have");
     await documentsChanged(propertyId);
   }
 
   return (
     <div className="space-y-4">
       {documents.length === 0 ? (
-        <p className="text-sm text-muted">{t.documents.empty}</p>
+        !compact && <p className="text-sm text-muted">{t.documents.empty}</p>
       ) : (
         <ul className="divide-y divide-line-soft">
           {documents.map((doc) => (
@@ -137,12 +146,12 @@ export function PropertyDocuments({
         className="hidden"
         onChange={(e) => void upload(e.target.files)}
       />
-      <button type="button" disabled={uploading} onClick={() => input.current?.click()} className={`${buttonClass.secondary} w-full`}>
+      <button type="button" disabled={uploading} onClick={() => input.current?.click()} className={`${buttonClass.secondary} ${compact ? "" : "w-full"}`}>
         {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-        {uploading ? t.documents.uploading : t.documents.upload}
+        {uploading ? t.documents.uploading : compact ? t.dossier.uploadThis : t.documents.upload}
       </button>
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
-      <p className="text-xs text-muted">{t.documents.hint}</p>
+      {!compact && <p className="text-xs text-muted">{t.documents.hint}</p>}
     </div>
   );
 }

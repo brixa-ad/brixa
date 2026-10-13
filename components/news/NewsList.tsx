@@ -60,7 +60,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
   );
 }
 
-function NewsRow({ item }: { item: NewsItem }) {
+export function NewsRow({ item }: { item: NewsItem }) {
   const { t } = useI18n();
   const [done, setDone] = useState<"sent" | "skipped" | null>(null);
   const [pending, startTransition] = useTransition();

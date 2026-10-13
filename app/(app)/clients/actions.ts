@@ -248,11 +248,11 @@ export async function updateClientRecord(id: string, input: ClientInput): Promis
   return { ok: true, id };
 }
 
-/** A short market note every month for this client (BRIXA writes it, the broker sends it). */
-export async function setMonthlyNews(id: string, on: boolean): Promise<{ ok: boolean }> {
+/** Follow-up messages for this client (BRIXA writes them — by what they buy, sell or care about — the broker sends them). */
+export async function setAutoFollowUp(id: string, on: boolean): Promise<{ ok: boolean }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("clients").update({ monthly_news: on }).eq("id", id).select("id").maybeSingle();
-  if (error) console.error("Saving the monthly note failed:", error.message);
+  const { data, error } = await supabase.from("clients").update({ auto_follow_up: on }).eq("id", id).select("id").maybeSingle();
+  if (error) console.error("Saving the follow-up switch failed:", error.message);
   revalidatePath(`/clients/${id}`);
   return { ok: Boolean(data) };
 }

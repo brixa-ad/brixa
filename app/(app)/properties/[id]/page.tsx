@@ -848,7 +848,16 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               { key: "papers" as const, label: t.detail.sectionPapers, short: t.detail.sectionPapersShort, anchors: ["history","documents"], content: (
                 <>
           {canEdit && session && (
-            <Card title={t.documents.title}>
+            <Card
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  {t.documents.title}
+                  <Link href={`/documents/${property.id}`} className="text-sm font-medium text-accent-fg hover:underline">
+                    {t.dossier.openChecklist} →
+                  </Link>
+                </span>
+              }
+            >
               <PropertyDocuments
                 propertyId={property.id}
                 organizationId={property.organization_id}

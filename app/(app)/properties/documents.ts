@@ -19,10 +19,13 @@ export async function deletePropertyDocument(documentId: string): Promise<{ ok: 
   }
   await supabase.storage.from(DOCUMENT_BUCKET).remove([data.storage_path]);
   revalidatePath(`/properties/${data.property_id}`);
+  revalidatePath(`/documents/${data.property_id}`);
   return { ok: true };
 }
 
 /** After the browser has uploaded the file: refresh the property page. */
 export async function documentsChanged(propertyId: string) {
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/documents/${propertyId}`);
+  revalidatePath("/documents");
 }

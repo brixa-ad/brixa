@@ -33,6 +33,7 @@ export const NAV_KEYS = [
   "partnerSearches",
   "closedDeals",
   "saleDocs",
+  "propertyDocs",
   "team",
   "goals",
   "teamReport",
@@ -79,6 +80,7 @@ export const NAV_HREF: Record<NavKey, string> = {
   partnerSearches: "/partner-searches",
   closedDeals: "/closed-deals",
   saleDocs: "/sale-documents",
+  propertyDocs: "/documents",
   team: "/team",
   goals: "/team/goals",
   teamReport: "/team/report",
@@ -91,7 +93,7 @@ export const NAV_HREF: Record<NavKey, string> = {
  * The menu: eight sections (each with its pages, shown as tabs on top) and a few single places.
  * A section leads to the first of its pages the person may open.
  */
-export const MENU_KEYS = ["home", "day", "clients", "properties", "deals", "chat", "insights", "path", "team", "brix", "notifications", "profile", "settings"] as const;
+export const MENU_KEYS = ["home", "day", "clients", "properties", "deals", "documents", "chat", "insights", "path", "team", "brix", "notifications", "profile", "settings"] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 
 /**
@@ -104,7 +106,8 @@ export const MENU_TABS: Record<MenuKey, NavKey[][]> = {
   day: [["tasks"], ["calendar"]],
   clients: [["clients", "buyers", "sellers", "tenants", "landlords"], ["followup"], ["coldContacts", "contacts"], ["partners", "partnerSearches"]],
   properties: [["myProperties", "offMarketProperties", "soldProperties", "withdrawnProperties"], ["colleaguesProperties"], ["openHouses"]],
-  deals: [["deals"], ["closedDeals"], ["saleDocs"]],
+  deals: [["deals"], ["closedDeals"]],
+  documents: [["propertyDocs"], ["saleDocs"]],
   chat: [["chat"]],
   insights: [["stats", "statsBroker"], ["statsMarket", "market"]],
   path: [["plan"], ["business"], ["territory"]],

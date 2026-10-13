@@ -88,8 +88,8 @@ export type ClientDetail = {
   birth_month: number | null;
   /** when the next contact is due (null: free contact, closed deal or lost) */
   follow_up_at: string | null;
-  /** gets a short market note every month */
-  monthly_news: boolean;
+  /** BRIXA writes follow-up messages for this client (they wait on the client's page) */
+  auto_follow_up: boolean;
   /** qualifying: when, who decides, why */
   timeline: Timeline | null;
   decider: Decider | null;
@@ -129,7 +129,7 @@ export const getClient = cache(async (id: string): Promise<ClientDetail | null> 
     .from("clients")
     .select(
       `id, organization_id, responsible_broker_id, full_name, phone, email, types, client_class, source, referrer, stage,
-      notes, birth_day, birth_month, follow_up_at, monthly_news, timeline, decider, motive, created_at, updated_at,
+      notes, birth_day, birth_month, follow_up_at, auto_follow_up, timeline, decider, motive, created_at, updated_at,
       broker:profiles!clients_responsible_broker_id_fkey(full_name, email, avatar_path),
       search:client_searches(*),
       offer:client_offers(*),
