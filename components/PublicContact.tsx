@@ -1,4 +1,5 @@
 import { Globe, Mail, MessageCircle, Phone } from "lucide-react";
+import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { Logo } from "@/components/Logo";
 import { PrintButton } from "@/components/PublicPageTools";
 import { SocialLinks } from "@/components/SocialLinks";
@@ -122,6 +123,7 @@ export function AgencyFooter({ agency }: { agency: Agency }) {
           </a>
         )}
       </p>
+      <AgencyPrivacy agency={agency} className="pt-3" />
     </footer>
   );
 }

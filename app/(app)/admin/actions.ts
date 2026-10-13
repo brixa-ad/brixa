@@ -62,6 +62,8 @@ export async function savePlan(plan: PlanInput, isNew: boolean): Promise<{ ok: b
 export async function saveDetails(input: {
   companyName: string;
   eik: string;
+  vatNumber: string;
+  representative: string;
   address: string;
   email: string;
   phone: string;
@@ -78,6 +80,8 @@ export async function saveDetails(input: {
     .update({
       company_name: text(input.companyName, 200),
       eik: eik || null,
+      vat_number: text(input.vatNumber.replace(/\s+/g, "").toUpperCase(), 20),
+      representative: text(input.representative, 200),
       address: text(input.address, 300),
       email: text(input.email, 200),
       phone: text(input.phone, 40),

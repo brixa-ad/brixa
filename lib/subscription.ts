@@ -44,6 +44,8 @@ export type Plan = {
 export type PlatformDetails = {
   company_name: string | null;
   eik: string | null;
+  vat_number: string | null;
+  representative: string | null;
   address: string | null;
   email: string | null;
   phone: string | null;

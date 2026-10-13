@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getI18n } from "@/lib/i18n/server";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { BOTTOM_NAV_MAX, menuFor } from "@/lib/nav";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -181,4 +182,15 @@ export async function setAgencyLogo(path: string | null): Promise<{ ok: boolean 
   }
   revalidatePath("/", "layout");
   return { ok: !error };
+}
+
+/** The agency's owner accepts the current terms and data processing agreement (the version and the date are kept). */
+export async function acceptTerms(): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isOwner) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("accept_terms", { version: LEGAL_VERSION });
+  if (error) console.error("Accepting the terms failed:", error.message);
+  revalidatePath("/", "layout");
+  return { ok: data === true };
 }

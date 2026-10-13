@@ -289,6 +289,8 @@ export function DetailsForm({ details }: { details: PlatformDetails | null }) {
   const [form, setForm] = useState({
     companyName: details?.company_name ?? "",
     eik: details?.eik ?? "",
+    vatNumber: details?.vat_number ?? "",
+    representative: details?.representative ?? "",
     address: details?.address ?? "",
     email: details?.email ?? "",
     phone: details?.phone ?? "",
@@ -309,6 +311,8 @@ export function DetailsForm({ details }: { details: PlatformDetails | null }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {field("companyName", P.companyName)}
         {field("eik", P.eik, { inputMode: "numeric" })}
+        {field("vatNumber", P.vatNumber, { placeholder: "BG123456789" })}
+        {field("representative", P.representative)}
         {field("address", P.address)}
         {field("phone", P.phone, { type: "tel" })}
         {field("email", P.email, { type: "email" })}

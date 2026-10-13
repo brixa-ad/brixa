@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Building2, CreditCard, FileUp } from "lucide-react";
+import { Building2, CreditCard, Download, FileUp } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageHeader } from "@/components/PageHeader";
 import { FollowUpRulesForm } from "@/components/followup/FollowUpRulesForm";
@@ -9,6 +9,7 @@ import { SiteSettingsForm } from "@/components/settings/SiteSettingsForm";
 import { PushSettings } from "@/components/push/PushSettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card, buttonClass } from "@/components/ui/form";
+import { LegalNav } from "@/components/LegalPage";
 import { getAgency } from "@/lib/agency";
 import { TemplateEditor } from "@/components/marketing/TemplateEditor";
 import { cleanTemplate } from "@/lib/marketing";
@@ -138,6 +139,18 @@ export default async function SettingsPage() {
                 }}
                 solo={session!.solo}
               />
+            </Card>
+          )}
+
+          {session!.isOwner && (
+            <Card title={t.legal.exportTitle} description={t.legal.exportText} id="data">
+              <a href="/api/export" download className={buttonClass.secondary}>
+                <Download className="size-4" />
+                {t.legal.exportButton}
+              </a>
+              <div className="mt-5 border-t border-line-soft pt-4">
+                <LegalNav />
+              </div>
             </Card>
           )}
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Globe, Mail, MapPin, Phone, Star } from "lucide-react";
+import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { SocialLinks } from "@/components/SocialLinks";
 import { InquiryForm } from "@/components/site/InquiryForm";
@@ -190,7 +191,8 @@ export default async function SitePage({ params, searchParams }: PageProps<"/w/[
         </div>
       </section>
 
-      <footer className="mt-12 text-center text-xs text-subtle">{t.site.madeWith}</footer>
+      <AgencyPrivacy agency={agency} className="mt-12" />
+      <footer className="mt-6 text-center text-xs text-subtle">{t.site.madeWith}</footer>
     </main>
   );
 }

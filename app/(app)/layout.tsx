@@ -16,6 +16,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { bottomNavFor, menuFor } from "@/lib/nav";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SubscriptionView } from "@/components/subscription/SubscriptionView";
+import { LEGAL_VERSION, legalDate } from "@/lib/legal";
+import { TermsBanner } from "@/components/legal/TermsBanner";
 import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { getSession } from "@/lib/session";
@@ -131,6 +133,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {daysLeft !== null && daysLeft <= 5 && (sub.status === "trial" || sub.status === "active") && (
           <div className="mb-5">
             <TrialBanner status={sub.status} daysLeft={daysLeft} t={t} />
+          </div>
+        )}
+        {/* the terms changed: the owner accepts them for the agency */}
+        {session.isOwner && session.termsVersion !== LEGAL_VERSION && (
+          <div className="mb-5">
+            <TermsBanner date={legalDate(LEGAL_VERSION)} />
           </div>
         )}
         <PasskeyPrompt />

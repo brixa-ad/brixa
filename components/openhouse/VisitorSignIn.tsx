@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, Star } from "lucide-react";
+import { FormPrivacyLink } from "@/components/AgencyPrivacy";
 import { signInVisitor, type SignInError, type SignInInput } from "@/app/o/[token]/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
@@ -128,6 +129,7 @@ export function VisitorSignIn({ token, agency, broker }: { token: string; agency
         {pending && <Loader2 className="size-5 animate-spin" />}
         {t.openHouses.submit}
       </button>
+      <FormPrivacyLink agency={agency} />
     </form>
   );
 }

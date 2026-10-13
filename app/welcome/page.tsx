@@ -217,7 +217,9 @@ export default async function WelcomePage() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
-            © {new Date().getFullYear()} {brixa?.company_name || "BRIXA"}. {L.rights}
+            © {new Date().getFullYear()} {brixa?.company_name || "BRIXA"}
+            {brixa?.eik ? `, ${L.eik} ${brixa.eik}` : ""}
+            {brixa?.address ? `, ${brixa.address}` : ""}. {L.rights}
             {brixa?.email && (
               <>
                 {" "}
@@ -236,6 +238,15 @@ export default async function WelcomePage() {
             </Link>
             <Link href="/dpa" className="hover:text-fg">
               {L.dpa}
+            </Link>
+            <Link href="/subprocessors" className="hover:text-fg">
+              {L.subprocessors}
+            </Link>
+            <Link href="/security" className="hover:text-fg">
+              {L.security}
+            </Link>
+            <Link href="/cookies" className="hover:text-fg">
+              {L.cookies}
             </Link>
           </nav>
         </div>

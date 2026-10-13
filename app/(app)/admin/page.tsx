@@ -25,7 +25,7 @@ export default async function AdminPage() {
   const [{ data: raw, error }, { data: planRows }, { data: details }] = await Promise.all([
     supabase.rpc("platform_agencies"),
     supabase.from("plans").select("code, name, max_people, price_month, position, active").order("position"),
-    supabase.from("platform_settings").select("company_name, eik, address, email, phone, website, trial_days").maybeSingle(),
+    supabase.from("platform_settings").select("company_name, eik, vat_number, representative, address, email, phone, website, trial_days").maybeSingle(),
   ]);
   if (error) console.error("The agencies failed:", error.message);
 

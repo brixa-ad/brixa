@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
+import { FormPrivacyLink } from "@/components/AgencyPrivacy";
 import { sendInquiry, type InquiryError, type InquiryInput } from "@/app/w/[slug]/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { inputClass } from "@/components/ui/form";
@@ -56,6 +57,7 @@ export function InquiryForm({ slug, propertyId, agency, defaultMessage = "" }: {
         {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         {t.site.send}
       </button>
+      <FormPrivacyLink agency={agency} />
     </form>
   );
 }

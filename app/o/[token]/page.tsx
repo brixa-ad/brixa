@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarDays, DoorClosed, MapPin } from "lucide-react";
+import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { Logo } from "@/components/Logo";
 import { VisitorSignIn } from "@/components/openhouse/VisitorSignIn";
 import { SocialLinks } from "@/components/SocialLinks";
@@ -27,7 +28,7 @@ type PublicHouse = {
   cancelled: boolean;
   open: boolean;
   broker: { name: string; phone: string | null; socials?: unknown } | null;
-  agency: { name: string; logo_path: string | null } | null;
+  agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null } | null;
 };
 
 async function getHouse(token: string) {
@@ -103,6 +104,7 @@ export default async function OpenHouseSignInPage({ params }: PageProps<"/o/[tok
         </p>
       )}
       {house.broker && <SocialLinks socials={parseSocials(house.broker.socials)} className="mt-3 justify-center" />}
+      {house.agency && <AgencyPrivacy agency={house.agency} className="mt-8" />}
     </main>
   );
 }

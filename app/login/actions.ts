@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isValidEmail } from "@/lib/validation";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 export type AuthState = {
   error?: "invalidCredentials" | "genericError" | "invalidEmail" | "passwordHint" | "invalidEik" | "agencyRequired" | "termsRequired";
@@ -31,7 +32,7 @@ export async function signUp(_: AuthState, formData: FormData): Promise<AuthStat
   if (eik && !/^\d{9}(\d{4})?$/.test(eik)) return { error: "invalidEik" };
   if (formData.get("acceptTerms") !== "yes") return { error: "termsRequired" };
 
-  const metadata: Record<string, string> = { account_type: account, full_name: fullName, phone: text("phone", 40), accepted_terms: "yes" };
+  const metadata: Record<string, string> = { account_type: account, full_name: fullName, phone: text("phone", 40), accepted_terms: "yes", terms_version: LEGAL_VERSION };
   if (account === "agency") {
     Object.assign(metadata, {
       agency_name: agencyName,

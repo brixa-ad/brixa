@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, BrickWall, Building2, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
+import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { YieldPanel } from "@/components/listing/YieldPanel";
 import { StarRating } from "@/components/listing/StarRating";
@@ -149,7 +150,8 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
         </aside>
       </div>
 
-      <footer className="mt-12 text-center text-xs text-subtle">{t.site.madeWith}</footer>
+      {agency && <AgencyPrivacy agency={agency} className="mt-12" />}
+      <footer className="mt-6 text-center text-xs text-subtle">{t.site.madeWith}</footer>
     </main>
   );
 }
