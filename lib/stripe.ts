@@ -36,16 +36,22 @@ export async function checkStripe(): Promise<{ ok: boolean; live?: boolean; reas
   }
 }
 
+/** What BRIXA is for taxes: software as a service, for businesses (Stripe's product tax code). */
+const TAX_CODE = "txcd_10103001";
+
 /** Stripe's product for a package — one per package, made the first time (its id: brixa_<code>). */
 export async function productFor(stripe: Stripe, plan: Pick<Plan, "code" | "name">) {
   const id = `brixa_${plan.code}`;
   const name = `BRIXA — ${plan.name}`;
   try {
     const product = await stripe.products.retrieve(id);
-    if (!product.active || product.name !== name) await stripe.products.update(id, { active: true, name });
+    const taxCode = typeof product.tax_code === "string" ? product.tax_code : product.tax_code?.id;
+    if (!product.active || product.name !== name || taxCode !== TAX_CODE) {
+      await stripe.products.update(id, { active: true, name, tax_code: TAX_CODE });
+    }
   } catch (error) {
     if ((error as { code?: string }).code !== "resource_missing") throw error;
-    await stripe.products.create({ id, name });
+    await stripe.products.create({ id, name, tax_code: TAX_CODE });
   }
   return id;
 }

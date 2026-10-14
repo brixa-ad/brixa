@@ -71,6 +71,8 @@ export async function payByCard(code: string, every: string): Promise<{ url?: st
     const meta = { org: ctx.session.organizationId, plan: plan.code, interval: period };
     const checkout = await ctx.stripe.checkout.sessions.create({
       mode: "subscription",
+      // BRIXA's company sells (and invoices) — Stripe only takes the card, not as the seller of record
+      managed_payments: { enabled: false },
       client_reference_id: ctx.session.organizationId,
       ...(ctx.org?.stripe_customer_id
         ? { customer: ctx.org.stripe_customer_id, customer_update: { name: "auto", address: "auto" } }
