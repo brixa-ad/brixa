@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getI18n } from "@/lib/i18n/server";
 import { getSession } from "@/lib/session";
-import { productFor, stripeClient } from "@/lib/stripe";
+import { productFor, stripeClient, stripeReason } from "@/lib/stripe";
 import { priceFor, toPlan, type BillingInterval, type Plan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 
@@ -55,7 +55,7 @@ async function planFor(ctx: NonNullable<Awaited<ReturnType<typeof billing>>>, co
 const interval = (value: string): BillingInterval => (value === "year" ? "year" : "month");
 
 /** Pay a package by card: Stripe's page for the card, then back to Subscription. */
-export async function payByCard(code: string, every: string): Promise<{ url?: string; error?: BillingError }> {
+export async function payByCard(code: string, every: string): Promise<{ url?: string; error?: BillingError; reason?: string }> {
   const ctx = await billing();
   if (!ctx) return { error: "off" };
   const plan = await planFor(ctx, code);
@@ -93,12 +93,12 @@ export async function payByCard(code: string, every: string): Promise<{ url?: st
     return checkout.url ? { url: checkout.url } : { error: "generic" };
   } catch (error) {
     console.error("Starting a card payment failed:", (error as Error).message);
-    return { error: "generic" };
+    return { error: "generic", reason: stripeReason(error) };
   }
 }
 
 /** Stripe's page for the card, the invoices and stopping: the agency manages its payment there. */
-export async function openBillingPortal(): Promise<{ url?: string; error?: BillingError }> {
+export async function openBillingPortal(): Promise<{ url?: string; error?: BillingError; reason?: string }> {
   const ctx = await billing();
   if (!ctx?.org?.stripe_customer_id) return { error: "off" };
   try {
@@ -111,7 +111,7 @@ export async function openBillingPortal(): Promise<{ url?: string; error?: Billi
     return { url: portal.url };
   } catch (error) {
     console.error("Opening the billing portal failed:", (error as Error).message);
-    return { error: "generic" };
+    return { error: "generic", reason: stripeReason(error) };
   }
 }
 
@@ -130,7 +130,7 @@ export async function setAutoRenew(on: boolean): Promise<{ ok: boolean }> {
 }
 
 /** Another package or period on the same card: the difference is paid (or credited) at once. */
-export async function changePlan(code: string, every: string): Promise<{ ok: boolean; error?: BillingError }> {
+export async function changePlan(code: string, every: string): Promise<{ ok: boolean; error?: BillingError; reason?: string }> {
   const ctx = await billing();
   if (!ctx?.org?.stripe_subscription_id) return { ok: false, error: "off" };
   const plan = await planFor(ctx, code);
@@ -152,6 +152,6 @@ export async function changePlan(code: string, every: string): Promise<{ ok: boo
     return { ok: true };
   } catch (error) {
     console.error("Changing the package failed:", (error as Error).message);
-    return { ok: false, error: "generic" };
+    return { ok: false, error: "generic", reason: stripeReason(error) };
   }
 }

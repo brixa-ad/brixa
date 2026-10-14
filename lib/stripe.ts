@@ -18,6 +18,24 @@ export function stripeClient() {
 
 export const cardPaymentsOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 
+/** What Stripe answered when it said no — shown to the owner, so a wrong key or setting is plain to see. */
+export function stripeReason(error: unknown) {
+  const e = error as { type?: string; message?: string };
+  return typeof e?.type === "string" && e.type.startsWith("Stripe") && e.message ? e.message.slice(0, 300) : undefined;
+}
+
+/** Is the key right, and is it the test or the live one? */
+export async function checkStripe(): Promise<{ ok: boolean; live?: boolean; reason?: string }> {
+  const stripe = stripeClient();
+  if (!stripe) return { ok: false };
+  try {
+    const balance = await stripe.balance.retrieve();
+    return { ok: true, live: balance.livemode };
+  } catch (error) {
+    return { ok: false, reason: stripeReason(error) ?? (error as Error).message };
+  }
+}
+
 /** Stripe's product for a package — one per package, made the first time (its id: brixa_<code>). */
 export async function productFor(stripe: Stripe, plan: Pick<Plan, "code" | "name">) {
   const id = `brixa_${plan.code}`;

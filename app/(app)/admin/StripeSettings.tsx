@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert, Copy, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
-import { saveStripeSecret } from "./actions";
+import { saveStripeSecret, testStripe } from "./actions";
 
 /** Card payments: is Stripe's key set, is the webhook's secret saved — and where Stripe should send its events. */
 export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boolean; webhookReady: boolean; endpoint: string }) {
@@ -15,6 +15,8 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
   const [state, setState] = useState<"idle" | "saved" | "bad">("idle");
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [check, setCheck] = useState<{ ok: boolean; live?: boolean; reason?: string } | null>(null);
+  const [checking, startCheck] = useTransition();
 
   const row = (label: string, ok: boolean) => (
     <li className="flex items-center justify-between gap-3">
@@ -32,6 +34,19 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
         {row(P.stripeKey, keySet)}
         {row(P.stripeWebhook, ready)}
       </ul>
+      {keySet && (
+        <div className="space-y-1">
+          <button type="button" disabled={checking} onClick={() => startCheck(async () => setCheck(await testStripe()))} className={buttonClass.secondary}>
+            {checking && <Loader2 className="size-4 animate-spin" />}
+            {P.stripeCheck}
+          </button>
+          {check && (
+            <p className={check.ok ? "text-success" : "text-danger"}>
+              {check.ok ? (check.live ? P.stripeLive : P.stripeTest) : `${t.billing.stripeSaid}: ${check.reason ?? "—"}`}
+            </p>
+          )}
+        </div>
+      )}
       <div>
         <p className="mb-1 font-medium text-fg-2">{P.stripeEndpoint}</p>
         <div className="flex gap-2">

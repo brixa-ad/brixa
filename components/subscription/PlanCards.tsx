@@ -36,7 +36,11 @@ export function PlanCards({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const fits = people === null ? null : plans.find((p) => p.max_people === null || p.max_people >= people)?.code ?? null;
-  const fail = (error?: string) => setMessage({ ok: false, text: error === "room" ? B.room : error === "off" ? B.cardOff : t.errors.generic });
+  const fail = (error?: string, reason?: string) =>
+    setMessage({
+      ok: false,
+      text: error === "room" ? B.room : error === "off" ? B.cardOff : reason ? `${B.stripeSaid}: ${reason}` : t.errors.generic,
+    });
 
   function pay(code: string) {
     setMessage(null);
@@ -46,7 +50,7 @@ export function PlanCards({
       if (result.url) window.location.assign(result.url);
       else {
         setBusy(null);
-        fail(result.error);
+        fail(result.error, result.reason);
       }
     });
   }
@@ -59,7 +63,7 @@ export function PlanCards({
       const result = await changePlan(code, period);
       setBusy(null);
       if (result.ok) setMessage({ ok: true, text: B.changed });
-      else fail(result.error);
+      else fail(result.error, result.reason);
     });
   }
 

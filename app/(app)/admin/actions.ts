@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { checkStripe } from "@/lib/stripe";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -102,4 +103,11 @@ export async function saveStripeSecret(secret: string): Promise<{ ok: boolean }>
   const { data, error } = await supabase.rpc("set_stripe_webhook_secret", { secret: secret.trim() });
   if (error) console.error("Saving Stripe's secret failed:", error.message);
   return { ok: data === true };
+}
+
+/** Is Stripe's key right — and test or live? */
+export async function testStripe(): Promise<{ ok: boolean; live?: boolean; reason?: string }> {
+  const session = await getSession();
+  if (!session?.platformAdmin) return { ok: false };
+  return checkStripe();
 }

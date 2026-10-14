@@ -12,7 +12,7 @@ export function BillingActions({ autoRenew, failing }: { autoRenew: boolean; fai
   const B = t.billing;
   const [renew, setRenew] = useState(autoRenew);
   const [busy, setBusy] = useState<"portal" | "renew" | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | false>(false);
   const [, startTransition] = useTransition();
 
   function portal() {
@@ -23,7 +23,7 @@ export function BillingActions({ autoRenew, failing }: { autoRenew: boolean; fai
       if (result.url) window.location.assign(result.url);
       else {
         setBusy(null);
-        setFailed(true);
+        setFailed(result.reason ? `${B.stripeSaid}: ${result.reason}` : t.errors.generic);
       }
     });
   }
@@ -36,7 +36,7 @@ export function BillingActions({ autoRenew, failing }: { autoRenew: boolean; fai
       const result = await setAutoRenew(!renew);
       setBusy(null);
       if (result.ok) setRenew(!renew);
-      else setFailed(true);
+      else setFailed(t.errors.generic);
     });
   }
 
@@ -53,7 +53,7 @@ export function BillingActions({ autoRenew, failing }: { autoRenew: boolean; fai
         </button>
       </div>
       {!renew && <p className="text-sm text-muted">{B.renewOffNote}</p>}
-      {failed && <p className="text-sm text-danger">{t.errors.generic}</p>}
+      {failed && <p className="text-sm text-danger">{failed}</p>}
     </div>
   );
 }
