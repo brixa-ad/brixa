@@ -5,6 +5,7 @@ import { CheckCircle2, CircleAlert, Copy, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import { saveStripeSecret, testStripe, type SecretProblem } from "./actions";
+import type { StripeCheck } from "@/lib/stripe";
 
 /** Card payments: is Stripe's key set, is the webhook's secret saved — and where Stripe should send its events. */
 export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boolean; webhookReady: boolean; endpoint: string }) {
@@ -16,7 +17,7 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
   const [reason, setReason] = useState("");
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [check, setCheck] = useState<{ ok: boolean; live?: boolean; reason?: string } | null>(null);
+  const [check, setCheck] = useState<(StripeCheck & { applied?: Record<string, { name: string; card: boolean }> }) | null>(null);
   const [checking, startCheck] = useTransition();
 
   const row = (label: string, ok: boolean) => (
@@ -37,14 +38,56 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
       </ul>
       {keySet && (
         <div className="space-y-1">
-          <button type="button" disabled={checking} onClick={() => startCheck(async () => setCheck(await testStripe()))} className={buttonClass.secondary}>
+          <button type="button" disabled={checking} onClick={() => startCheck(async () => setCheck(await testStripe(endpoint)))} className={buttonClass.secondary}>
             {checking && <Loader2 className="size-4 animate-spin" />}
             {P.stripeCheck}
           </button>
           {check && (
-            <p className={check.ok ? "text-success" : "text-danger"}>
-              {check.ok ? (check.live ? P.stripeLive : P.stripeTest) : `${t.billing.stripeSaid}: ${check.reason ?? "—"}`}
-            </p>
+            <div className="space-y-2 rounded-xl border border-line bg-raised/40 p-3">
+              <p className={check.ok ? "text-success" : "text-danger"}>
+                {check.ok ? (check.live ? P.stripeLive : P.stripeTest) : `${t.billing.stripeSaid}: ${check.reason ?? "—"}`}
+              </p>
+              {check.endpoint && (
+                <>
+                  <p className={check.endpoint.found && check.endpoint.enabled ? "text-success" : "text-danger"}>
+                    {check.endpoint.found ? (check.endpoint.enabled ? P.diagHookFound : P.diagHookOff) : P.diagHookMissing}
+                  </p>
+                  {!check.endpoint.found && check.endpoint.others.length > 0 && (
+                    <p className="break-all text-xs text-muted">
+                      {P.diagHookOthers} {check.endpoint.others.join(", ")}
+                    </p>
+                  )}
+                  {check.endpoint.found && check.endpoint.missing.length > 0 && (
+                    <p className="text-danger">
+                      {P.diagHookEvents} {check.endpoint.missing.join(", ")}
+                    </p>
+                  )}
+                </>
+              )}
+              {check.events && (
+                <div>
+                  <p className="font-medium text-fg-2">{P.diagEvents}</p>
+                  {check.events.length === 0 ? (
+                    <p className="text-muted">{P.diagNoEvents}</p>
+                  ) : (
+                    <ul className="mt-1 space-y-1 text-xs">
+                      {check.events.map((e) => {
+                        const org = e.org ? check.applied?.[e.org] : undefined;
+                        return (
+                          <li key={e.id} className="flex flex-wrap gap-x-2">
+                            <span className="text-muted">{new Date(e.at * 1000).toLocaleString("bg-BG", { timeZone: "Europe/Sofia" })}</span>
+                            <code>{e.type}</code>
+                            <span className={e.delivered ? "text-success" : "text-danger"}>{e.delivered ? P.diagDelivered : P.diagNotDelivered}</span>
+                            {org && <span className="text-muted">· {org.name}{org.card ? ` · ${P.diagApplied}` : ` · ${P.diagNotApplied}`}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {check.endpoint?.found && check.events.some((e) => !e.delivered) && <p className="mt-2 text-danger">{P.diagSecretHint}</p>}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkStripe } from "@/lib/stripe";
+import { checkStripe, type StripeCheck } from "@/lib/stripe";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -116,9 +116,15 @@ export async function saveStripeSecret(secret: string): Promise<{ ok: boolean; p
   return data === true ? { ok: true } : { ok: false, problem: "denied" };
 }
 
-/** Is Stripe's key right — and test or live? */
-export async function testStripe(): Promise<{ ok: boolean; live?: boolean; reason?: string }> {
+/** Is Stripe's key right (test or live), is the webhook there — and did BRIXA apply Stripe's latest events? */
+export async function testStripe(endpointUrl: string): Promise<StripeCheck & { applied?: Record<string, { name: string; card: boolean }> }> {
   const session = await getSession();
   if (!session?.platformAdmin) return { ok: false };
-  return checkStripe();
+  const check = await checkStripe(endpointUrl);
+  const orgs = [...new Set((check.events ?? []).map((e) => e.org).filter((id): id is string => Boolean(id && /^[0-9a-f-]{36}$/i.test(id))))];
+  if (orgs.length === 0) return check;
+  const supabase = await createClient();
+  const { data } = await supabase.from("organizations").select("id, name, stripe_subscription_id").in("id", orgs);
+  const applied = Object.fromEntries((data ?? []).map((o) => [o.id, { name: o.name as string, card: Boolean(o.stripe_subscription_id) }]));
+  return { ...check, applied };
 }

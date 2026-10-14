@@ -36,6 +36,8 @@ export function PlanCards({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const fits = people === null ? null : plans.find((p) => p.max_people === null || p.max_people >= people)?.code ?? null;
+  // the package the owner is looking at: the one that fits, until they tap another
+  const [picked, setPicked] = useState<string | null>(current ?? fits ?? plans[0]?.code ?? null);
   const fail = (error?: string, reason?: string) =>
     setMessage({
       ok: false,
@@ -94,17 +96,31 @@ export function PlanCards({
         ))}
       </div>
 
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label={B.plans}>
         {plans.map((p) => {
           const mine = p.code === current && (!card.subscribed || card.interval === period);
-          const best = !current && p.code === fits;
+          const best = p.code === picked;
           const price = priceFor(p, period);
           return (
             <li
               key={p.code}
-              className={`flex flex-col rounded-2xl border bg-surface p-5 shadow-xs ${mine || best ? "border-accent ring-2 ring-accent/20" : "border-line"}`}
+              role="radio"
+              aria-checked={best}
+              tabIndex={0}
+              onClick={() => setPicked(p.code)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setPicked(p.code);
+                }
+              }}
+              className={`flex cursor-pointer flex-col rounded-2xl border bg-surface p-5 shadow-xs transition focus-visible:outline-2 focus-visible:outline-accent ${best ? "border-accent ring-2 ring-accent/20" : "border-line hover:border-line-strong"}`}
             >
-              {mine && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent-fg">{B.current}</p>}
+              {mine ? (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent-fg">{B.current}</p>
+              ) : !current && p.code === fits ? (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-success">{B.fitsYou}</p>
+              ) : null}
               <h3 className="text-lg font-bold">{p.name}</h3>
               <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
                 <Users className="size-4" />
@@ -125,7 +141,7 @@ export function PlanCards({
                       type="button"
                       disabled={pending}
                       onClick={() => (card.subscribed ? change(p.code) : pay(p.code))}
-                      className={`${best || card.subscribed ? buttonClass.primary : buttonClass.secondary} w-full`}
+                      className={`${best ? buttonClass.primary : buttonClass.secondary} w-full`}
                     >
                       {busy === p.code ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
                       {card.subscribed ? B.switchTo : B.payCard}
