@@ -97,12 +97,23 @@ export async function saveDetails(input: {
 }
 
 /** Save (or clear) the webhook's signing secret from Stripe — kept in the database, out of the API's reach. */
-export async function saveStripeSecret(secret: string): Promise<{ ok: boolean }> {
+export type SecretProblem = "apiKey" | "publishable" | "endpointId" | "format" | "denied" | "error";
+
+export async function saveStripeSecret(secret: string): Promise<{ ok: boolean; problem?: SecretProblem; reason?: string }> {
+  const value = secret.trim();
+  // something else from Stripe pasted by mistake (never sent anywhere, never logged)
+  if (/^(sk|rk)_/.test(value)) return { ok: false, problem: "apiKey" };
+  if (/^pk_/.test(value)) return { ok: false, problem: "publishable" };
+  if (/^we_/.test(value)) return { ok: false, problem: "endpointId" };
+  if (!/^whsec_[A-Za-z0-9+/=_-]{10,200}$/.test(value)) return { ok: false, problem: "format" };
   const supabase = await adminClient();
-  if (!supabase) return { ok: false };
-  const { data, error } = await supabase.rpc("set_stripe_webhook_secret", { secret: secret.trim() });
-  if (error) console.error("Saving Stripe's secret failed:", error.message);
-  return { ok: data === true };
+  if (!supabase) return { ok: false, problem: "denied" };
+  const { data, error } = await supabase.rpc("set_stripe_webhook_secret", { secret: value });
+  if (error) {
+    console.error("Saving Stripe's secret failed:", error.message);
+    return { ok: false, problem: "error", reason: error.message.slice(0, 200) };
+  }
+  return data === true ? { ok: true } : { ok: false, problem: "denied" };
 }
 
 /** Is Stripe's key right — and test or live? */

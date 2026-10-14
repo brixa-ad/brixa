@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert, Copy, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
-import { saveStripeSecret, testStripe } from "./actions";
+import { saveStripeSecret, testStripe, type SecretProblem } from "./actions";
 
 /** Card payments: is Stripe's key set, is the webhook's secret saved — and where Stripe should send its events. */
 export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boolean; webhookReady: boolean; endpoint: string }) {
@@ -12,7 +12,8 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
   const P = t.platform;
   const [secret, setSecret] = useState("");
   const [ready, setReady] = useState(webhookReady);
-  const [state, setState] = useState<"idle" | "saved" | "bad">("idle");
+  const [state, setState] = useState<"idle" | "saved" | SecretProblem>("idle");
+  const [reason, setReason] = useState("");
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const [check, setCheck] = useState<{ ok: boolean; live?: boolean; reason?: string } | null>(null);
@@ -72,7 +73,8 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
           e.preventDefault();
           startTransition(async () => {
             const result = await saveStripeSecret(secret);
-            setState(result.ok ? "saved" : "bad");
+            setState(result.ok ? "saved" : (result.problem ?? "error"));
+            setReason(result.reason ?? "");
             if (result.ok) {
               setReady(Boolean(secret.trim()));
               setSecret("");
@@ -98,7 +100,9 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
             {P.stripeSave}
           </button>
           {state === "saved" && <span className="text-success">{P.stripeSaved}</span>}
-          {state === "bad" && <span className="text-danger">{P.stripeBad}</span>}
+          {state !== "idle" && state !== "saved" && (
+            <span className="text-danger">{state === "error" ? `${P.secretProblems.error} ${reason}` : P.secretProblems[state]}</span>
+          )}
         </div>
       </form>
     </div>
