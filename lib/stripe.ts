@@ -40,7 +40,7 @@ export type StripeCheck = {
   /** the webhook to BRIXA's address in this mode of Stripe, and the events it misses */
   endpoint?: { found: boolean; enabled: boolean; missing: string[]; others: string[] };
   /** Stripe's latest payment events: delivered to BRIXA (a 2xx answer) or still waiting */
-  events?: { id: string; type: string; at: number; delivered: boolean; org: string | null }[];
+  events?: { id: string; type: string; at: number; delivered: boolean; beforeHook: boolean; org: string | null }[];
 };
 
 /** Is the key right (test or live), is the webhook to BRIXA there, and do Stripe's events reach BRIXA? */
@@ -70,11 +70,14 @@ export async function checkStripe(endpointUrl: string): Promise<StripeCheck> {
           metadata?: Record<string, string> | null;
           parent?: { subscription_details?: { metadata?: Record<string, string> | null } | null } | null;
         };
+        // Stripe counts nothing pending when there was no webhook to send to: such an event never reached BRIXA
+        const beforeHook = !mine || e.created < mine.created;
         return {
           id: e.id,
           type: e.type,
           at: e.created,
-          delivered: e.pending_webhooks === 0,
+          delivered: !beforeHook && e.pending_webhooks === 0,
+          beforeHook,
           org: obj.client_reference_id ?? obj.metadata?.org ?? obj.parent?.subscription_details?.metadata?.org ?? null,
         };
       }),

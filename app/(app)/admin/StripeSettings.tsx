@@ -77,14 +77,16 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
                           <li key={e.id} className="flex flex-wrap gap-x-2">
                             <span className="text-muted">{new Date(e.at * 1000).toLocaleString("bg-BG", { timeZone: "Europe/Sofia" })}</span>
                             <code>{e.type}</code>
-                            <span className={e.delivered ? "text-success" : "text-danger"}>{e.delivered ? P.diagDelivered : P.diagNotDelivered}</span>
+                            <span className={e.delivered ? "text-success" : "text-danger"}>
+                              {e.delivered ? P.diagDelivered : e.beforeHook ? P.diagBeforeHook : P.diagNotDelivered}
+                            </span>
                             {org && <span className="text-muted">· {org.name}{org.card ? ` · ${P.diagApplied}` : ` · ${P.diagNotApplied}`}</span>}
                           </li>
                         );
                       })}
                     </ul>
                   )}
-                  {check.endpoint?.found && check.events.some((e) => !e.delivered) && <p className="mt-2 text-danger">{P.diagSecretHint}</p>}
+                  {check.endpoint?.found && check.events.some((e) => !e.delivered && !e.beforeHook) && <p className="mt-2 text-danger">{P.diagSecretHint}</p>}
                 </div>
               )}
             </div>
