@@ -58,7 +58,16 @@ export const appendText = (current: string, added: string) => (current.trim() ? 
  * A microphone next to a note: speak and the words are typed in. The browser's own dictation
  * where it has one; otherwise (the iPhone home-screen app) the note is recorded and the server writes it.
  */
-export function DictateButton({ onText, className = "" }: { onText: (text: string) => void; className?: string }) {
+export function DictateButton({
+  onText,
+  onKeyboard,
+  className = "",
+}: {
+  onText: (text: string) => void;
+  /** no dictation in this browser: open the field, so the keyboard's own microphone can be used */
+  onKeyboard?: () => void;
+  className?: string;
+}) {
   const { t, lang } = useI18n();
   const { server } = useContext(DictationContext);
   const [nativeBroken, setNativeBroken] = useState(false);
@@ -69,6 +78,7 @@ export function DictateButton({ onText, className = "" }: { onText: (text: strin
   );
   const [state, setState] = useState<"idle" | "listening" | "working">("idle");
   const [failed, setFailed] = useState(false);
+  const [hint, setHint] = useState(false);
   const recognition = useRef<Recognition | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const latest = useRef(onText);
@@ -83,7 +93,25 @@ export function DictateButton({ onText, className = "" }: { onText: (text: strin
     []
   );
 
-  if (mode === "none") return null;
+  if (mode === "none") {
+    if (!onKeyboard) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onKeyboard();
+          setHint(true);
+          setTimeout(() => setHint(false), 4000);
+        }}
+        title={t.dictation.start}
+        aria-label={t.dictation.start}
+        className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-fg ${className}`}
+      >
+        <Mic className="size-4" />
+        {hint && <span>{t.dictation.keyboard}</span>}
+      </button>
+    );
+  }
 
   function flashError() {
     setFailed(true);
@@ -224,16 +252,22 @@ export function NoteArea({
   rows?: number;
   className?: string;
 } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange" | "rows" | "className">) {
+  const field = useRef<HTMLTextAreaElement>(null);
   return (
     <div className="relative">
       <textarea
         {...rest}
+        ref={field}
         rows={rows}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={`${inputClass} resize-y pb-10 ${className}`}
       />
-      <DictateButton className="absolute bottom-1.5 right-1.5" onText={(text) => onChange(appendText(value, text))} />
+      <DictateButton
+        className="absolute bottom-1.5 right-1.5"
+        onText={(text) => onChange(appendText(value, text))}
+        onKeyboard={() => field.current?.focus()}
+      />
     </div>
   );
 }

@@ -2236,6 +2236,7 @@ const bg = {
     listening: "Слушам…",
     working: "Пиша…",
     failed: "Не се разпозна, опитайте пак",
+    keyboard: "Натиснете микрофона на клавиатурата и говорете",
   },
   done: {
     title: "Какво стана?",
@@ -5440,6 +5441,7 @@ const en: Dictionary = {
     listening: "Listening…",
     working: "Writing…",
     failed: "Didn't catch that, try again",
+    keyboard: "Tap the microphone on the keyboard and speak",
   },
   done: {
     title: "What happened?",
