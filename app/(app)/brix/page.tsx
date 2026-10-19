@@ -16,7 +16,7 @@ export default async function BrixPage({ searchParams }: PageProps<"/brix">) {
   return (
     <>
       <PageHeader title={t.brix.title} subtitle={t.brix.subtitle} />
-      <BrixChat userId={session!.userId} initialQuestion={typeof q === "string" ? q.slice(0, 500) : undefined} />
+      <BrixChat userId={session!.userId} initialQuestion={typeof q === "string" ? q.slice(0, 2000) : undefined} />
       <p className="mt-3 text-center text-[11px] text-subtle">{t.brix.privacy}</p>
     </>
   );

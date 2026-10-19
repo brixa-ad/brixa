@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ListChecks, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { TellBrix } from "@/components/brix/TellBrix";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { TaskItem } from "@/components/task/TaskItem";
 import { buttonClass } from "@/components/ui/form";
@@ -102,6 +103,12 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
           </>
         }
       />
+
+      {process.env.ANTHROPIC_API_KEY && (
+        <div className="mb-4">
+          <TellBrix />
+        </div>
+      )}
 
       <nav className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
         {tabs.map((key) => (

@@ -4,7 +4,7 @@ import { searchFromRow } from "@/lib/clients";
 import { addDays, sofiaDay } from "@/lib/dates";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { findBuyers, findMatches } from "@/lib/matching";
-import { ACTIVITY_TYPES, CLIENT_STAGES, TASK_TYPES, isOneOf } from "@/lib/options";
+import { ACTIVITY_TYPES, CLIENT_CLASSES, CLIENT_SOURCES, CLIENT_STAGES, CLIENT_TYPES, TASK_TYPES, isOneOf } from "@/lib/options";
 import type { SessionContext } from "@/lib/session";
 import { getLeaderboards } from "@/lib/stats";
 import type { createClient } from "@/lib/supabase/server";
@@ -26,6 +26,23 @@ export type ProposedAction =
       propertyId: string | null;
       propertyTitle: string | null;
       description: string;
+    }
+  | {
+      kind: "client";
+      fullName: string;
+      phone: string;
+      email: string;
+      types: (typeof CLIENT_TYPES)[number][];
+      clientClass: (typeof CLIENT_CLASSES)[number];
+      source: (typeof CLIENT_SOURCES)[number] | null;
+      /** what they want and what was said — the client's notes */
+      notes: string;
+      /** a buyer's or tenant's top budget, in euro */
+      budgetMax: number | null;
+      /** the next step with them, made together with the client */
+      task: { title: string; type: (typeof TASK_TYPES)[number]; dueDate: string; dueTime: string | null } | null;
+      /** a client with this phone is already in the agency */
+      duplicate: { id: string; name: string } | null;
     }
   | {
       kind: "activity";
@@ -133,6 +150,36 @@ export const BRIX_TOOLS: Anthropic.Tool[] = [
         description: { type: "string" },
       },
       required: ["title", "type", "due_date"],
+    },
+  },
+  {
+    name: "create_client",
+    description:
+      "Propose a NEW client (the user confirms it): name, contacts, what they are, what they want, and optionally the next step as a task made together with them. Search first (search_clients by phone and by name) — for a client who is already there, use log_activity / create_task with their id instead.",
+    input_schema: {
+      type: "object",
+      properties: {
+        full_name: { type: "string" },
+        phone: { type: "string" },
+        email: { type: "string" },
+        types: { type: "array", items: { type: "string", enum: [...CLIENT_TYPES] }, description: "What they are: buyer, seller, tenant, landlord, investor" },
+        client_class: { type: "string", enum: [...CLIENT_CLASSES], description: "A = buys/sells now, B = soon, C = later or unsure" },
+        source: { type: "string", enum: [...CLIENT_SOURCES], description: "Where they came from, only if said" },
+        notes: { type: "string", description: "What they want and what was said, in the user's language — short, the facts" },
+        budget_max: { type: "number", description: "A buyer's or tenant's top budget in euro, only if said" },
+        first_task: {
+          type: "object",
+          description: "The next step with them (a call, a viewing…), if one was said",
+          properties: {
+            title: { type: "string" },
+            type: { type: "string", enum: [...TASK_TYPES] },
+            due_date: { type: "string", description: "YYYY-MM-DD" },
+            due_time: { type: "string", description: "HH:MM, optional" },
+          },
+          required: ["title", "type", "due_date"],
+        },
+      },
+      required: ["full_name", "types", "notes"],
     },
   },
   {
@@ -364,6 +411,48 @@ export async function runTool(
         description: clean(input.description, 2000),
       };
       return { result: { status: "shown to the user to confirm", proposal }, proposal };
+    }
+
+    case "create_client": {
+      const types = (Array.isArray(input.types) ? input.types : []).filter((x): x is (typeof CLIENT_TYPES)[number] => isOneOf(CLIENT_TYPES, x));
+      const phone = clean(input.phone, 40);
+      const raw = input.first_task as Record<string, unknown> | undefined;
+      const taskType = raw && isOneOf(TASK_TYPES, raw.type) ? raw.type : "call";
+      const budget = Number(input.budget_max);
+      let duplicate: { id: string; name: string } | null = null;
+      if (phone) {
+        const { data: owner } = await supabase.rpc("client_phone_owner", { target_org: org, raw_phone: phone });
+        if (typeof owner === "string") {
+          const found = await clientName(ctx, owner);
+          duplicate = { id: owner, name: found?.full_name ?? "—" };
+        }
+      }
+      const proposal: ProposedAction = {
+        kind: "client",
+        fullName: clean(input.full_name, 120),
+        phone,
+        email: clean(input.email, 200),
+        types: [...new Set(types.length ? types : (["buyer"] as const))],
+        clientClass: isOneOf(CLIENT_CLASSES, input.client_class) ? input.client_class : "B",
+        source: isOneOf(CLIENT_SOURCES, input.source) ? input.source : null,
+        notes: clean(input.notes, 2000),
+        budgetMax: Number.isFinite(budget) && budget > 0 ? Math.round(budget) : null,
+        task: raw
+          ? {
+              title: clean(raw.title, 200) || ctx.t.options.taskType[taskType],
+              type: taskType,
+              dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.due_date)) ? String(raw.due_date) : today,
+              dueTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw.due_time ?? "")) ? String(raw.due_time) : null,
+            }
+          : null,
+        duplicate,
+      };
+      return {
+        result: duplicate
+          ? { status: "a client with this phone already exists — tell the user and use their id", existing_client: duplicate }
+          : { status: "shown to the user to confirm", proposal },
+        proposal,
+      };
     }
 
     case "log_activity": {

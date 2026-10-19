@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MorningBrief } from "@/components/brix/MorningBrief";
+import { TellBrix } from "@/components/brix/TellBrix";
 import { FirstSteps } from "@/components/home/FirstSteps";
 import { SampleBanner } from "@/components/SampleData";
 import { TrialBanner } from "@/components/subscription/TrialBanner";
@@ -282,6 +283,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       {!showDay && <GameIntro userId={session.userId} level={me?.level.index ?? 0} />}
       <PushBanner />
+      {brixReady && <TellBrix />}
 
       {/* ---- today: what to do now ---- */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

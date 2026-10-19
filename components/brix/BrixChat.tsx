@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ClipboardList, History, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowUp, Check, ClipboardList, History, Loader2, RotateCcw, Sparkles, TriangleAlert, UserPlus, X } from "lucide-react";
 import { confirmBrixAction } from "@/app/(app)/brix/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
 import type { ProposedAction } from "@/lib/brix/tools";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
+import { fmt } from "@/lib/i18n/dictionaries";
+import { DictateButton, appendText } from "@/components/ui/Dictate";
 import { BrixMarkdown } from "./BrixMarkdown";
 
 type Message = {
@@ -30,7 +32,7 @@ function load(userId: string): Message[] {
 
 /** Chat with Brix. The conversation is kept on this device only. */
 export function BrixChat({ userId, initialQuestion }: { userId: string; initialQuestion?: string }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -152,47 +154,7 @@ export function BrixChat({ userId, initialQuestion }: { userId: string; initialQ
                   <BrixMarkdown text={message.content} />
                 </div>
                 {message.actions?.map((action, j) => (
-                  <div key={j} className="rounded-xl border border-accent/30 bg-accent-soft/40 p-3">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-fg">
-                      {action.kind === "task" ? <ClipboardList className="size-3.5" /> : <History className="size-3.5" />}
-                      {action.kind === "task" ? t.brix.actionTask : t.brix.actionActivity}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold">
-                      {action.kind === "task" ? action.title : t.options.activityType[action.type]}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {[
-                        action.kind === "task" &&
-                          `${formatDate(action.dueDate, lang)}${action.dueTime ? `, ${action.dueTime}` : ""}`,
-                        action.clientName,
-                        action.propertyTitle,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {action.kind === "activity" && action.note && <p className="mt-1 text-sm text-fg-2">{action.note}</p>}
-                    <div className="mt-2.5 flex items-center gap-2">
-                      {action.state === "done" ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
-                          <Check className="size-4" />
-                          {action.href ? (
-                            <Link href={action.href} className="hover:underline">
-                              {t.brix.confirmed}
-                            </Link>
-                          ) : (
-                            t.brix.confirmed
-                          )}
-                        </span>
-                      ) : action.state === "dismissed" ? (
-                        <span className="text-sm text-muted">{t.brix.dismissed}</span>
-                      ) : (
-                        <>
-                          <ActionButton onClick={() => act(i, j, true)} label={t.brix.confirm} primary />
-                          <ActionButton onClick={() => act(i, j, false)} label={t.brix.dismiss} />
-                        </>
-                      )}
-                    </div>
-                  </div>
+                  <ActionCard key={j} action={action} onConfirm={() => act(i, j, true)} onDismiss={() => act(i, j, false)} />
                 ))}
               </div>
             </div>
@@ -230,6 +192,7 @@ export function BrixChat({ userId, initialQuestion }: { userId: string; initialQ
           aria-label={t.brix.placeholder}
           className={`${inputClass} max-h-40 min-h-10 resize-none border-0 bg-transparent shadow-none focus:ring-0`}
         />
+        <DictateButton className="h-10 shrink-0" onText={(text) => setDraft((d) => appendText(d, text))} />
         {messages.length > 0 && (
           <button
             type="button"
@@ -270,5 +233,76 @@ function ActionButton({ onClick, label, primary = false }: { onClick: () => Prom
       {pending ? <Loader2 className="size-3.5 animate-spin" /> : primary ? <Check className="size-3.5" /> : <X className="size-3.5" />}
       {label}
     </button>
+  );
+}
+
+type ShownAction = ProposedAction & { state?: "done" | "dismissed"; href?: string };
+
+/** Something Brix proposes: a task, a record in the history, or a new client — done only on "Confirm". */
+function ActionCard({ action, onConfirm, onDismiss }: { action: ShownAction; onConfirm: () => Promise<void>; onDismiss: () => Promise<void> }) {
+  const { t, lang } = useI18n();
+  const B = t.brix;
+  const kind =
+    action.kind === "task"
+      ? { icon: <ClipboardList className="size-3.5" />, label: B.actionTask }
+      : action.kind === "client"
+        ? { icon: <UserPlus className="size-3.5" />, label: B.actionClient }
+        : { icon: <History className="size-3.5" />, label: B.actionActivity };
+  const title = action.kind === "task" ? action.title : action.kind === "client" ? action.fullName : t.options.activityType[action.type];
+  const details =
+    action.kind === "client"
+      ? [action.phone, action.types.map((type) => t.options.clientType[type]).join(", "), t.options.clientClass[action.clientClass], action.budgetMax ? fmt(B.budgetUpTo, { amount: formatPrice(action.budgetMax, "EUR", lang) ?? "" }) : null]
+      : [action.kind === "task" && `${formatDate(action.dueDate, lang)}${action.dueTime ? `, ${action.dueTime}` : ""}`, action.clientName, action.propertyTitle];
+  const note = action.kind === "activity" ? action.note : action.kind === "client" ? action.notes : null;
+  const duplicate = action.kind === "client" ? action.duplicate : null;
+
+  return (
+    <div className="rounded-xl border border-accent/30 bg-accent-soft/40 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-fg">
+        {kind.icon}
+        {kind.label}
+      </p>
+      <p className="mt-1 text-sm font-semibold">{title}</p>
+      <p className="text-xs text-muted">{details.filter(Boolean).join(" · ")}</p>
+      {note && <p className="mt-1 text-sm text-fg-2">{note}</p>}
+      {action.kind === "client" && action.task && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-fg-2">
+          <ClipboardList className="size-3.5 shrink-0 text-accent-fg" />
+          {`${action.task.title} · ${formatDate(action.task.dueDate, lang)}${action.task.dueTime ? `, ${action.task.dueTime}` : ""}`}
+        </p>
+      )}
+      {duplicate && action.state !== "done" && (
+        <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-warning">
+          <TriangleAlert className="mt-px size-3.5 shrink-0" />
+          <span>
+            {B.clientExists}{" "}
+            <Link href={`/clients/${duplicate.id}`} className="underline">
+              {duplicate.name}
+            </Link>
+          </span>
+        </p>
+      )}
+      <div className="mt-2.5 flex items-center gap-2">
+        {action.state === "done" ? (
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
+            <Check className="size-4" />
+            {action.href ? (
+              <Link href={action.href} className="hover:underline">
+                {B.confirmed}
+              </Link>
+            ) : (
+              B.confirmed
+            )}
+          </span>
+        ) : action.state === "dismissed" ? (
+          <span className="text-sm text-muted">{B.dismissed}</span>
+        ) : (
+          <>
+            {!duplicate && <ActionButton onClick={onConfirm} label={B.confirm} primary />}
+            <ActionButton onClick={onDismiss} label={B.dismiss} />
+          </>
+        )}
+      </div>
+    </div>
   );
 }
