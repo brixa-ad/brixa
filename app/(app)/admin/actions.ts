@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkStripe, type StripeCheck } from "@/lib/stripe";
+import { checkStripe, makeWebhook, type StripeCheck } from "@/lib/stripe";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -127,4 +127,20 @@ export async function testStripe(endpointUrl: string): Promise<StripeCheck & { a
   const { data } = await supabase.from("organizations").select("id, name, stripe_subscription_id").in("id", orgs);
   const applied = Object.fromEntries((data ?? []).map((o) => [o.id, { name: o.name as string, card: Boolean(o.stripe_subscription_id) }]));
   return { ...check, applied };
+}
+
+/** Connect Stripe in one tap: the webhook to BRIXA made anew in Stripe, and its secret saved here. */
+export async function connectStripe(endpointUrl: string): Promise<{ ok: boolean; reason?: string }> {
+  const session = await getSession();
+  if (!session?.platformAdmin) return { ok: false };
+  const made = await makeWebhook(endpointUrl);
+  if (!made.secret) return { ok: false, reason: made.reason };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_stripe_webhook_secret", { secret: made.secret });
+  if (error || data !== true) {
+    console.error("Saving the new webhook's secret failed:", error?.message ?? "refused");
+    return { ok: false, reason: error?.message.slice(0, 200) };
+  }
+  revalidatePath("/admin");
+  return { ok: true };
 }

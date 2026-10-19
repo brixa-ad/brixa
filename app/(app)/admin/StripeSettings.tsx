@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert, Copy, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
-import { saveStripeSecret, testStripe, type SecretProblem } from "./actions";
+import { connectStripe, saveStripeSecret, testStripe, type SecretProblem } from "./actions";
 import type { StripeCheck } from "@/lib/stripe";
 
 /** Card payments: is Stripe's key set, is the webhook's secret saved — and where Stripe should send its events. */
@@ -19,6 +19,8 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
   const [pending, startTransition] = useTransition();
   const [check, setCheck] = useState<(StripeCheck & { applied?: Record<string, { name: string; card: boolean }> }) | null>(null);
   const [checking, startCheck] = useTransition();
+  const [connected, setConnected] = useState<{ ok: boolean; reason?: string } | null>(null);
+  const [connecting, startConnect] = useTransition();
 
   const row = (label: string, ok: boolean) => (
     <li className="flex items-center justify-between gap-3">
@@ -36,6 +38,34 @@ export function StripeSettings({ keySet, webhookReady, endpoint }: { keySet: boo
         {row(P.stripeKey, keySet)}
         {row(P.stripeWebhook, ready)}
       </ul>
+      {keySet && (
+        <div className="space-y-1.5 rounded-xl border border-accent/40 p-3">
+          <p className="text-fg-2">{P.connectHint}</p>
+          <button
+            type="button"
+            disabled={connecting}
+            onClick={() =>
+              startConnect(async () => {
+                const result = await connectStripe(endpoint);
+                setConnected(result);
+                if (result.ok) {
+                  setReady(true);
+                  setCheck(null);
+                }
+              })
+            }
+            className={buttonClass.primary}
+          >
+            {connecting && <Loader2 className="size-4 animate-spin" />}
+            {P.connect}
+          </button>
+          {connected && (
+            <p className={connected.ok ? "text-success" : "text-danger"}>
+              {connected.ok ? P.connected : `${P.connectFailed}${connected.reason ? ` ${connected.reason}` : ""}`}
+            </p>
+          )}
+        </div>
+      )}
       {keySet && (
         <div className="space-y-1">
           <button type="button" disabled={checking} onClick={() => startCheck(async () => setCheck(await testStripe(endpoint)))} className={buttonClass.secondary}>

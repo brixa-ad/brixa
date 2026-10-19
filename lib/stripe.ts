@@ -87,6 +87,27 @@ export async function checkStripe(endpointUrl: string): Promise<StripeCheck> {
   }
 }
 
+/**
+ * Makes the webhook to BRIXA in this mode of Stripe anew — with the events BRIXA needs — and returns
+ * its signing secret (Stripe shows it only when a webhook is made). The old webhooks to the same
+ * address go, so no secret pasted from another one can stay. The secret is never logged or shown.
+ */
+export async function makeWebhook(endpointUrl: string): Promise<{ secret?: string; live?: boolean; reason?: string }> {
+  const stripe = stripeClient();
+  if (!stripe) return {};
+  try {
+    const url = endpointUrl.replace(/\/$/, "");
+    const hooks = await stripe.webhookEndpoints.list({ limit: 100 });
+    for (const hook of hooks.data.filter((h) => h.url.replace(/\/$/, "") === url)) {
+      await stripe.webhookEndpoints.del(hook.id);
+    }
+    const made = await stripe.webhookEndpoints.create({ url, enabled_events: [...STRIPE_EVENTS], description: "BRIXA" });
+    return made.secret ? { secret: made.secret, live: made.livemode } : { reason: "no secret" };
+  } catch (error) {
+    return { reason: stripeReason(error) ?? (error as Error).message };
+  }
+}
+
 /** What BRIXA is for taxes: software as a service, for businesses (Stripe's product tax code). */
 const TAX_CODE = "txcd_10103001";
 
