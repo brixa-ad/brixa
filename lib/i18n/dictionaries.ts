@@ -1204,6 +1204,11 @@ const bg = {
     enhancing: "Brix обработва снимките…",
     tipsTitle: "Brix за снимките:",
     tipPhoto: "Снимка {n}: {tip}",
+    open: "Отвори голяма",
+    before: "Преди",
+    after: "След",
+    holdHint: "задръж върху снимката за оригинала",
+    notEdited: "Оригинал — не е обработвана от Brix",
   },
   detail: {
     sectionWork: "Клиенти и сделки",
@@ -4415,6 +4420,11 @@ const en: Dictionary = {
     enhancing: "Brix is editing the photos…",
     tipsTitle: "Brix on the photos:",
     tipPhoto: "Photo {n}: {tip}",
+    open: "Open big",
+    before: "Before",
+    after: "After",
+    holdHint: "hold the photo for the original",
+    notEdited: "Original — not edited by Brix",
   },
   detail: {
     sectionWork: "Clients and deals",

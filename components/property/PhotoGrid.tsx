@@ -16,6 +16,7 @@ export function PhotoGrid({
   onMakeCover,
   onRemove,
   onEdit,
+  onOpen,
   disabled,
 }: {
   photos: GridPhoto[];
@@ -23,6 +24,8 @@ export function PhotoGrid({
   onRemove: (key: string) => void;
   /** edit an original with Brix, or go back to the original */
   onEdit?: (key: string) => void;
+  /** tap on a photo: see it big */
+  onOpen?: (key: string) => void;
   disabled?: boolean;
 }) {
   const { t } = useI18n();
@@ -36,7 +39,14 @@ export function PhotoGrid({
           key={photo.key}
           className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-raised"
         >
-          {photo.url && <img src={photo.url} alt="" className="size-full object-cover" />}
+          {photo.url &&
+            (onOpen ? (
+              <button type="button" onClick={() => onOpen(photo.key)} className="size-full cursor-zoom-in" aria-label={t.photos.open}>
+                <img src={photo.url} alt="" className="size-full object-cover" />
+              </button>
+            ) : (
+              <img src={photo.url} alt="" className="size-full object-cover" />
+            ))}
 
           {index === 0 && (
             <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">

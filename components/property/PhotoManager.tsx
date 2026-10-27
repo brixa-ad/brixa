@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { Card } from "@/components/ui/form";
@@ -10,6 +10,7 @@ import { MAX_PHOTOS, PHOTO_BUCKET, originalPathOf, preparePhoto, storePhoto, upl
 import { createClient } from "@/lib/supabase/client";
 import type { Photo } from "@/lib/types";
 import { EnhanceSwitch, useEnhancePhotos } from "./EnhanceSwitch";
+import { PhotoCompare } from "./PhotoCompare";
 import { PhotoDropzone } from "./PhotoDropzone";
 import { PhotoGrid } from "./PhotoGrid";
 
@@ -35,6 +36,17 @@ export function PhotoManager({
   // the files in the listing's folder: which photos have their original kept
   const [files, setFiles] = useState<Set<string> | null>(null);
   const folder = `${organizationId}/${propertyId}`;
+  const [open, setOpen] = useState<number | null>(null);
+  const closeOpen = useCallback(() => setOpen(null), []);
+  const originalUrl = useCallback(
+    async (id: string) => {
+      const photo = photos.find((p) => p.id === id);
+      if (!photo) return null;
+      const { data } = await createClient().storage.from(PHOTO_BUCKET).createSignedUrl(originalPathOf(photo.storage_path), 3600);
+      return data?.signedUrl ?? null;
+    },
+    [photos]
+  );
 
   const working = busy || refreshing;
   const paths = photos.map((photo) => photo.storage_path).join("|");
@@ -164,8 +176,17 @@ export function PhotoManager({
           onMakeCover={makeCover}
           onRemove={remove}
           onEdit={toggleEdit}
+          onOpen={(id) => setOpen(photos.findIndex((p) => p.id === id))}
           disabled={working}
         />
+        {open !== null && open >= 0 && (
+          <PhotoCompare
+            photos={photos.map((photo) => ({ key: photo.id, url: photo.url, edited: editOf(photo) === "edited" }))}
+            startAt={open}
+            originalUrl={originalUrl}
+            onClose={closeOpen}
+          />
+        )}
         <EnhanceSwitch on={enhance} onChange={setEnhance} disabled={working} />
         <PhotoDropzone onFiles={add} remaining={MAX_PHOTOS - photos.length} disabled={working} />
         {busy && enhance && (
