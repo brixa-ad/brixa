@@ -35,6 +35,7 @@ import {
   type PropertyInput,
 } from "@/lib/validation";
 import { LocationPicker } from "./LocationPicker";
+import { BrixDescribe } from "./BrixDescribe";
 import { EnhanceSwitch, useEnhancePhotos } from "./EnhanceSwitch";
 import { PhotoDropzone } from "./PhotoDropzone";
 import { PhotoGrid } from "./PhotoGrid";
@@ -52,6 +53,7 @@ export function PropertyForm({
   existingPhotoCount = 0,
   canAssignBroker,
   solo = false,
+  brix = false,
 }: {
   mode: "create" | "edit";
   lookups: FormLookups;
@@ -65,6 +67,8 @@ export function PropertyForm({
   canAssignBroker: boolean;
   /** a broker working on their own: "you", not "the agency" */
   solo?: boolean;
+  /** Brix is connected: it can write the description */
+  brix?: boolean;
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -190,6 +194,31 @@ export function PropertyForm({
       const photo = current.find((p) => p.key === key);
       return photo ? [photo, ...current.filter((p) => p.key !== key)] : current;
     });
+  }
+
+  // ---- what Brix is told about the listing (its words, not codes) ----
+  function describeFacts() {
+    const town = lookups.settlements.find((x) => x.id === values.settlementId);
+    const featureNames = features.filter((f) => values.featureIds.includes(f.id)).map((f) => localName(f, lang));
+    const line = (label: string, value: string | null | undefined | false) => (value ? `${label}: ${value}` : null);
+    return [
+      line(t.form.operation, t.options.operation[values.operationType as keyof typeof t.options.operation]),
+      line(t.form.subtype, subtype ? localName(subtype, lang) : category ? localName(category, lang) : null),
+      line(t.form.sectionLocation, town ? `${town.settlement_type} ${town.name}` : null),
+      line(t.form.area, values.area && `${values.area} м²`),
+      line(t.form.rooms, values.rooms),
+      line(t.form.bedrooms, values.bedrooms),
+      line(t.form.floor, values.floor && (values.totalFloors ? `${values.floor} / ${values.totalFloors}` : values.floor)),
+      line(t.form.condition, values.condition && t.options.condition[values.condition as keyof typeof t.options.condition]),
+      line(t.form.construction, values.constructionType && t.options.construction[values.constructionType as keyof typeof t.options.construction]),
+      line(t.form.furnishing, values.furnishing && t.options.furnishing[values.furnishing as keyof typeof t.options.furnishing]),
+      line(t.form.heating, values.heating && t.options.heating[values.heating as keyof typeof t.options.heating]),
+      line(t.form.exposure, values.exposures.map((code) => t.options.exposure[code as keyof typeof t.options.exposure]).join(", ")),
+      line(t.form.sectionFeatures, featureNames.join(", ")),
+      line(t.form.price, values.price && `${values.price} ${values.currency}`),
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   // ---- summary ----
@@ -585,6 +614,22 @@ export function PropertyForm({
                 )}
               </Field>
 
+              {brix && (
+                <BrixDescribe
+                  facts={() => describeFacts()}
+                  neighborhoodId={values.neighborhoodId}
+                  propertyId={propertyId ?? null}
+                  photos={queued.map((photo) => photo.file)}
+                  draft={values.description}
+                  onWritten={({ title, description }) => {
+                    setValues((current) => ({
+                      ...current,
+                      description: description.slice(0, DESCRIPTION_MAX),
+                      title: current.title.trim() ? current.title : title,
+                    }));
+                  }}
+                />
+              )}
               <Field
                 label={t.form.description}
                 error={errorText("description")}

@@ -29,6 +29,7 @@ export default async function NewPropertyPage() {
         subtitle={t.form.newSubtitle}
       />
       <PropertyForm
+          brix={Boolean(process.env.ANTHROPIC_API_KEY)}
         mode="create"
         lookups={lookups}
         initialValues={emptyFormValues(session.userId, agency?.defaultCurrency)}

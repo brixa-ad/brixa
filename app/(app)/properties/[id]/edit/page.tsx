@@ -80,6 +80,7 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
       />
       <div className="space-y-6">
         <PropertyForm
+          brix={Boolean(process.env.ANTHROPIC_API_KEY)}
           mode="edit"
           propertyId={id}
           lookups={lookups}
