@@ -39,7 +39,7 @@ export function FullScreen({ photos, startAt, onClose }: { photos: Photo[]; star
       >
         {photos.map((photo) => (
           <div key={photo.id} className="grid h-full w-full shrink-0 snap-center place-items-center">
-            {photo.url && <img src={photo.url} alt="" className="max-h-full max-w-full object-contain" loading="lazy" />}
+            {photo.url && <img src={photo.url} alt="" className="size-full object-contain" loading="lazy" />}
           </div>
         ))}
       </div>
@@ -101,7 +101,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
               aria-label={`${i + 1} / ${photos.length}`}
               className="aspect-[4/3] w-full shrink-0 snap-center"
             >
-              {photo.url && <img src={photo.url} alt="" loading={i === 0 ? "eager" : "lazy"} className="size-full object-cover" />}
+              {photo.url && <img src={photo.url} alt="" loading={i === 0 ? "eager" : "lazy"} className="size-full object-contain" />}
             </button>
           ))}
         </div>
@@ -116,7 +116,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
       <div className="hidden space-y-3 sm:block">
         <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-black">
           {current.url && (
-            <button type="button" onClick={() => setFull(index)} className="size-full cursor-zoom-in" aria-label={`${index + 1} / ${photos.length}`}>
+            <button type="button" onClick={() => setFull(index)} className="size-full" aria-label={`${index + 1} / ${photos.length}`}>
               <img src={current.url} alt="" className="size-full object-contain" />
             </button>
           )}

@@ -618,8 +618,6 @@ export function PropertyForm({
                 <BrixDescribe
                   facts={() => describeFacts()}
                   neighborhoodId={values.neighborhoodId}
-                  propertyId={propertyId ?? null}
-                  photos={queued.map((photo) => photo.file)}
                   draft={values.description}
                   onWritten={({ title, description }) => {
                     setValues((current) => ({

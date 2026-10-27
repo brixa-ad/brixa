@@ -1,16 +1,13 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { DAILY_LIMIT, brixClient } from "@/lib/brix/model";
 import { getI18n } from "@/lib/i18n/server";
-import { PHOTO_BUCKET } from "@/lib/photos";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
-/** Writing for buyers well: the most capable model, at low effort (one listing, a few paragraphs). */
+/** Writing that sells: the most capable model, at low effort (one listing, a few paragraphs). */
 const MODEL = "claude-opus-5-5";
-const MAX_PHOTOS = 4;
-const MAX_BASE64 = 600_000;
 
 const SCHEMA = {
   type: "object",
@@ -22,12 +19,12 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-const SYSTEM = `You write property listings for a Bulgarian real-estate agency — for imot.bg, homes.bg, OLX and the agency's website.
-Write like the best agents in the country: warm, concrete and honest, short paragraphs, the strongest point first (light, view, location, layout, condition), then the details a buyer asks about (rooms, floor, building, heating, furnishing, what's near), and a short invitation to a viewing at the end. No exclamation marks in a row, no clichés like "уникална възможност", no emojis.
-Use only the facts given and what the photos clearly show; never invent a view, a renovation, a distance or a feature. Never write the exact address, the block or apartment number, the cadastral number, a name or a phone.`;
+const SYSTEM = `You are the copywriter of a Bulgarian real-estate agency: you write listings for imot.bg, homes.bg, OLX and the agency's website that make the right buyer want to see the place.
+Write marketing copy from the listing's characteristics: a strong opening line with the biggest selling point, then what each feature means for the life of the buyer (a south exposure → sun all day; a second bedroom → room for a child or a home office; brick building, gas heating → quiet, warm and cheap to run; the floor, the size, the neighbourhood's appeal), the facts a buyer looks for, and a clear call to book a viewing. Short paragraphs, confident and warm, no clichés like "уникална възможност", no exclamation marks in a row, no emojis.
+Use only the characteristics given and the broker's notes; never invent a view, a renovation, a distance or a feature. Never write the exact address, the block or apartment number, the cadastral number, a name or a phone.`;
 
 /**
- * Brix writes a listing's description (and a title) from its details and photos —
+ * Brix writes a listing's description (and a title) from its characteristics, as marketing —
  * the broker reads it, changes what they like and saves it with the listing.
  */
 export async function POST(request: Request) {
@@ -36,7 +33,7 @@ export async function POST(request: Request) {
   const anthropic = brixClient();
   if (!anthropic) return Response.json({ error: "not_configured" }, { status: 503 });
 
-  const body = (await request.json().catch(() => null)) as { facts?: unknown; neighborhoodId?: unknown; propertyId?: unknown; images?: unknown; draft?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { facts?: unknown; neighborhoodId?: unknown; draft?: unknown } | null;
   const facts = typeof body?.facts === "string" ? body.facts.slice(0, 3000) : "";
   if (!facts.trim()) return Response.json({ error: "bad_request" }, { status: 400 });
   const supabase = await createClient();
@@ -44,26 +41,12 @@ export async function POST(request: Request) {
   if (!allowed) return Response.json({ error: "limit" }, { status: 429 });
   const { lang } = await getI18n();
 
-  // the neighbourhood by name; the photos sent along (a new listing) or its saved ones
+  // the neighbourhood by name
   const uuid = /^[0-9a-f-]{36}$/i;
-  const [{ data: hood }, saved] = await Promise.all([
+  const { data: hood } =
     typeof body?.neighborhoodId === "string" && uuid.test(body.neighborhoodId)
-      ? supabase.from("geo_neighborhoods").select("name").eq("id", body.neighborhoodId).maybeSingle()
-      : Promise.resolve({ data: null }),
-    typeof body?.propertyId === "string" && uuid.test(body.propertyId)
-      ? supabase.from("property_photos").select("storage_path").eq("property_id", body.propertyId).order("position").limit(MAX_PHOTOS)
-      : Promise.resolve({ data: null }),
-  ]);
-  const images: Anthropic.ImageBlockParam[] = [];
-  for (const image of (Array.isArray(body?.images) ? body.images : []).slice(0, MAX_PHOTOS)) {
-    if (typeof image === "string" && image.length < MAX_BASE64 && /^[A-Za-z0-9+/=]+$/.test(image)) {
-      images.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } });
-    }
-  }
-  if (images.length === 0 && saved.data?.length) {
-    const { data: links } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(saved.data.map((p) => p.storage_path), 600);
-    for (const link of links ?? []) if (link.signedUrl) images.push({ type: "image", source: { type: "url", url: link.signedUrl } });
-  }
+      ? await supabase.from("geo_neighborhoods").select("name").eq("id", body.neighborhoodId).maybeSingle()
+      : { data: null };
   const draft = typeof body?.draft === "string" ? body.draft.trim().slice(0, 3000) : "";
 
   try {
@@ -78,14 +61,12 @@ export async function POST(request: Request) {
         {
           role: "user",
           content: [
-            ...images,
             {
               type: "text",
               text: [
                 `Write the listing in ${lang === "bg" ? "Bulgarian" : "English"}, 120–220 words.`,
                 `The property:\n${facts}${hood?.name ? `\nNeighbourhood: ${hood.name}` : ""}`,
                 draft ? `The broker's own notes (keep every fact from them):\n${draft}` : "",
-                images.length ? `${images.length} photos of it are above.` : "No photos yet.",
               ]
                 .filter(Boolean)
                 .join("\n\n"),

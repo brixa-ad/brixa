@@ -55,8 +55,12 @@ export function ListingHero({
             className="flex size-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]"
           >
             {shown.map((photo, i) => (
-              <button key={photo.id} type="button" onClick={() => setFull(i)} className="size-full shrink-0 snap-center cursor-zoom-in" aria-label={`${i + 1} / ${shown.length}`}>
-                <img src={photo.url!} alt="" loading={i === 0 ? "eager" : "lazy"} className={`size-full object-cover ${photoClass}`} />
+              <button key={photo.id} type="button" onClick={() => setFull(i)} className="size-full shrink-0 snap-center" aria-label={`${i + 1} / ${shown.length}`}>
+                {/* the whole photo, as it was taken; its own colours, blurred, fill the sides */}
+                <span className="relative block size-full overflow-hidden">
+                  <img src={photo.url!} alt="" aria-hidden loading={i === 0 ? "eager" : "lazy"} className="absolute inset-0 size-full scale-110 object-cover opacity-60 blur-2xl" />
+                  <img src={photo.url!} alt="" loading={i === 0 ? "eager" : "lazy"} className={`relative size-full object-contain ${photoClass}`} />
+                </span>
               </button>
             ))}
           </div>

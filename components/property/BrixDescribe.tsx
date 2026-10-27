@@ -4,22 +4,16 @@ import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass } from "@/components/ui/form";
-import { fileThumbnail } from "@/lib/photos";
 
-/** "Write it with Brix": a listing's description (and a title when there's none) from its details and photos. */
+/** "Write it with Brix": a listing's description (and a title when there's none) from its characteristics. */
 export function BrixDescribe({
   facts,
   neighborhoodId,
-  propertyId,
-  photos,
   draft,
   onWritten,
 }: {
   facts: () => string;
   neighborhoodId: string | null;
-  propertyId: string | null;
-  /** photos picked but not yet uploaded (a new listing); a saved listing's own are read by the server */
-  photos: File[];
   /** what's in the box now: Brix keeps its facts */
   draft: string;
   onWritten: (text: { title: string; description: string }) => void;
@@ -33,11 +27,10 @@ export function BrixDescribe({
     setBusy(true);
     setError(null);
     try {
-      const images = (await Promise.all(photos.slice(0, 4).map(fileThumbnail))).filter((x): x is string => Boolean(x));
       const response = await fetch("/api/brix/describe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ facts: facts(), neighborhoodId, propertyId, images, draft }),
+        body: JSON.stringify({ facts: facts(), neighborhoodId, draft }),
       });
       const data = (await response.json().catch(() => ({}))) as { title?: string; description?: string; error?: string };
       if (!response.ok || !data.description) {

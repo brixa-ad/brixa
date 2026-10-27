@@ -76,21 +76,6 @@ export async function preparePhoto(file: Blob, enhance: boolean): Promise<{ main
   }
 }
 
-/** A small JPEG of a photo file (for Brix to look at), as base64 — null when it can't be read. */
-export async function fileThumbnail(file: Blob): Promise<string | null> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
-    bitmap.close();
-    return thumbnailBase64(canvas, 768);
-  } catch {
-    return null;
-  }
-}
-
 /** Runs the jobs a few at a time, in order of the list. */
 async function inTurns<T>(items: T[], at: number, job: (item: T, index: number) => Promise<void>) {
   let next = 0;

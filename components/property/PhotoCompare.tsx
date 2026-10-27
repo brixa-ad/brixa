@@ -99,7 +99,7 @@ export function PhotoCompare({
             return (
               <div key={p.key} className="grid size-full shrink-0 snap-center place-items-center">
                 {src ? (
-                  <img src={src} alt="" draggable={false} className="max-h-full max-w-full object-contain" loading={Math.abs(i - index) <= 1 ? "eager" : "lazy"} />
+                  <img src={src} alt="" draggable={false} className="size-full object-contain" loading={Math.abs(i - index) <= 1 ? "eager" : "lazy"} />
                 ) : (
                   <Loader2 className="size-8 animate-spin text-white/70" />
                 )}
