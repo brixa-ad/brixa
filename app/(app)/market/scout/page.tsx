@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight, ExternalLink, Radar, ShieldCheck, Store, UserRound, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { FollowButton, FollowLinkForm, WatchActions, WatchForm } from "@/components/market/ScoutParts";
+import { FollowButton, FollowLinkForm, SendMatch, WatchActions, WatchForm } from "@/components/market/ScoutParts";
 import { Card } from "@/components/ui/form";
 import { addDays, sofiaToday } from "@/lib/dates";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -41,7 +41,7 @@ const LISTING = "id, url, portal, title, place, price_eur, area, private, status
  */
 export default async function ScoutPage({ searchParams }: PageProps<"/market/scout">) {
   const params = await searchParams;
-  const view = params.view === "tracked" ? "tracked" : params.view === "watches" ? "watches" : "new";
+  const view = params.view === "tracked" ? "tracked" : params.view === "watches" ? "watches" : params.view === "matches" ? "matches" : "new";
   const onlyPrivate = params.private === "1";
   const session = (await getSession())!;
   const supabase = await createClient();
@@ -81,6 +81,7 @@ export default async function ScoutPage({ searchParams }: PageProps<"/market/sco
   const price = (value: number | null) => (value === null ? "—" : (formatPrice(Number(value), "EUR", lang) ?? "—"));
   const tabs = [
     { key: "new", label: S.viewNew },
+    { key: "matches", label: S.viewMatches },
     { key: "tracked", label: `${S.viewTracked}${tracked.length ? ` · ${tracked.length}` : ""}` },
     { key: "watches", label: `${S.viewWatches}${watches.length ? ` · ${watches.length}` : ""}` },
   ];
@@ -104,6 +105,7 @@ export default async function ScoutPage({ searchParams }: PageProps<"/market/sco
       </nav>
 
       {view === "new" && <NewListings />}
+      {view === "matches" && <Matches />}
       {view === "tracked" && <Tracked />}
       {view === "watches" && <Watches />}
 
@@ -154,6 +156,66 @@ export default async function ScoutPage({ searchParams }: PageProps<"/market/sco
           </ul>
         )}
       </div>
+    );
+  }
+
+  // ---- the new listings that fit this broker's buyers (the last month), with a tap to send
+  async function Matches() {
+    const { data } = await supabase
+      .from("market_matches")
+      .select(`id, sent_at, created_at, listing:market_listings(${LISTING}), client:clients(id, full_name, phone, email)`)
+      .eq("broker_id", session.userId)
+      .is("dismissed_at", null)
+      .gte("created_at", `${addDays(today, -30)}T00:00:00+03:00`)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    type Match = { id: string; sent_at: string | null; listing: Listing | null; client: { id: string; full_name: string; phone: string | null; email: string | null } | null };
+    const groups = new Map<string, { listing: Listing; matches: Match[] }>();
+    for (const m of (data ?? []) as unknown as Match[]) {
+      if (!m.listing || !m.client) continue;
+      const g = groups.get(m.listing.id) ?? { listing: m.listing, matches: [] };
+      g.matches.push(m);
+      groups.set(m.listing.id, g);
+    }
+    if (groups.size === 0) {
+      return (
+        <Card>
+          <p className="text-sm text-muted">{S.noneMatches}</p>
+        </Card>
+      );
+    }
+    return (
+      <ul className="space-y-2">
+        {[...groups.values()].map(({ listing: l, matches }) => (
+          <ListingRow
+            key={l.id}
+            listing={l}
+            note={fmt(S.found, { date: formatDate(l.first_seen, lang) })}
+            extra={
+              <div className="mt-3 space-y-2 border-t border-line-soft pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-subtle">{S.fitsFor}</p>
+                {matches.map((m) => (
+                  <div key={m.id}>
+                    <SendMatch
+                      matchId={m.id}
+                      name={m.client!.full_name}
+                      phone={m.client!.phone}
+                      email={m.client!.email}
+                      sent={Boolean(m.sent_at)}
+                      text={fmt(S.sendText, {
+                        name: m.client!.full_name.split(" ")[0],
+                        title: l.title || l.place || "",
+                        price: price(l.price_eur),
+                        url: l.url,
+                      })}
+                    />
+                  </div>
+                ))}
+              </div>
+            }
+          />
+        ))}
+      </ul>
     );
   }
 
@@ -256,7 +318,17 @@ export default async function ScoutPage({ searchParams }: PageProps<"/market/sco
     );
   }
 
-  function ListingRow({ listing: l, note, change }: { listing: Listing; note: string; change?: { tone: string; icon: React.ReactNode; text: string } | null }) {
+  function ListingRow({
+    listing: l,
+    note,
+    change,
+    extra,
+  }: {
+    listing: Listing;
+    note: string;
+    change?: { tone: string; icon: React.ReactNode; text: string } | null;
+    extra?: React.ReactNode;
+  }) {
     const perSqm = l.price_eur && l.area ? Math.round(Number(l.price_eur) / Number(l.area)) : null;
     return (
       <li className={`rounded-2xl border border-line bg-surface p-4 shadow-xs ${l.status === "gone" ? "opacity-60" : ""}`}>
@@ -305,6 +377,7 @@ export default async function ScoutPage({ searchParams }: PageProps<"/market/sco
             <FollowButton listingId={l.id} following={trackedIds.has(l.id)} />
           </div>
         </div>
+        {extra}
       </li>
     );
   }

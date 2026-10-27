@@ -3,11 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Pause, Play, Plus, Radar, Star, StarOff, Trash2 } from "lucide-react";
-import { deleteWatch, followLink, followListing, runWatch, saveWatch, setWatchActive } from "@/app/(app)/market/scout/actions";
+import { deleteWatch, followLink, followListing, markMatch, runWatch, saveWatch, setWatchActive } from "@/app/(app)/market/scout/actions";
 import { MultiLocationPicker } from "@/components/client/MultiLocationPicker";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
+import { useMounted } from "@/components/ui/Modal";
 import { localName } from "@/lib/i18n/dictionaries";
+import { viberHref, whatsappHref } from "@/lib/phone";
 import type { Category, Region, Settlement, Subtype } from "@/lib/types";
 
 /** Follow / stop following a listing Brix found. */
@@ -234,5 +236,95 @@ export function WatchForm({
         {S.save}
       </button>
     </form>
+  );
+}
+
+/** Send a listing that fits to the client: Viber (the text copied), WhatsApp, e-mail or the phone's share — then it's in their history. */
+export function SendMatch({
+  matchId,
+  name,
+  phone,
+  email,
+  text,
+  sent,
+}: {
+  matchId: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  text: string;
+  sent: boolean;
+}) {
+  const { t } = useI18n();
+  const mounted = useMounted();
+  const [done, setDone] = useState(sent);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const mark = (how: "sent" | "dismissed") => start(() => markMatch(matchId, how, how === "sent" ? text : undefined));
+  const small = `${buttonClass.secondary} px-2.5! py-1! text-xs!`;
+  const go = (href: string) => {
+    window.open(href, "_blank", "noopener");
+    setDone(true);
+    mark("sent");
+  };
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className="text-sm font-medium">{name}</span>
+      {done ? (
+        <span className="text-xs font-semibold text-success">✓ {t.scout.sent}</span>
+      ) : (
+        <>
+          {phone && (
+            <button
+              type="button"
+              disabled={pending}
+              className={small}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(text);
+                  setNote(t.scout.copied);
+                } catch {}
+                go(viberHref(phone));
+              }}
+            >
+              Viber
+            </button>
+          )}
+          {phone && (
+            <button type="button" disabled={pending} className={small} onClick={() => go(whatsappHref(phone, text))}>
+              WhatsApp
+            </button>
+          )}
+          {email && (
+            <button type="button" disabled={pending} className={small} onClick={() => go(`mailto:${email}?body=${encodeURIComponent(text)}`)}>
+              {t.scout.emailShort}
+            </button>
+          )}
+          {mounted && "share" in navigator && (
+            <button
+              type="button"
+              disabled={pending}
+              className={small}
+              onClick={() =>
+                navigator.share({ text }).then(
+                  () => {
+                    setDone(true);
+                    mark("sent");
+                  },
+                  () => {}
+                )
+              }
+            >
+              {t.scout.send}
+            </button>
+          )}
+          <button type="button" disabled={pending} className={`${buttonClass.ghost} px-2! py-1! text-xs!`} onClick={() => mark("dismissed")}>
+            {t.scout.dismiss}
+          </button>
+        </>
+      )}
+      {note && <span className="w-full text-xs text-muted">{note}</span>}
+    </span>
   );
 }

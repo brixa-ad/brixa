@@ -86,3 +86,19 @@ export async function followLink(link: string): Promise<{ ok: boolean }> {
   revalidatePath(PATH);
   return { ok: Boolean(data) };
 }
+
+/** A listing that fits a buyer went to them (written in the client's history), or doesn't fit after all. */
+export async function markMatch(id: string, how: "sent" | "dismissed", note?: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("market_matches")
+    .update(how === "sent" ? { sent_at: new Date().toISOString() } : { dismissed_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("client_id")
+    .maybeSingle();
+  if (how === "sent" && data?.client_id && note) {
+    const { logActivity } = await import("../../tasks/actions");
+    await logActivity({ type: "message", clientId: data.client_id, propertyId: null, note: note.slice(0, 1000) });
+  }
+  revalidatePath(PATH);
+}
