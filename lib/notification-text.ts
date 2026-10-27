@@ -202,6 +202,16 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(t.notifications.task_reminder, vars);
     case "push_test":
       return t.notifications.push_test;
+    case "market_scout": {
+      const fresh = data.count ?? 0;
+      const own = data.properties ?? 0;
+      const changed = data.deals ?? 0;
+      const parts = [
+        fresh > 0 && fmt(own > 0 ? t.notifications.market_scout_new_private : t.notifications.market_scout_new, { count: fresh, private: own }),
+        changed > 0 && fmt(t.notifications.market_scout_changed, { count: changed }),
+      ].filter(Boolean);
+      return `${t.notifications.market_scout} ${parts.join(" · ")}`;
+    }
     default:
       return vars.title;
   }

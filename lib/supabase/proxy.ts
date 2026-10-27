@@ -20,6 +20,8 @@ const PUBLIC_PATHS = [
   "/manifest.webmanifest",
   "/sw.js",
   "/api/push",
+  // Brix's morning look at the market (called by the database with a job's token)
+  "/api/brix/scout",
   // Stripe: payments by card (the database checks its signature)
   "/api/stripe",
   "/api/calendar",

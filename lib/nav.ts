@@ -30,6 +30,7 @@ export const NAV_KEYS = [
   "statsBroker",
   "statsMarket",
   "market",
+  "marketScout",
   "partnerSearches",
   "closedDeals",
   "saleDocs",
@@ -77,6 +78,7 @@ export const NAV_HREF: Record<NavKey, string> = {
   statsBroker: "/stats/broker",
   statsMarket: "/stats/market",
   market: "/market",
+  marketScout: "/market/scout",
   partnerSearches: "/partner-searches",
   closedDeals: "/closed-deals",
   saleDocs: "/sale-documents",
@@ -109,7 +111,7 @@ export const MENU_TABS: Record<MenuKey, NavKey[][]> = {
   deals: [["deals"], ["closedDeals"]],
   documents: [["propertyDocs"], ["saleDocs"]],
   chat: [["chat"]],
-  insights: [["stats", "statsBroker"], ["statsMarket", "market"]],
+  insights: [["stats", "statsBroker"], ["statsMarket", "market"], ["marketScout"]],
   path: [["plan"], ["business"], ["territory"]],
   team: [["team"], ["teamReport"], ["goals"]],
   brix: [["brix"]],
@@ -135,7 +137,8 @@ export function navKeysFor(isManager: boolean, brix = false, solo = false): NavK
   return NAV_KEYS.filter(
     (key) =>
       ((key !== "goals" && key !== "stats" && key !== "teamReport") || isManager) &&
-      (key !== "brix" || brix) &&
+      // Brix and what Brix does online: once the AI is connected
+      ((key !== "brix" && key !== "marketScout") || brix) &&
       // working alone: no team (own targets are set in My plan), no team report, no free contacts, no colleagues
       !(solo && (key === "team" || key === "goals" || key === "teamReport" || key === "contacts" || key === "colleaguesProperties"))
   );
