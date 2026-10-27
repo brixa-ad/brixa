@@ -18,6 +18,8 @@ export type SaveResult =
   | { ok: true; id: string }
   | { ok: false; errors?: FieldErrors; message?: ErrorCode };
 
+import { originalPathOf } from "@/lib/photos";
+
 const PHOTO_BUCKET = "property-photos";
 // Matches nothing — lets us run lookups unconditionally when a field is empty.
 const NO_ID = "00000000-0000-0000-0000-000000000000";
@@ -266,7 +268,7 @@ export async function deleteProperty(id: string) {
   }
 
   if (photos && photos.length > 0) {
-    await supabase.storage.from(PHOTO_BUCKET).remove(photos.map((photo) => photo.storage_path));
+    await supabase.storage.from(PHOTO_BUCKET).remove(photos.flatMap((photo) => [photo.storage_path, originalPathOf(photo.storage_path)]));
   }
 
   revalidatePath("/properties");

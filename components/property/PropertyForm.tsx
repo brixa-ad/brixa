@@ -35,6 +35,7 @@ import {
   type PropertyInput,
 } from "@/lib/validation";
 import { LocationPicker } from "./LocationPicker";
+import { EnhanceSwitch, useEnhancePhotos } from "./EnhanceSwitch";
 import { PhotoDropzone } from "./PhotoDropzone";
 import { PhotoGrid } from "./PhotoGrid";
 
@@ -74,6 +75,7 @@ export function PropertyForm({
   const [serverMessage, setServerMessage] = useState<ErrorCode | null>(null);
   const [phase, setPhase] = useState<"idle" | "saving" | "uploading" | "done">("idle");
   const [queued, setQueued] = useState<QueuedPhoto[]>([]);
+  const [enhancePhotos, setEnhancePhotos] = useEnhancePhotos();
 
   const category = lookups.categories.find((c) => c.id === values.categoryId);
   const subtypes = lookups.subtypes.filter((s) => s.category_id === values.categoryId);
@@ -153,13 +155,14 @@ export function PropertyForm({
     let failedPhotos = 0;
     if (queued.length > 0) {
       setPhase("uploading");
-      failedPhotos = await uploadPhotos(createClient(), {
+      ({ failed: failedPhotos } = await uploadPhotos(createClient(), {
         organizationId,
         propertyId: result.id,
         userId,
         files: queued.map((photo) => photo.file),
         startPosition: 0,
-      });
+        enhance: enhancePhotos,
+      }));
     }
 
     setPhase("done");
@@ -449,6 +452,7 @@ export function PropertyForm({
                   onRemove={unqueuePhoto}
                   disabled={busy}
                 />
+                <EnhanceSwitch on={enhancePhotos} onChange={setEnhancePhotos} disabled={busy} />
                 <PhotoDropzone onFiles={queuePhotos} remaining={MAX_PHOTOS - queued.length} disabled={busy} />
               </div>
             </Card>

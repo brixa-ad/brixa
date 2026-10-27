@@ -1,20 +1,28 @@
 "use client";
 
-import { Star, Trash2 } from "lucide-react";
+import { Sparkles, Star, Trash2, Undo2 } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
 
-export type GridPhoto = { key: string; url: string | null };
+export type GridPhoto = {
+  key: string;
+  url: string | null;
+  /** edited by Brix (its original kept) or as it was taken — when it can be switched */
+  edit?: "edited" | "original";
+};
 
 /** Thumbnails with "make cover" and "remove" controls. The first photo is the cover. */
 export function PhotoGrid({
   photos,
   onMakeCover,
   onRemove,
+  onEdit,
   disabled,
 }: {
   photos: GridPhoto[];
   onMakeCover: (key: string) => void;
   onRemove: (key: string) => void;
+  /** edit an original with Brix, or go back to the original */
+  onEdit?: (key: string) => void;
   disabled?: boolean;
 }) {
   const { t } = useI18n();
@@ -35,6 +43,12 @@ export function PhotoGrid({
               {t.photos.cover}
             </span>
           )}
+          {photo.edit === "edited" && (
+            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+              <Sparkles className="size-3" />
+              {t.photos.edited}
+            </span>
+          )}
 
           <div className="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
             {index !== 0 && (
@@ -47,6 +61,18 @@ export function PhotoGrid({
                 className="grid size-8 place-items-center rounded-lg bg-black/60 text-white backdrop-blur hover:bg-black/80"
               >
                 <Star className="size-4" />
+              </button>
+            )}
+            {onEdit && photo.edit && (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onEdit(photo.key)}
+                title={photo.edit === "edited" ? t.photos.backToOriginal : t.photos.enhanceOne}
+                aria-label={photo.edit === "edited" ? t.photos.backToOriginal : t.photos.enhanceOne}
+                className="grid size-8 place-items-center rounded-lg bg-black/60 text-white backdrop-blur hover:bg-black/80"
+              >
+                {photo.edit === "edited" ? <Undo2 className="size-4" /> : <Sparkles className="size-4" />}
               </button>
             )}
             <button
