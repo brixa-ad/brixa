@@ -9,6 +9,7 @@ import { AiComparables } from "./AiComparables";
 import { AnalysisSendButton, AnalysisShareList, type AnalysisShareRow } from "./AnalysisShare";
 import { ComparablesEditor } from "./ComparablesEditor";
 import type { ShareClient } from "./ShareDialog";
+import { ratingBasisText } from "@/lib/rating";
 
 /** "8% над пазара" / "12% под пазара" / "В рамките на пазара". */
 export function diffText(diff: number, t: Dictionary, lang: Lang) {
@@ -85,7 +86,7 @@ export function AnalysisPanel({
             )}
           </dl>
           <p className="mt-3 text-sm text-muted">
-            {fmt(t.rating.basis[rating.basis], { n: rating.pool, added: rating.added })}
+            {ratingBasisText(rating, t)}
             {facts.expected_final !== null && ` ${t.rating.expected}: ${euro(facts.expected_final)}.`}
             {facts.sold.avg_days !== null && ` ${t.rating.days}: ${fmt(t.rating.daysValue, { n: facts.sold.avg_days })}.`}
           </p>

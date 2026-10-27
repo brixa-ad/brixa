@@ -23,6 +23,7 @@ type SearchJob = {
   known: string[];
 };
 type TrackJob = { kind: "track"; listings: { id: string; url: string; price_eur: number | null }[] };
+type PricesJob = { kind: "prices"; operation: "sale" | "rent"; town: string; neighborhoods: string[] };
 
 const LISTING = {
   type: "object",
@@ -102,6 +103,44 @@ function searchPrompt(job: SearchJob) {
     .join("\n");
 }
 
+/** The portals' price statistics for a town: apartments' average asking €/m² by neighbourhood. */
+function pricesTool(neighborhoods: string[]) {
+  return {
+    name: "report_prices",
+    description: "Report the average prices you read on a statistics page. Call it exactly once, at the end.",
+    strict: true,
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        source: { type: "string", description: "The portal whose statistics these are, e.g. 'imot.bg, октомври 2026'" },
+        town_price: { type: "number", description: "The whole town's average €/m²; 0 when not shown" },
+        prices: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              neighborhood: { type: "string", enum: neighborhoods.length ? neighborhoods : ["—"] },
+              price: { type: "number", description: "Average €/m² (rent: € per m² a month)" },
+            },
+            required: ["neighborhood", "price"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["source", "town_price", "prices"],
+      additionalProperties: false,
+    },
+  };
+}
+
+function pricesPrompt(job: PricesJob) {
+  return [
+    `Find the portals' current price statistics for APARTMENTS for ${job.operation === "rent" ? "RENT (€ per m² a month)" : "SALE (€ per m²)"} in ${job.town}, Bulgaria, by neighbourhood — e.g. imot.bg's price statistics ("Статистика на цените", "Цени на имоти"), homes.bg or address.bg. Use the latest month shown; open the statistics page itself and read the numbers from it.`,
+    "Report only numbers you read on such a page (convert BGN to € ÷ 1.95583). Map each neighbourhood to the closest name from the list (the same place under another spelling, e.g. 'кв. Левски' → 'Левски'); leave out the ones you can't match surely.",
+    `The neighbourhoods: ${job.neighborhoods.join(", ")}`,
+  ].join("\n");
+}
+
 function trackPrompt(job: TrackJob) {
   return [
     "Open each of these listing pages and say what it shows now: is it still up, and its asking price.",
@@ -138,13 +177,13 @@ export async function POST(request: Request) {
   if (!anthropic) return new Response(null, { status: 503 });
   const db = anonymous();
   const { data: claimed } = await db.rpc("scout_claim", { target: id, job_token: token });
-  const job = claimed as SearchJob | TrackJob | null;
+  const job = claimed as SearchJob | TrackJob | PricesJob | null;
   if (!job) return new Response(null, { status: 404 });
 
   const search = job.kind === "search";
 
   /** One task for Brix with its tools; what it reported through `tool` (null: nothing). */
-  async function ask(prompt: string, tools: Anthropic.Beta.BetaToolUnion[], tool: typeof SEARCH_TOOL | typeof TRACK_TOOL) {
+  async function ask(prompt: string, tools: Anthropic.Beta.BetaToolUnion[], tool: { name: string } & Anthropic.Beta.BetaTool) {
     const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
     try {
       for (let step = 0; step <= MAX_CONTINUATIONS; step++) {
@@ -187,6 +226,57 @@ export async function POST(request: Request) {
     place: text(r.place, 120),
     private: privateOf(r.private),
   });
+
+  if (job.kind === "prices") {
+    // the report is one object, not a list: asked for straight
+    const tool = pricesTool(job.neighborhoods);
+    const raw = await askObject(pricesPrompt(job), tool);
+    const prices = Array.isArray(raw?.prices) ? raw.prices : [];
+    const report = {
+      source: text(raw?.source, 100),
+      town_price: num(raw?.town_price),
+      prices: prices
+        .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+        .map((r) => ({ neighborhood: text(r.neighborhood, 120), price: num(r.price) }))
+        .filter((r) => r.neighborhood && r.price),
+    };
+    const { error } = await db.rpc("scout_report", { target: id, job_token: token, payload: report });
+    if (error) console.error("Reporting the market prices failed:", error.message);
+    return Response.json({ ok: !error, found: report.prices.length });
+  }
+
+  /** Like ask, for a tool whose report is one object. */
+  async function askObject(prompt: string, tool: { name: string } & Anthropic.Beta.BetaTool) {
+    const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
+    try {
+      for (let step = 0; step <= MAX_CONTINUATIONS; step++) {
+        const response = await anthropic!.beta.messages.create({
+          model: MODEL,
+          max_tokens: 16000,
+          output_config: { effort: "medium" },
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default",
+          system: "You are Brix, the market analyst of a Bulgarian real-estate agency. Report facts you read on the pages only: never invent a number.",
+          tools: [
+            { type: "web_search_20260209", name: "web_search", max_uses: 5, allowed_domains: PORTALS },
+            { type: "web_fetch_20260209", name: "web_fetch", max_uses: 6 },
+            tool,
+          ],
+          messages,
+        });
+        if (response.stop_reason === "refusal") return null;
+        const use = response.content.find(
+          (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === "tool_use" && block.name === tool.name
+        );
+        if (use) return use.input as Record<string, unknown>;
+        if (response.stop_reason !== "pause_turn") return null;
+        messages.push({ role: "assistant", content: response.content });
+      }
+    } catch (error) {
+      console.error("Brix's market prices failed:", error instanceof Error ? error.message : error);
+    }
+    return null;
+  }
 
   let payload: { listings: unknown[] };
   if (search) {

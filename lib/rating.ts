@@ -8,10 +8,13 @@ export type Rating = {
   /** the market's €/m² */
   benchSqm: number;
   /** what "the market" is: the comparables (added + the agency's), the agency's listings, or the Market page's price */
-  basis: "comparables" | "listings" | "reference";
+  basis: "comparables" | "listings" | "reference" | "sold";
   /** comparables added from the portals; all the comparables */
   added: number;
   pool: number;
+  /** the real sales nearby counted in (0: none), and how much they weighed (0–1) */
+  sold: number;
+  soldWeight: number;
   /** the price the market suggests (±5%) */
   estimate: { low: number; mid: number; high: number } | null;
 };
@@ -35,11 +38,21 @@ export function parseRating(raw: unknown): Rating | null {
     stars,
     diff: Number(r.diff ?? 0),
     benchSqm: bench,
-    basis: r.basis === "comparables" || r.basis === "reference" ? r.basis : "listings",
+    basis: r.basis === "comparables" || r.basis === "reference" || r.basis === "sold" ? r.basis : "listings",
     added: Number(r.added ?? 0),
     pool: Number(r.pool ?? 0),
+    sold: Number(r.sold ?? 0),
+    soldWeight: Number(r.sold_weight ?? 0),
     estimate: e ? { low: Number(e.low), mid: Number(e.mid), high: Number(e.high) } : null,
   };
+}
+
+/** What "the market" was for a rating, in words: the basis, and the real sales when they counted. */
+export function ratingBasisText(rating: Rating, t: { rating: { basis: Record<Rating["basis"], string>; withSold: string } }) {
+  const said = t.rating.basis[rating.basis].replaceAll("{n}", String(rating.pool)).replaceAll("{added}", String(rating.added)).replaceAll("{sold}", String(rating.sold));
+  return rating.sold > 0 && rating.basis !== "sold"
+    ? `${said} ${t.rating.withSold.replaceAll("{n}", String(rating.sold)).replaceAll("{pct}", String(Math.round(rating.soldWeight * 100)))}`
+    : said;
 }
 
 /** The portal's name from a listing's address (imot.bg, homes.bg…). */

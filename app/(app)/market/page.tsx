@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, CalendarDays, Landmark, LineChart, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { BrixPricesButton } from "@/components/market/BrixPricesButton";
 import { MarketDiffChip } from "@/components/market/MarketCard";
 import { MarketPriceEditor } from "@/components/market/MarketPriceEditor";
 import { PriceHistory } from "@/components/market/PriceHistory";
@@ -308,6 +309,7 @@ export default async function MarketPage({ searchParams }: PageProps<"/market">)
             </>
           }
         >
+          {session.isLeader && process.env.ANTHROPIC_API_KEY && <BrixPricesButton towns={towns} />}
           {session.isLeader ? (
             <MarketPriceEditor key={operation} towns={towns} prices={prices} operation={operation} today={today} />
           ) : (

@@ -6,6 +6,7 @@ import { formatDate, formatNumber, formatPrice } from "./format";
 import { fmt, type Dictionary, type Lang } from "./i18n/dictionaries";
 import { AnalysisPdf, type PdfImage } from "./pdf/analysis-pdf";
 import { rentalYield, type RentEstimate } from "./yield";
+import { ratingBasisText } from "@/lib/rating";
 
 /** The listing as the analysis speaks of it. */
 export type AnalysisSubject = {
@@ -98,7 +99,7 @@ export async function renderAnalysisPdf(
       : []),
   ];
   const notes = [
-    fmt(t.rating.basis[rating.basis], { n: rating.pool, added: rating.added }),
+    ratingBasisText(rating, t),
     ...(audience === "owner"
       ? [
           facts.expected_final !== null ? `${t.rating.expected}: ${euro(facts.expected_final)}` : null,

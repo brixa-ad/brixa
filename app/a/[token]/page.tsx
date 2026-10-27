@@ -11,6 +11,7 @@ import { formatDate, formatNumber, formatPrice } from "@/lib/format";
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { rentalYield } from "@/lib/yield";
+import { ratingBasisText } from "@/lib/rating";
 
 export async function generateMetadata({ params }: PageProps<"/a/[token]">): Promise<Metadata> {
   const { token } = await params;
@@ -121,7 +122,7 @@ export default async function SharedAnalysisPage({ params }: PageProps<"/a/[toke
         </dl>
         {advice && <p className="mt-4 font-semibold">{advice}</p>}
         <ul className="mt-3 space-y-1 text-sm text-muted">
-          <li>{fmt(t.rating.basis[rating.basis], { n: rating.pool, added: rating.added })}</li>
+          <li>{ratingBasisText(rating, t)}</li>
           {audience === "owner" && facts.expected_final !== null && (
             <li>
               {t.rating.expected}: {euro(facts.expected_final)}

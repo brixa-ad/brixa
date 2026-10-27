@@ -101,3 +101,13 @@ export async function findTowns(query: string): Promise<FoundTown[]> {
       neighborhoods: [...(s.hoods ?? [])].sort((a, b) => a.name.localeCompare(b.name, "bg")),
     }));
 }
+
+/** Brix reads the portals' price statistics for a town now (sale and rent; every Monday anyway). */
+export async function refreshPricesWithBrix(settlementId: string): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.isLeader || !settlementId) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("refresh_market_prices", { target_settlement: settlementId });
+  if (error) console.error("Asking Brix for the market prices failed:", error.message);
+  return { ok: Number(data ?? 0) > 0 };
+}
