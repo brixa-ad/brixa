@@ -4,12 +4,25 @@ import type { ProposedAction } from "@/lib/brix/tools";
 import { emptyFinancing, emptyOffer, emptySearch } from "@/lib/client-validation";
 import { getSession } from "@/lib/session";
 import { createClientRecord } from "../clients/actions";
+import { savePartner } from "../partners/actions";
 import { logActivity, saveTask } from "../tasks/actions";
 
 /** The user pressed "Confirm" on something Brix proposed. */
 export async function confirmBrixAction(action: ProposedAction): Promise<{ ok: boolean; href?: string }> {
   const session = await getSession();
   if (!session) return { ok: false };
+
+  if (action.kind === "colleague") {
+    if (action.duplicate) return { ok: false, href: `/partners/${action.duplicate.id}` };
+    const result = await savePartner(null, {
+      full_name: action.fullName,
+      agency: action.agency,
+      phone: action.phone,
+      email: action.email,
+      notes: "",
+    });
+    return result.ok ? { ok: true, href: `/partners/${result.id}` } : { ok: false };
+  }
 
   if (action.kind === "client") {
     // a new client, theirs, with what they want; the next step comes along as a task

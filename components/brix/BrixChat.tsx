@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ClipboardList, History, Loader2, RotateCcw, Sparkles, TriangleAlert, UserPlus, X } from "lucide-react";
+import { ArrowUp, Check, ClipboardList, History, Loader2, RotateCcw, Sparkles, TriangleAlert, UserPlus, X, Handshake } from "lucide-react";
 import { confirmBrixAction } from "@/app/(app)/brix/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { buttonClass, inputClass } from "@/components/ui/form";
@@ -247,10 +247,19 @@ function ActionCard({ action, onConfirm, onDismiss }: { action: ShownAction; onC
       ? { icon: <ClipboardList className="size-3.5" />, label: B.actionTask }
       : action.kind === "client"
         ? { icon: <UserPlus className="size-3.5" />, label: B.actionClient }
-        : { icon: <History className="size-3.5" />, label: B.actionActivity };
-  const title = action.kind === "task" ? action.title : action.kind === "client" ? action.fullName : t.options.activityType[action.type];
+        : action.kind === "colleague"
+          ? { icon: <Handshake className="size-3.5" />, label: B.actionColleague }
+          : { icon: <History className="size-3.5" />, label: B.actionActivity };
+  const title =
+    action.kind === "task"
+      ? action.title
+      : action.kind === "client" || action.kind === "colleague"
+        ? action.fullName
+        : t.options.activityType[action.type];
   const details =
-    action.kind === "client"
+    action.kind === "colleague"
+      ? [action.agency, action.phone, action.email]
+      : action.kind === "client"
       ? [action.phone, action.types.map((type) => t.options.clientType[type]).join(", "), t.options.clientClass[action.clientClass], action.budgetMax ? fmt(B.budgetUpTo, { amount: formatPrice(action.budgetMax, "EUR", lang) ?? "" }) : null]
       : [
           action.kind === "task" && `${formatDate(action.dueDate, lang)}${action.dueTime ? `, ${action.dueTime}` : ""}`,
@@ -258,8 +267,8 @@ function ActionCard({ action, onConfirm, onDismiss }: { action: ShownAction; onC
           action.kind === "task" && action.partnerName,
           action.propertyTitle,
         ];
-  const note = action.kind === "activity" ? action.note : action.kind === "client" ? action.notes : action.description || null;
-  const duplicate = action.kind === "client" ? action.duplicate : null;
+  const note = action.kind === "activity" ? action.note : action.kind === "client" ? action.notes : action.kind === "task" ? action.description || null : null;
+  const duplicate = action.kind === "client" || action.kind === "colleague" ? action.duplicate : null;
 
   return (
     <div className="rounded-xl border border-accent/30 bg-accent-soft/40 p-3">
@@ -280,8 +289,8 @@ function ActionCard({ action, onConfirm, onDismiss }: { action: ShownAction; onC
         <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-warning">
           <TriangleAlert className="mt-px size-3.5 shrink-0" />
           <span>
-            {B.clientExists}{" "}
-            <Link href={`/clients/${duplicate.id}`} className="underline">
+            {action.kind === "colleague" ? B.colleagueExists : B.clientExists}{" "}
+            <Link href={action.kind === "colleague" ? `/partners/${duplicate.id}` : `/clients/${duplicate.id}`} className="underline">
               {duplicate.name}
             </Link>
           </span>

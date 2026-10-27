@@ -48,6 +48,15 @@ export type ProposedAction =
       duplicate: { id: string; name: string } | null;
     }
   | {
+      kind: "colleague";
+      fullName: string;
+      agency: string;
+      phone: string;
+      email: string;
+      /** a colleague with this phone is already in the agency */
+      duplicate: { id: string; name: string } | null;
+    }
+  | {
       kind: "activity";
       type: Exclude<(typeof ACTIVITY_TYPES)[number], "task">;
       note: string;
@@ -194,6 +203,21 @@ export const BRIX_TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["full_name", "types", "notes"],
+    },
+  },
+  {
+    name: "create_colleague",
+    description:
+      "Propose a NEW colleague from another agency (the user confirms it): name, agency, phone, e-mail. Only after search_colleagues didn't find them.",
+    input_schema: {
+      type: "object",
+      properties: {
+        full_name: { type: "string" },
+        agency: { type: "string" },
+        phone: { type: "string" },
+        email: { type: "string" },
+      },
+      required: ["full_name"],
     },
   },
   {
@@ -497,6 +521,30 @@ export async function runTool(
       return {
         result: duplicate
           ? { status: "a client with this phone already exists — tell the user and use their id", existing_client: duplicate }
+          : { status: "shown to the user to confirm", proposal },
+        proposal,
+      };
+    }
+
+    case "create_colleague": {
+      const phone = clean(input.phone, 40);
+      let duplicate: { id: string; name: string } | null = null;
+      const digits = phone.replace(/\D/g, "").replace(/^(359|0)/, "");
+      if (digits.length >= 6) {
+        const { data } = await supabase.from("partners").select("id, full_name").eq("organization_id", org).ilike("phone_normalized", `%${digits}`).limit(1).maybeSingle();
+        if (data) duplicate = { id: data.id, name: data.full_name };
+      }
+      const proposal: ProposedAction = {
+        kind: "colleague",
+        fullName: clean(input.full_name, 120),
+        agency: clean(input.agency, 120),
+        phone,
+        email: clean(input.email, 200),
+        duplicate,
+      };
+      return {
+        result: duplicate
+          ? { status: "a colleague with this phone already exists — tell the user and use their id", existing_colleague: duplicate }
           : { status: "shown to the user to confirm", proposal },
         proposal,
       };
