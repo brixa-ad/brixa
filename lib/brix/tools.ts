@@ -23,6 +23,9 @@ export type ProposedAction =
       dueTime: string | null;
       clientId: string | null;
       clientName: string | null;
+      /** a colleague from another agency the task is with (a viewing together) */
+      partnerId: string | null;
+      partnerName: string | null;
       propertyId: string | null;
       propertyTitle: string | null;
       description: string;
@@ -135,6 +138,16 @@ export const BRIX_TOOLS: Anthropic.Tool[] = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "search_colleagues",
+    description:
+      "Search the agency's colleagues from other agencies (partner brokers): by part of the name, the agency (e.g. 'Лайънс') or the phone. Returns id, name, agency, phone.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Part of the name, the agency or the phone" } },
+      required: ["query"],
+    },
+  },
+  {
     name: "create_task",
     description:
       "Propose a task for the user (they confirm it with a button). Use ids from earlier results for the client / property.",
@@ -147,7 +160,8 @@ export const BRIX_TOOLS: Anthropic.Tool[] = [
         due_time: { type: "string", description: "HH:MM, optional" },
         client_id: { type: "string" },
         property_id: { type: "string" },
-        description: { type: "string" },
+        partner_id: { type: "string", description: "A colleague from another agency it's with (from search_colleagues)" },
+        description: { type: "string", description: "The details: the address, who else comes, what to bring" },
       },
       required: ["title", "type", "due_date"],
     },
@@ -393,13 +407,46 @@ export async function runTool(
       return { result: { month: slim(boards.month), year: slim(boards.year) } };
     }
 
+    case "search_colleagues": {
+      const text = ilike(clean(input.query, 80));
+      if (!text) return { result: [] };
+      const digits = text.replace(/\D/g, "");
+      const { data, error } = await supabase
+        .from("partners")
+        .select("id, full_name, agency, phone")
+        .eq("organization_id", org)
+        .or([`full_name.ilike.%${text}%`, `agency.ilike.%${text}%`, ...(digits.length >= 3 ? [`phone_normalized.ilike.%${digits}%`] : [])].join(","))
+        .limit(LIMIT);
+      // "Иван от Лайънс": the name and the agency together
+      const words = text.split(/\s+/).filter((w) => w.length >= 3);
+      let rows = data ?? [];
+      if (!rows.length && words.length > 1) {
+        const { data: wide } = await supabase
+          .from("partners")
+          .select("id, full_name, agency, phone")
+          .eq("organization_id", org)
+          .or(words.flatMap((w) => [`full_name.ilike.%${w}%`, `agency.ilike.%${w}%`]).join(","))
+          .limit(LIMIT);
+        rows = (wide ?? []).filter((r) => words.filter((w) => `${r.full_name} ${r.agency ?? ""}`.toLowerCase().includes(w.toLowerCase())).length >= 2);
+      }
+      return { result: error ? { error: error.message } : rows };
+    }
+
     case "create_task": {
       const type = isOneOf(TASK_TYPES, input.type) ? input.type : "other";
       const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(String(input.due_date)) ? String(input.due_date) : today;
       const dueTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(input.due_time ?? "")) ? String(input.due_time) : null;
-      const [client, property] = await Promise.all([clientName(ctx, input.client_id), propertyTitle(ctx, input.property_id)]);
+      const [client, property, partner] = await Promise.all([
+        clientName(ctx, input.client_id),
+        propertyTitle(ctx, input.property_id),
+        typeof input.partner_id === "string" && input.partner_id
+          ? supabase.from("partners").select("id, full_name, agency").eq("id", input.partner_id).eq("organization_id", org).maybeSingle().then(({ data }) => data)
+          : Promise.resolve(null),
+      ]);
       const proposal: ProposedAction = {
         kind: "task",
+        partnerId: partner?.id ?? null,
+        partnerName: partner ? `${partner.full_name}${partner.agency ? ` (${partner.agency})` : ""}` : null,
         title: clean(input.title, 200) || ctx.t.options.taskType[type],
         type,
         dueDate,

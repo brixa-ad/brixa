@@ -62,6 +62,12 @@ export async function confirmBrixAction(action: ProposedAction): Promise<{ ok: b
       dueTime: action.dueTime,
       description: action.description?.trim() || action.title,
     });
+    if (result.ok && action.partnerId) {
+      // with a colleague from another agency: on their card too
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
+      await supabase.from("tasks").update({ partner_id: action.partnerId }).eq("id", result.id);
+    }
     return result.ok ? { ok: true, href: `/tasks/${result.id}` } : { ok: false };
   }
 

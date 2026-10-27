@@ -252,8 +252,13 @@ function ActionCard({ action, onConfirm, onDismiss }: { action: ShownAction; onC
   const details =
     action.kind === "client"
       ? [action.phone, action.types.map((type) => t.options.clientType[type]).join(", "), t.options.clientClass[action.clientClass], action.budgetMax ? fmt(B.budgetUpTo, { amount: formatPrice(action.budgetMax, "EUR", lang) ?? "" }) : null]
-      : [action.kind === "task" && `${formatDate(action.dueDate, lang)}${action.dueTime ? `, ${action.dueTime}` : ""}`, action.clientName, action.propertyTitle];
-  const note = action.kind === "activity" ? action.note : action.kind === "client" ? action.notes : null;
+      : [
+          action.kind === "task" && `${formatDate(action.dueDate, lang)}${action.dueTime ? `, ${action.dueTime}` : ""}`,
+          action.clientName,
+          action.kind === "task" && action.partnerName,
+          action.propertyTitle,
+        ];
+  const note = action.kind === "activity" ? action.note : action.kind === "client" ? action.notes : action.description || null;
   const duplicate = action.kind === "client" ? action.duplicate : null;
 
   return (
