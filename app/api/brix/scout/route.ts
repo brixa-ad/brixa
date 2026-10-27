@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { brixClient } from "@/lib/brix/model";
 import { anonymous } from "@/lib/share";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /** Reading the portals needs care: the most capable model, at medium effort. */
 const MODEL = "claude-opus-5-5";
@@ -66,7 +66,8 @@ const TRACK_TOOL = {
             status: {
               type: "string",
               enum: ["active", "gone", "unknown"],
-              description: "active: the listing is up; gone: removed, sold, or the page says it no longer exists; unknown: the page couldn't be read",
+              description:
+                "active: the listing is up; gone: removed, sold, expired (изтекла), invalid (невалидна / не съществува), or the page leads to a search or the home page instead; unknown: the page couldn't be read",
             },
             price_eur: { type: "number", description: "The asking price now, in euro; 0 when not shown" },
             title: { type: "string" },
@@ -93,7 +94,8 @@ function searchPrompt(job: SearchJob) {
     job.private_only
       ? "ONLY listings by private persons (частно лице / от собственик / без посредник) — leave out agencies."
       : "Mark which ones a private person sells.",
-    "Report only a listing's own page (one property), never a search or category page. Up to 15.",
+    "Search several times, in Bulgarian, with different words (e.g. 'продава двустаен Левски Варна', 'двустаен апартамент Варна от собственик', the kind and the neighbourhood on each portal), so as to find as many as possible.",
+    "Report only a listing's own page (one property), never a search or category page. Up to 15 — they will each be opened and checked.",
     job.known.length ? `Already known — leave these out:\n${job.known.slice(0, 150).join("\n")}` : "",
   ]
     .filter(Boolean)
@@ -140,65 +142,87 @@ export async function POST(request: Request) {
   if (!job) return new Response(null, { status: 404 });
 
   const search = job.kind === "search";
-  const tool = search ? SEARCH_TOOL : TRACK_TOOL;
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: search ? searchPrompt(job) : trackPrompt(job) }];
-  let report: unknown = null;
 
-  try {
-    for (let step = 0; step <= MAX_CONTINUATIONS && !report; step++) {
-      const response = await anthropic.beta.messages.create({
-        model: MODEL,
-        max_tokens: 16000,
-        output_config: { effort: "medium" },
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        system:
-          "You are Brix, the market scout of a Bulgarian real-estate agency. You look at the public listings on the property portals and report facts only: never invent a listing, a link or a price. Leave out people's names and phone numbers.",
-        tools: search
-          ? [{ type: "web_search_20260209", name: "web_search", max_uses: 5, allowed_domains: PORTALS }, tool]
-          : [{ type: "web_fetch_20260209", name: "web_fetch", max_uses: job.listings.length + 2 }, tool],
-        messages,
-      });
-      if (response.stop_reason === "refusal") break;
-      const use = response.content.find(
-        (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === "tool_use" && block.name === tool.name
-      );
-      if (use) report = use.input;
-      else if (response.stop_reason === "pause_turn") messages.push({ role: "assistant", content: response.content });
-      else break;
+  /** One task for Brix with its tools; what it reported through `tool` (null: nothing). */
+  async function ask(prompt: string, tools: Anthropic.Beta.BetaToolUnion[], tool: typeof SEARCH_TOOL | typeof TRACK_TOOL) {
+    const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
+    try {
+      for (let step = 0; step <= MAX_CONTINUATIONS; step++) {
+        const response = await anthropic!.beta.messages.create({
+          model: MODEL,
+          max_tokens: 16000,
+          output_config: { effort: "medium" },
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default",
+          system:
+            "You are Brix, the market scout of a Bulgarian real-estate agency. You look at the public listings on the property portals and report facts only: never invent a listing, a link or a price. Leave out people's names and phone numbers.",
+          tools: [...tools, tool],
+          messages,
+        });
+        if (response.stop_reason === "refusal") return null;
+        const use = response.content.find(
+          (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === "tool_use" && block.name === tool.name
+        );
+        if (use) {
+          return ((use.input as { listings?: unknown[] })?.listings ?? []).filter(
+            (row): row is Record<string, unknown> => typeof row === "object" && row !== null
+          );
+        }
+        if (response.stop_reason !== "pause_turn") return null;
+        messages.push({ role: "assistant", content: response.content });
+      }
+    } catch (error) {
+      console.error("Brix's market scout failed:", error instanceof Error ? error.message : error);
     }
-  } catch (error) {
-    console.error("Brix's market scout failed:", error instanceof Error ? error.message : error);
+    return null;
   }
 
-  const rows = ((report as { listings?: unknown[] } | null)?.listings ?? []).filter(
-    (row): row is Record<string, unknown> => typeof row === "object" && row !== null
-  );
-  const payload = search
-    ? {
-        listings: rows
-          .map((r) => ({
-            url: text(r.url, 600) ?? "",
-            title: text(r.title, 200),
-            price_eur: num(r.price_eur),
-            area: num(r.area),
-            place: text(r.place, 120),
-            private: privateOf(r.private),
-          }))
-          .filter((r) => /^https?:\/\//i.test(r.url) && onPortal(r.url))
-          .filter((r) => !job.private_only || r.private !== false),
-      }
-    : {
-        listings: rows.map((r) => ({
-          id: text(r.id, 40),
-          status: r.status === "active" || r.status === "gone" ? r.status : "unknown",
-          price_eur: num(r.price_eur),
-          title: text(r.title, 200),
-          area: num(r.area),
-          place: text(r.place, 120),
-          private: privateOf(r.private),
-        })),
-      };
+  const fetchTool = (pages: number): Anthropic.Beta.BetaToolUnion => ({ type: "web_fetch_20260209", name: "web_fetch", max_uses: pages + 2 });
+  const checked = (r: Record<string, unknown>) => ({
+    id: text(r.id, 40),
+    status: r.status === "active" || r.status === "gone" ? r.status : "unknown",
+    price_eur: num(r.price_eur),
+    title: text(r.title, 200),
+    area: num(r.area),
+    place: text(r.place, 120),
+    private: privateOf(r.private),
+  });
+
+  let payload: { listings: unknown[] };
+  if (search) {
+    const found = ((await ask(searchPrompt(job), [{ type: "web_search_20260209", name: "web_search", max_uses: 8, allowed_domains: PORTALS }], SEARCH_TOOL)) ?? [])
+      .map((r) => ({
+        url: text(r.url, 600) ?? "",
+        title: text(r.title, 200),
+        price_eur: num(r.price_eur),
+        area: num(r.area),
+        place: text(r.place, 120),
+        private: privateOf(r.private),
+      }))
+      .filter((r) => /^https?:\/\//i.test(r.url) && onPortal(r.url) && !job.known.includes(r.url))
+      .slice(0, 12);
+
+    // a search engine still shows listings taken down days ago: each one is opened, and only the live ones stay
+    const checks = found.length
+      ? ((await ask(trackPrompt({ kind: "track", listings: found.map((r, i) => ({ id: String(i), url: r.url, price_eur: r.price_eur })) }), [fetchTool(found.length)], TRACK_TOOL)) ?? []).map(checked)
+      : [];
+    const byIndex = new Map(checks.map((c) => [c.id, c]));
+    payload = {
+      listings: found
+        .map((r, i) => {
+          const page = byIndex.get(String(i));
+          if (page?.status === "gone") return null;
+          // what the page itself says wins over the search's snippet
+          return page?.status === "active"
+            ? { ...r, price_eur: page.price_eur ?? r.price_eur, area: page.area ?? r.area, place: page.place ?? r.place, title: page.title ?? r.title, private: page.private ?? r.private }
+            : r;
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+        .filter((r) => !job.private_only || r.private !== false),
+    };
+  } else {
+    payload = { listings: ((await ask(trackPrompt(job), [fetchTool(job.listings.length)], TRACK_TOOL)) ?? []).map(checked) };
+  }
 
   // reported even when nothing was found: the job is done for today
   const { error } = await db.rpc("scout_report", { target: id, job_token: token, payload });
