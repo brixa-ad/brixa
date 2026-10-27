@@ -1207,7 +1207,6 @@ const bg = {
     open: "Отвори голяма",
     before: "Преди",
     after: "След",
-    holdHint: "задръж върху снимката за оригинала",
     notEdited: "Оригинал — не е обработвана от Brix",
   },
   detail: {
@@ -4423,7 +4422,6 @@ const en: Dictionary = {
     open: "Open big",
     before: "Before",
     after: "After",
-    holdHint: "hold the photo for the original",
     notEdited: "Original — not edited by Brix",
   },
   detail: {

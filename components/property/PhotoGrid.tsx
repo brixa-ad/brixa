@@ -41,7 +41,7 @@ export function PhotoGrid({
         >
           {photo.url &&
             (onOpen ? (
-              <button type="button" onClick={() => onOpen(photo.key)} className="size-full cursor-zoom-in" aria-label={t.photos.open}>
+              <button type="button" onClick={() => onOpen(photo.key)} className="size-full cursor-pointer" aria-label={t.photos.open}>
                 <img src={photo.url} alt="" className="size-full object-cover" />
               </button>
             ) : (
