@@ -684,3 +684,51 @@ export function HandOverButton({
     </>
   );
 }
+
+/** Send an invitation's link: the phone's share (Viber, WhatsApp…), an e-mail, or the link copied. */
+export function SendInviteButton({ email, name, agency, link }: { email: string; name: string | null; agency: string; link: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const text = fmt(t.team.inviteText, { name: name ? ` ${name.split(" ")[0]}` : "", agency, email, link });
+  const small = `${buttonClass.secondary} px-2.5! py-1! text-xs!`;
+  return (
+    <span className="mt-1.5 flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        className={small}
+        onClick={async () => {
+          if ("share" in navigator) {
+            try {
+              await navigator.share({ text });
+              return;
+            } catch {
+              // cancelled: fall through to copying
+            }
+          }
+          try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+          } catch {}
+        }}
+      >
+        <Forward className="size-3.5" />
+        {t.team.sendInvite}
+      </button>
+      <a href={`mailto:${email}?subject=${encodeURIComponent(t.team.inviteSubject)}&body=${encodeURIComponent(text)}`} className={small}>
+        {t.team.sendInviteMail}
+      </a>
+      <button
+        type="button"
+        className={small}
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(link);
+            setCopied(true);
+          } catch {}
+        }}
+      >
+        {copied ? t.team.copied : t.team.copyLink}
+      </button>
+    </span>
+  );
+}

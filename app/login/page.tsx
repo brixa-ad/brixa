@@ -13,7 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const [{ error, notice, signup }, theme] = await Promise.all([searchParams, getTheme()]);
+  const [{ error, notice, signup, invite }, theme] = await Promise.all([searchParams, getTheme()]);
+  // an invitation link: the email it was sent to (sign-up, straight into the agency)
+  const invited = typeof invite === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invite) ? invite.slice(0, 200) : null;
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -33,7 +35,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           signInError={error === "invalidCredentials" || error === "genericError" ? error : null}
           callbackFailed={error === "callback"}
           emailConfirmed={notice === "confirmed"}
-          startOnSignUp={signup === "1"}
+          startOnSignUp={signup === "1" || Boolean(invited)}
+          invitedEmail={invited}
         />
       </div>
     </main>

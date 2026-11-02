@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Building2, Mail, Phone, ShieldCheck, Target, Users } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -21,6 +22,7 @@ import {
   RenameForm,
   RevokeButton,
   RoleSelect,
+  SendInviteButton,
   TeamButton,
 } from "./TeamForms";
 
@@ -51,6 +53,9 @@ export default async function TeamPage() {
   const supabase = await createClient();
   const { isOwner } = session;
   const isOfficeManager = session.role === "office_manager";
+  const h = await headers();
+  // the address the invitation's link points to
+  const site = h.get("origin") ?? `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
 
   const [{ t, lang }, members, { offices, teams }, { data: invitations }] = await Promise.all([
     getI18n(),
@@ -337,7 +342,7 @@ export default async function TeamPage() {
                 ) : (
                   <ul className="space-y-3">
                     {(invitations as Invitation[]).map((invite) => (
-                      <li key={invite.id} className="flex items-center gap-3 text-sm">
+                      <li key={invite.id} className="flex items-start gap-3 text-sm">
                         <Mail className="size-4 shrink-0 text-subtle" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{invite.full_name || invite.email}</p>
@@ -347,6 +352,12 @@ export default async function TeamPage() {
                               .filter(Boolean)
                               .join(" · ")}
                           </p>
+                          <SendInviteButton
+                            email={invite.email}
+                            name={invite.full_name}
+                            agency={session.organizationName}
+                            link={`${site}/login?invite=${encodeURIComponent(invite.email)}`}
+                          />
                         </div>
                         <RevokeButton id={invite.id} />
                       </li>

@@ -31,24 +31,28 @@ export function LoginForm({
   callbackFailed,
   emailConfirmed,
   startOnSignUp = false,
+  invitedEmail = null,
 }: {
   signInError: "invalidCredentials" | "genericError" | null;
   callbackFailed: boolean;
   emailConfirmed: boolean;
   /** came from "Try it free" */
   startOnSignUp?: boolean;
+  /** came by an invitation's link: only the person's own details — they join the agency that invited them */
+  invitedEmail?: string | null;
 }) {
   const { t } = useI18n();
   const [mode, setMode] = useState<"signIn" | "signUp">(startOnSignUp ? "signUp" : "signIn");
   const [signUpState, signUpAction, signingUp] = useActionState<AuthState, FormData>(signUp, {});
   const [signingIn, setSigningIn] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
-  const [account, setAccount] = useState<"agency" | "solo">("agency");
+  const [account, setAccount] = useState<"agency" | "solo">(invitedEmail ? "solo" : "agency");
   const [logo, setLogo] = useState<string | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
 
   const isSignUp = mode === "signUp";
-  const isAgency = isSignUp && account === "agency";
+  const invited = isSignUp && Boolean(invitedEmail);
+  const isAgency = isSignUp && account === "agency" && !invited;
 
   async function pickLogo(file: File | undefined) {
     if (!file) return;
@@ -119,7 +123,12 @@ export function LoginForm({
           </p>
         )}
 
-        {isSignUp && (
+        {invited && (
+          <p className="rounded-xl border border-accent/30 bg-accent-soft/50 p-3 text-sm text-fg-2">{t.auth.invitedBanner}</p>
+        )}
+        {invited && <input type="hidden" name="accountType" value="solo" />}
+
+        {isSignUp && !invited && (
           <>
             <div role="radiogroup" className="grid grid-cols-2 gap-2">
               {(
@@ -202,6 +211,10 @@ export function LoginForm({
               </>
             )}
 
+          </>
+        )}
+        {isSignUp && (
+          <>
             <div className={isAgency ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "space-y-4"}>
               <Field label={t.auth.fullName} required>
                 {(props) => <input {...props} name="fullName" required maxLength={120} autoComplete="name" className={inputClass} />}
@@ -221,6 +234,7 @@ export function LoginForm({
               name="email"
               type="email"
               required
+              defaultValue={invited ? (invitedEmail ?? undefined) : undefined}
               // "username" is what password managers pair with the password field.
               autoComplete="username"
               inputMode="email"
