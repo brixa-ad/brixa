@@ -42,8 +42,12 @@ export default async function AcademyQuestionsPage({ searchParams }: PageProps<"
   const bank = (bankRows ?? []) as BankRow[];
   const questions = (questionRows ?? []) as AcademyQuestion[];
   const me = meData as AcademyMe | null;
-  const builtin = bank.reduce((sum, r) => sum + r.builtin, 0);
-  const cell = (topic: string, level: number) => bank.find((r) => r.topic === topic && r.level === level);
+  // what this agency's tests draw from (the city questions of its city); BRIXA's whole bank for the platform admin
+  const builtin = brixa ? questions.filter((q) => q.active).length : bank.reduce((sum, r) => sum + r.builtin, 0);
+  const cell = (topic: string, level: number) =>
+    brixa
+      ? { builtin: questions.filter((q) => q.active && q.topic === topic && q.level === level).length, own: 0 }
+      : bank.find((r) => r.topic === topic && r.level === level);
 
   return (
     <>

@@ -93,7 +93,7 @@ export default async function AcademyTeamPage() {
               <thead>
                 <tr className="border-b border-line-soft text-left text-xs text-muted">
                   <th className="px-5 py-2 font-medium sm:px-6">{t.teamWeek.person}</th>
-                  <th className="px-2 py-2 font-medium">{A.yourLevel}</th>
+                  <th className="px-2 py-2 font-medium">{A.form.level}</th>
                   <th className="px-2 py-2 font-medium">{A.lastExam}</th>
                   <th className="px-2 py-2 font-medium">{A.certificateShort}</th>
                   <th className="px-5 py-2 sm:px-6" />
