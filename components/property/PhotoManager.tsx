@@ -48,8 +48,16 @@ export function PhotoManager({
     [photos]
   );
 
+  // the order just chosen — shown at once, before the page reloads with it (photos added later go last)
+  const [order, setOrder] = useState<string[] | null>(null);
+
   const working = busy || refreshing;
   const paths = photos.map((photo) => photo.storage_path).join("|");
+  const rank = (photo: Photo) => {
+    const index = order?.indexOf(photo.id) ?? -1;
+    return index >= 0 ? index : 1_000_000 + photo.position;
+  };
+  const shown = order ? [...photos].sort((a, b) => rank(a) - rank(b)) : photos;
 
   useEffect(() => {
     let live = true;
@@ -144,17 +152,25 @@ export function PhotoManager({
     });
   }
 
-  function makeCover(id: string) {
-    const firstPosition = photos.reduce((min, photo) => Math.min(min, photo.position), 0);
+  /** Saves the new order: each photo whose place changed gets its position (0 = the cover). */
+  function reorder(ids: string[]) {
+    const before = new Map(shown.map((photo, index) => [photo.id, { index, position: photo.position }]));
+    setOrder(ids);
     const supabase = createClient();
 
     run(async () => {
-      const { error: updateError } = await supabase
-        .from("property_photos")
-        .update({ position: firstPosition - 1 })
-        .eq("id", id);
-      return !updateError;
+      const results = await Promise.all(
+        ids
+          .map((id, index) => ({ id, index }))
+          .filter(({ id, index }) => before.get(id)?.index !== index || before.get(id)?.position !== index)
+          .map(({ id, index }) => supabase.from("property_photos").update({ position: index }).eq("id", id))
+      );
+      return results.every((result) => !result.error);
     });
+  }
+
+  function makeCover(id: string) {
+    reorder([id, ...shown.map((photo) => photo.id).filter((key) => key !== id)]);
   }
 
   return (
@@ -172,16 +188,17 @@ export function PhotoManager({
     >
       <div className="space-y-4">
         <PhotoGrid
-          photos={photos.map((photo) => ({ key: photo.id, url: photo.url, edit: editOf(photo) }))}
+          photos={shown.map((photo) => ({ key: photo.id, url: photo.url, edit: editOf(photo) }))}
           onMakeCover={makeCover}
           onRemove={remove}
+          onReorder={reorder}
           onEdit={toggleEdit}
-          onOpen={(id) => setOpen(photos.findIndex((p) => p.id === id))}
+          onOpen={(id) => setOpen(shown.findIndex((p) => p.id === id))}
           disabled={working}
         />
         {open !== null && open >= 0 && (
           <PhotoCompare
-            photos={photos.map((photo) => ({ key: photo.id, url: photo.url, edited: editOf(photo) === "edited" }))}
+            photos={shown.map((photo) => ({ key: photo.id, url: photo.url, edited: editOf(photo) === "edited" }))}
             startAt={open}
             originalUrl={originalUrl}
             onClose={closeOpen}

@@ -196,6 +196,10 @@ export function PropertyForm({
     });
   }
 
+  function reorderQueued(keys: string[]) {
+    setQueued((current) => keys.map((key) => current.find((p) => p.key === key)).filter((p): p is QueuedPhoto => Boolean(p)));
+  }
+
   // ---- what Brix is told about the listing (its words, not codes) ----
   function describeFacts() {
     const town = lookups.settlements.find((x) => x.id === values.settlementId);
@@ -479,6 +483,7 @@ export function PropertyForm({
                   photos={queued.map((p) => ({ key: p.key, url: p.url }))}
                   onMakeCover={queuedToCover}
                   onRemove={unqueuePhoto}
+                  onReorder={reorderQueued}
                   disabled={busy}
                 />
                 <EnhanceSwitch on={enhancePhotos} onChange={setEnhancePhotos} disabled={busy} />
