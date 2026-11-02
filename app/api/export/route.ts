@@ -53,6 +53,7 @@ const PARTS: Part[] = [
   { table: "owner_reports", sheet: "Отчети за собственици", order: "id", org: true },
   { table: "analysis_shares", sheet: "Изпратени анализи", order: "id", org: true },
   { table: "share_events", sheet: "Отваряния на линкове", order: "id", org: true },
+  { table: "site_views", sheet: "Прегледи от сайта", order: "id", org: true },
   { table: "marketing_done", sheet: "Маркетинг", order: "id", org: true },
   { table: "broker_goals", sheet: "Цели на брокери", order: "id", org: true },
   { table: "group_goals", sheet: "Цели на екипи", order: "id", org: true },

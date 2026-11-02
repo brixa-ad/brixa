@@ -12,6 +12,7 @@ import {
   type OperationType,
 } from "./options";
 import type { Dictionary } from "./i18n/dictionaries";
+import { MAX_VIDEO_LINKS, cleanVideoUrl } from "./video";
 
 /** Shape the form sends to the server. Numbers are already parsed. */
 export type PropertyInput = {
@@ -47,6 +48,9 @@ export type PropertyInput = {
   offMarket: boolean;
   description: string;
   featureIds: string[];
+  /** left out: unchanged */
+  videoLinks?: string[];
+  spot?: { lat: number; lng: number } | null;
 };
 
 export type ErrorCode = keyof Dictionary["errors"];
@@ -125,6 +129,10 @@ export function validateProperty(input: PropertyInput, categoryCode?: string): F
   checkNumber(errors, "commissionRate", input.commissionRate, { min: 0, max: input.operationType === "rent" ? 24 : 100 });
 
   if (input.description.length > DESCRIPTION_MAX) errors.description = "tooLong";
+
+  const links = (input.videoLinks ?? []).filter((link) => link.trim());
+  if (links.length > MAX_VIDEO_LINKS || links.some((link) => !cleanVideoUrl(link))) errors.videoLinks = "invalid";
+  if (input.spot && !(Math.abs(input.spot.lat) <= 90 && Math.abs(input.spot.lng) <= 180)) errors.spot = "invalid";
 
   return errors;
 }

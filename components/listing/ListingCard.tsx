@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Building2, EyeOff, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { Building2, Eye, EyeOff, Image as ImageIcon, MessageCircle, Phone, Play, ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/property/StatusBadge";
-import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
 import { telHref, whatsappHref } from "@/lib/phone";
 import type { Stars } from "@/lib/rating";
 import { CardPhotos } from "./CardPhotos";
@@ -29,6 +29,8 @@ export type ListingCardData = {
   phone: string | null;
   /** how the price stands on the market */
   rating?: { stars: Stars; label: string; title: string } | null;
+  /** the openings of the links sent and of the website: opened, looked at the photos, played the video */
+  views?: { opens: number; photos: number; video: number } | null;
 };
 
 /** A listing, the way the portals show it: the photos with the broker on them, the price, what it is, call / WhatsApp. */
@@ -67,6 +69,27 @@ export function ListingCard({ data, t }: { data: ListingCardData; t: Dictionary 
               )}
             </span>
             {data.age && <span className={`${pill} absolute bottom-3 left-3 font-medium`}>{data.age}</span>}
+            {data.views && data.views.opens > 0 && (
+              <span
+                className={`${pill} absolute bottom-3 right-3 inline-flex items-center gap-2 tabular-nums`}
+                title={fmt(t.views.cardTitle, { opens: data.views.opens, photos: data.views.photos, video: data.views.video })}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="size-3" />
+                  {data.views.opens}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <ImageIcon className="size-3" />
+                  {data.views.photos}
+                </span>
+                {data.views.video > 0 && (
+                  <span className="inline-flex items-center gap-1">
+                    <Play className="size-3" />
+                    {data.views.video}
+                  </span>
+                )}
+              </span>
+            )}
           </>
         }
       />

@@ -53,6 +53,8 @@ function toFormValues(property: PropertyDetail): PropertyFormValues {
     offMarket: property.off_market,
     description: property.description ?? "",
     featureIds: property.features.map((feature) => feature.id),
+    videoLinks: property.video_links,
+    spot: property.lat !== null && property.lng !== null ? { lat: property.lat, lng: property.lng } : null,
   };
 }
 
@@ -91,6 +93,7 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
           solo={session.solo}
           coverUrl={property.photos[0]?.url}
           existingPhotoCount={property.photos.length}
+          video={{ url: property.videoUrl, path: property.video_path }}
         />
         <div className="-mt-18 pb-24 lg:mt-0 lg:max-w-[calc(100%-344px)] lg:pb-0">
           <PhotoManager

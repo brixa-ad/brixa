@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, BrickWall, Building2, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
+import { MediaPanels, mapsHref } from "@/components/listing/MediaPanels";
+import { SiteBeacon } from "@/components/PublicPageTools";
 import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { YieldPanel } from "@/components/listing/YieldPanel";
@@ -36,7 +38,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
   const [listing, { t, lang }] = await Promise.all([getSiteListing(slug, id), getI18n()]);
   if (!listing) notFound();
 
-  const { property: p, photos, broker, agency } = listing;
+  const { property: p, photos, media, broker, agency } = listing;
   // with no phone of their own, the office's
   const brokerPhone = broker?.phone || agency?.phone || null;
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
@@ -52,6 +54,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
     [t.form.heating, label("heating", p.heating)],
   ];
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
+  const mapLink = mapsHref(media.spot, place);
   const headline = [
     p.subtype ? localName(p.subtype, lang) : null,
     p.rooms ? (p.rooms === 1 ? t.listing.oneRoom : fmt(t.listing.rooms, { n: p.rooms })) : null,
@@ -71,6 +74,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
+      <SiteBeacon site={slug} propertyId={p.id} />
       <header className="flex items-center justify-between gap-3 py-2">
         <Link href={`/w/${slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-fg">
           <ArrowLeft className="size-4" />
@@ -84,7 +88,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
       </header>
 
       <div className="mt-3">
-        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} />
+        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} photoClass="listing-photo" />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -100,7 +104,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
               p.stars ? <StarRating stars={p.stars} label={t.rating.labels[p.stars]} title={fmt(t.rating.stars, { n: p.stars })} /> : undefined
             }
           >
-            {place && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} icon={MapPinned} label={t.listing.map} external />}
+            {mapLink && <QuickAction href={mapLink} icon={MapPinned} label={t.listing.map} external />}
           </PriceBlock>
           {rows.length > 0 && (
             <Panel title={t.listing.details}>
@@ -126,6 +130,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
               <AmenityChips names={p.features.map((f) => localName(f, lang))} />
             </Panel>
           )}
+          <MediaPanels media={media} t={t} />
           {broker && (
             <ContactBar person={{ name: broker.name, avatarUrl: broker.avatarUrl }} sub={broker.job_title ?? agency?.name ?? null} phone={brokerPhone} t={t} />
           )}

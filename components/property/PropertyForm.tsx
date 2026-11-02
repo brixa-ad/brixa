@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, Check, ImageIcon, Loader2 } from "lucide-react";
 import { createProperty, updateProperty } from "@/app/(app)/properties/actions";
 import { useI18n } from "@/components/I18nProvider";
@@ -35,6 +35,9 @@ import {
   type PropertyInput,
 } from "@/lib/validation";
 import { LocationPicker } from "./LocationPicker";
+import { SpotPicker } from "./SpotPicker";
+import { VideoFields, type VideoFile } from "./VideoFields";
+import { saveVideo } from "@/lib/video-upload";
 import { BrixDescribe } from "./BrixDescribe";
 import { EnhanceSwitch, useEnhancePhotos } from "./EnhanceSwitch";
 import { PhotoDropzone } from "./PhotoDropzone";
@@ -54,6 +57,7 @@ export function PropertyForm({
   canAssignBroker,
   solo = false,
   brix = false,
+  video,
 }: {
   mode: "create" | "edit";
   lookups: FormLookups;
@@ -69,6 +73,8 @@ export function PropertyForm({
   solo?: boolean;
   /** Brix is connected: it can write the description */
   brix?: boolean;
+  /** the listing's own video (when editing) */
+  video?: { url: string | null; path: string | null };
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -80,6 +86,25 @@ export function PropertyForm({
   const [phase, setPhase] = useState<"idle" | "saving" | "uploading" | "done">("idle");
   const [queued, setQueued] = useState<QueuedPhoto[]>([]);
   const [enhancePhotos, setEnhancePhotos] = useEnhancePhotos();
+  const [videoFile, setVideoFile] = useState<VideoFile>({ current: video?.url ?? null, next: null, remove: false });
+  // the neighbourhood's name, for where the map starts
+  const [hood, setHood] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!values.neighborhoodId) return;
+    let live = true;
+    void createClient()
+      .from("geo_neighborhoods")
+      .select("id, name")
+      .eq("id", values.neighborhoodId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (live && data) setHood(data);
+      });
+    return () => {
+      live = false;
+    };
+  }, [values.neighborhoodId]);
+  const hoodName = hood && hood.id === values.neighborhoodId ? hood.name : null;
 
   const category = lookups.categories.find((c) => c.id === values.categoryId);
   const subtypes = lookups.subtypes.filter((s) => s.category_id === values.categoryId);
@@ -169,8 +194,20 @@ export function PropertyForm({
       }));
     }
 
+    let videoFailed = false;
+    if (videoFile.next || videoFile.remove) {
+      setPhase("uploading");
+      videoFailed = !(await saveVideo(createClient(), {
+        organizationId,
+        propertyId: result.id,
+        file: videoFile.next,
+        oldPath: video?.path ?? null,
+      }));
+    }
+
     setPhase("done");
-    router.push(`/properties/${result.id}${failedPhotos > 0 ? "?photos=failed" : ""}`);
+    const notes = [failedPhotos > 0 ? "photos=failed" : null, videoFailed ? "video=failed" : null].filter(Boolean).join("&");
+    router.push(`/properties/${result.id}${notes ? `?${notes}` : ""}`);
   }
 
   // ---- queued photos (create mode) ----
@@ -383,6 +420,17 @@ export function PropertyForm({
                 cadastralId: errorText("cadastralId"),
               }}
             />
+            <div className="mt-5">
+              <SpotPicker
+                value={values.spot}
+                onChange={(next) => set("spot", next)}
+                town={settlement?.name ?? null}
+                neighborhood={hoodName}
+                street={[values.street, values.streetNo].filter((x) => x.trim()).join(" ")}
+                exclusive={values.exclusiveContract}
+                disabled={busy}
+              />
+            </div>
           </Card>
 
           {/* ---------------- Specs ---------------- */}
@@ -491,6 +539,18 @@ export function PropertyForm({
               </div>
             </Card>
           )}
+
+          {/* ---------------- Video ---------------- */}
+          <Card title={t.video.title} id="video">
+            <VideoFields
+              links={values.videoLinks}
+              onLinks={(next) => set("videoLinks", next)}
+              file={videoFile}
+              onFile={setVideoFile}
+              disabled={busy}
+            />
+            {errorText("videoLinks") && <p className="mt-2 text-xs font-medium text-danger">{t.video.badLink}</p>}
+          </Card>
 
           {/* ---------------- Price ---------------- */}
           <Card title={t.form.sectionPrice} id="price">

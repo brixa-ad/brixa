@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BedDouble, BrickWall, Building2, Compass, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
+import { MediaPanels, mapsHref } from "@/components/listing/MediaPanels";
 import { AgencyPanel, AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { YieldPanel } from "@/components/listing/YieldPanel";
 import { StarRating } from "@/components/listing/StarRating";
@@ -37,7 +38,7 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
   const [listing, { t, lang }] = await Promise.all([getSharedListing(token), getI18n()]);
   if (!listing) notFound();
 
-  const { property: p, photos, broker, agency } = listing;
+  const { property: p, photos, media, broker, agency } = listing;
   // with no phone of their own, the office's
   const brokerPhone = broker?.phone || agency?.phone || null;
   const label = <K extends keyof typeof t.options>(group: K, code: string | null) =>
@@ -57,6 +58,7 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
     [t.form.heating, label("heating", p.heating)],
   ];
   const place = [p.neighborhood, p.settlement].filter(Boolean).join(", ");
+  const mapLink = mapsHref(media.spot, place);
 
   const headline = [
     p.subtype ? localName(p.subtype, lang) : null,
@@ -103,7 +105,7 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
             p.stars ? <StarRating stars={p.stars} label={t.rating.labels[p.stars]} title={fmt(t.rating.stars, { n: p.stars })} /> : undefined
           }
         >
-          {place && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} icon={MapPinned} label={t.listing.map} external />}
+          {mapLink && <QuickAction href={mapLink} icon={MapPinned} label={t.listing.map} external />}
         </PriceBlock>
 
         {rows.length > 0 && (
@@ -132,6 +134,8 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
             <AmenityChips names={p.features.map((f) => localName(f, lang))} />
           </Panel>
         )}
+
+        <MediaPanels media={media} t={t} />
 
         {broker && (
           <BrokerPanel

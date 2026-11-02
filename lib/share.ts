@@ -8,6 +8,8 @@ import { PHOTO_BUCKET } from "./photos";
 import type { Tap } from "./signals";
 import { parseEstimate, type RentEstimate } from "./yield";
 import { toStars, type Stars } from "./rating";
+import { VIDEO_BUCKET, cleanVideoLinks } from "./video";
+import type { Spot } from "@/components/listing/SpotMap";
 
 export type SharedListing = {
   property: {
@@ -39,9 +41,28 @@ export type SharedListing = {
     stars: Stars | null;
   };
   photos: string[];
+  /** the own video (signed for a week), the links to the others, the place (a circle unless exclusive) */
+  media: { file: string | null; links: string[]; spot: Spot | null };
   broker: { name: string; email: string; phone: string | null; job_title: string | null; avatarUrl: string | null; socials: Socials } | null;
   agency: { name: string; phone: string | null; email: string | null; website: string | null; logoUrl: string | null } | null;
 };
+
+/** The listing's videos and place, as the public functions give them (`media`). */
+export async function parseMedia(supabase: ReturnType<typeof anonymous>, raw: unknown): Promise<SharedListing["media"]> {
+  const media = (raw ?? {}) as { videos?: unknown; video?: unknown; spot?: { lat?: unknown; lng?: unknown; exact?: unknown; radius?: unknown } | null };
+  let file: string | null = null;
+  if (typeof media.video === "string" && media.video) {
+    const { data } = await supabase.storage.from(VIDEO_BUCKET).createSignedUrl(media.video, 7 * 24 * 3600);
+    file = data?.signedUrl ?? null;
+  }
+  const lat = Number(media.spot?.lat);
+  const lng = Number(media.spot?.lng);
+  const spot =
+    media.spot && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng, exact: media.spot.exact === true, radius: Number(media.spot.radius) || undefined }
+      : null;
+  return { file, links: Array.isArray(media.videos) ? cleanVideoLinks(media.videos.filter((v): v is string => typeof v === "string")) : [], spot };
+}
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -66,11 +87,16 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
   if (error || !data) return null;
 
   const raw = data as {
-    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
+    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & {
+      photos: string[];
+      rent_estimate: unknown;
+      rating?: { stars?: unknown } | null;
+      media?: unknown;
+    };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null; socials?: unknown } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null } | null;
   };
-  const { photos: paths, ...property } = raw.property;
+  const { photos: paths, media, ...property } = raw.property;
 
   // The photos stay private — these links work for a week.
   let photos: string[] = [];
@@ -91,6 +117,7 @@ export const getSharedListing = cache(async (token: string): Promise<SharedListi
       stars: goodStars(raw.property.rating),
     },
     photos,
+    media: await parseMedia(supabase, media),
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: raw.agency ? { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) } : null,
   };
@@ -112,6 +139,12 @@ export async function recordShareTap(token: string, tap: Tap) {
 }
 
 /** How long the page was looked at and how many photos were seen. */
-export async function recordShareTime(token: string, eventId: string, seconds: number, photos: number) {
-  await anonymous().rpc("share_event_time", { share_token: token, event_id: eventId, seen_seconds: seconds, seen_photos: photos });
+export async function recordShareTime(token: string, eventId: string, seconds: number, photos: number, video: boolean) {
+  await anonymous().rpc("share_event_time", {
+    share_token: token,
+    event_id: eventId,
+    seen_seconds: seconds,
+    seen_photos: photos,
+    watched_video: video,
+  });
 }

@@ -35,6 +35,10 @@ export type PropertyFormValues = {
   offMarket: boolean;
   description: string;
   featureIds: string[];
+  /** links to the listing's videos (YouTube, TikTok…) — empty rows while typing */
+  videoLinks: string[];
+  /** the point on the map */
+  spot: { lat: number; lng: number } | null;
 };
 
 export function emptyFormValues(userId: string, currency: Currency = "EUR"): PropertyFormValues {
@@ -70,6 +74,8 @@ export function emptyFormValues(userId: string, currency: Currency = "EUR"): Pro
     offMarket: false,
     description: "",
     featureIds: [],
+    videoLinks: [],
+    spot: null,
   };
 }
 

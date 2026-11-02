@@ -37,6 +37,9 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
+import { ListingVideos } from "@/components/listing/ListingVideos";
+import { SpotMap } from "@/components/listing/SpotMap";
+import { ViewsCard, type ViewRow } from "@/components/property/ViewsCard";
 import {
   AgencyPanel,
   AmenityChips,
@@ -101,7 +104,7 @@ export async function generateMetadata({ params }: PageProps<"/properties/[id]">
 
 export default async function PropertyPage({ params, searchParams }: PageProps<"/properties/[id]">) {
   const { id } = await params;
-  const { photos: photosParam, from } = await searchParams;
+  const { photos: photosParam, video: videoParam, from } = await searchParams;
   const [{ t, lang }, property, session] = await Promise.all([getI18n(), getProperty(id), getSession()]);
 
   if (!property) notFound();
@@ -135,6 +138,9 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     { data: rentRow },
     analysis,
     { data: analysisShareRows },
+    { data: viewTotalRows },
+    { data: openRows },
+    { data: siteViewRows },
   ] = await Promise.all([
       getCommissionDefaults(property.organization_id),
       supabase.from("deals").select(DEAL_SELECT).eq("property_id", id).order("updated_at", { ascending: false }),
@@ -228,6 +234,20 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             .order("created_at", { ascending: false })
             .limit(20)
         : Promise.resolve({ data: [] }),
+      // who opened it: the links sent (whom the user may see) and the agency's website
+      listing ? supabase.rpc("listing_views", { target_properties: [id] }) : Promise.resolve({ data: [] }),
+      listing
+        ? supabase
+            .from("share_events")
+            .select("id, seconds, photos, video, occurred_at, client:clients(id, full_name), share:property_shares(partner:partners(id, full_name, agency))")
+            .eq("property_id", id)
+            .eq("kind", "open")
+            .order("occurred_at", { ascending: false })
+            .limit(15)
+        : Promise.resolve({ data: [] }),
+      listing
+        ? supabase.from("site_views").select("id, seconds, photos, video, occurred_at").eq("property_id", id).order("occurred_at", { ascending: false }).limit(15)
+        : Promise.resolve({ data: [] }),
     ]);
   const market = marketSnapshot ?? analysis?.facts ?? null;
   const rentEstimate = parseEstimate(rentRow);
@@ -258,6 +278,37 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     revoked: row.revoked_at !== null,
     createdAt: row.created_at,
   }));
+  // ---- who opened it
+  const viewTotal = ((viewTotalRows ?? []) as { opens: number; photo_views: number; video_views: number }[])[0];
+  const viewTotals = { opens: viewTotal?.opens ?? 0, photos: viewTotal?.photo_views ?? 0, video: viewTotal?.video_views ?? 0 };
+  type Seen = { id: string; seconds: number; photos: number; video: boolean; occurred_at: string };
+  type Partner = { id: string; full_name: string; agency: string | null };
+  const viewRows: ViewRow[] = [
+    ...((openRows ?? []) as unknown as (Seen & { client: { id: string; full_name: string } | null; share: { partner: Partner | null } | null })[]).map(
+      (row) => ({
+        id: row.id,
+        who: row.client?.full_name ?? (row.share?.partner ? `${row.share.partner.full_name}${row.share.partner.agency ? ` (${row.share.partner.agency})` : ""}` : null),
+        href: row.client ? `/clients/${row.client.id}` : row.share?.partner ? `/partners/${row.share.partner.id}` : null,
+        site: false,
+        at: row.occurred_at,
+        seconds: row.seconds,
+        photos: row.photos,
+        video: row.video,
+      })
+    ),
+    ...((siteViewRows ?? []) as Seen[]).map((row) => ({
+      id: row.id,
+      who: null,
+      href: null,
+      site: true,
+      at: row.occurred_at,
+      seconds: row.seconds,
+      photos: row.photos,
+      video: row.video,
+    })),
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 15);
   const shareClients = (clientRows ?? []) as ShareClient[];
   const partners = (partnerRows ?? []) as PartnerOption[];
 
@@ -494,7 +545,10 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       .map(([name, value], i) => ({ icon: SPEC_ICONS[i] ?? Building2, label: name, value }))
       .filter((row): row is { icon: typeof Building2; label: string; value: string } => row.value !== null),
   ];
-  const mapQuery = [property.address, property.neighborhood?.name, property.settlement && settlementLabel(property.settlement)].filter(Boolean).join(", ");
+  const mapQuery =
+    property.lat !== null && property.lng !== null
+      ? `${property.lat},${property.lng}`
+      : [property.address, property.neighborhood?.name, property.settlement && settlementLabel(property.settlement)].filter(Boolean).join(", ");
   // who the bar at the bottom reaches: on my own listing its owner, else its broker
   const mine = property.responsible_broker_id === session?.userId;
   const contact =
@@ -586,6 +640,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           {t.photos.uploadFailed}
         </div>
       )}
+      {videoParam === "failed" && (
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          {t.video.uploadFailed}
+        </div>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
@@ -610,6 +670,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             }
           >
             {mapQuery && <QuickAction href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`} icon={MapPinned} label={t.listing.map} external />}
+            {listing && viewTotals.opens > 0 && <QuickAction href="#views" icon={Eye} label={fmt(t.views.quick, { n: viewTotals.opens })} />}
             {market && <QuickAction href="#market" icon={LineChart} label={t.listing.market} />}
             {listing && <QuickAction href="#marketing" icon={Megaphone} label={t.marketing.title} />}
             <QuickAction href="#history" icon={History} label={t.detail.historyTitle} />
@@ -632,6 +693,19 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           {property.features.length > 0 && (
             <Panel title={t.listing.amenities}>
               <AmenityChips names={property.features.map((feature) => localName(feature, lang))} />
+            </Panel>
+          )}
+
+          {(property.videoUrl || property.video_links.length > 0) && (
+            <Panel title={t.video.title} id="video">
+              <ListingVideos file={property.videoUrl} links={property.video_links} />
+            </Panel>
+          )}
+
+          {property.lat !== null && property.lng !== null && (
+            <Panel title={t.spot.where} id="where">
+              <SpotMap spot={{ lat: property.lat, lng: property.lng, exact: true }} />
+              <p className="mt-2 text-xs text-muted">{property.exclusive_contract ? t.spot.exactShown : t.spot.circleShown}</p>
             </Panel>
           )}
 
@@ -794,7 +868,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           )}
                 </>
               ) },
-              { key: "marketing" as const, label: t.detail.sectionMarketing, short: t.detail.sectionMarketing, anchors: ["marketing","shares","report"], content: (
+              { key: "marketing" as const, label: t.detail.sectionMarketing, short: t.detail.sectionMarketing, anchors: ["marketing","views","shares","report"], content: (
                 <>
           {listing && canEdit && process.env.ANTHROPIC_API_KEY && (
             <Card
@@ -846,6 +920,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               />
             </Card>
           )}
+          {listing && <ViewsCard totals={viewTotals} rows={viewRows} t={t} lang={lang} />}
           {listing && shares.length > 0 && (
             <Card title={t.share.linksTitle}>
               <ShareList rows={shares} empty={t.share.noLinks} />

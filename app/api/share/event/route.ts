@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * What the client does on a shared listing: a tap on call / Viber / WhatsApp / e-mail, or, when the
- * page is left, how long it was looked at and how many photos were seen. Not counted for signed-in
+ * page is left, how long it was looked at, how many photos were seen and whether the video was played. Not counted for signed-in
  * BRIXA users (the broker checking the page).
  */
 export async function POST(request: Request) {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     id?: unknown;
     seconds?: unknown;
     photos?: unknown;
+    video?: unknown;
   } | null;
   if (typeof body?.token !== "string" || !UUID.test(body.token)) return new Response(null, { status: 400 });
 
@@ -24,7 +25,13 @@ export async function POST(request: Request) {
   if (typeof body.id === "string" && UUID.test(body.id)) {
     const seconds = Number(body.seconds);
     const photos = Number(body.photos);
-    await recordShareTime(body.token, body.id, Number.isFinite(seconds) ? Math.round(seconds) : 0, Number.isFinite(photos) ? Math.round(photos) : 0);
+    await recordShareTime(
+      body.token,
+      body.id,
+      Number.isFinite(seconds) ? Math.round(seconds) : 0,
+      Number.isFinite(photos) ? Math.round(photos) : 0,
+      body.video === true
+    );
   } else if (isTap(body.kind)) {
     await recordShareTap(body.token, body.kind);
   } else {

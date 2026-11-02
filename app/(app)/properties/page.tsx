@@ -125,9 +125,19 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   if (error) console.error("Loading properties failed:", error);
 
   const rows = (data ?? []) as unknown as ListRow[];
-  const photoUrls = await signPhotoUrls(
-    supabase,
-    rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
+  const [photoUrls, { data: viewRows }] = await Promise.all([
+    signPhotoUrls(
+      supabase,
+      rows.flatMap((row) => row.photos.map((photo) => photo.storage_path))
+    ),
+    // who opened each listing: the links sent and the website
+    rows.length > 0 ? supabase.rpc("listing_views", { target_properties: rows.map((row) => row.id) }) : Promise.resolve({ data: [] }),
+  ]);
+  const views = new Map(
+    ((viewRows ?? []) as { property_id: string; opens: number; photo_views: number; video_views: number }[]).map((v) => [
+      v.property_id,
+      { opens: v.opens, photos: v.photo_views, video: v.video_views },
+    ])
   );
 
   // the numbers on top follow the tab: my own on my tabs, the whole agency's on the colleagues' (and with no tab)
@@ -253,6 +263,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
                       const stars = toStars(row.market_stars);
                       return stars ? { stars, label: t.rating.labels[stars], title: fmt(t.rating.stars, { n: stars }) } : null;
                     })(),
+                    views: views.get(row.id) ?? null,
                   }}
                 />
               </li>

@@ -5,7 +5,7 @@ import { avatarUrl } from "./avatar";
 import { parseSocials, type Socials } from "./socials";
 import { PHOTO_BUCKET } from "./photos";
 import type { Stars } from "./rating";
-import { anonymous, goodStars, type SharedListing } from "./share";
+import { anonymous, goodStars, parseMedia, type SharedListing } from "./share";
 import { parseEstimate } from "./yield";
 
 export const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -84,11 +84,16 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
   const { data, error } = await supabase.rpc("site_listing", { site: slug.toLowerCase(), target_property: id });
   if (error || !data) return null;
   const raw = data as {
-    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & { photos: string[]; rent_estimate: unknown; rating?: { stars?: unknown } | null };
+    property: Omit<SharedListing["property"], "rent_estimate" | "stars"> & {
+      photos: string[];
+      rent_estimate: unknown;
+      rating?: { stars?: unknown } | null;
+      media?: unknown;
+    };
     broker: { name: string; email: string; phone: string | null; job_title: string | null; avatar_path: string | null; socials?: unknown } | null;
     agency: { name: string; phone: string | null; email: string | null; website: string | null; logo_path: string | null };
   };
-  const { photos: paths, ...property } = raw.property;
+  const { photos: paths, media, ...property } = raw.property;
   let photos: string[] = [];
   if (paths.length > 0) {
     const { data: signed } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 7 * 24 * 3600);
@@ -106,6 +111,7 @@ export const getSiteListing = cache(async (slug: string, id: string): Promise<Sh
       stars: goodStars(raw.property.rating),
     },
     photos,
+    media: await parseMedia(supabase, media),
     broker: raw.broker ? { ...raw.broker, avatarUrl: avatarUrl(raw.broker.avatar_path), socials: parseSocials(raw.broker.socials) } : null,
     agency: { ...raw.agency, logoUrl: logoUrl(raw.agency.logo_path) },
   };

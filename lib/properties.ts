@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { signPhotoUrls } from "./photos-server";
 import { createClient } from "./supabase/server";
+import { VIDEO_BUCKET } from "./video";
 import type { Feature, Photo } from "./types";
 
 type NameRow = { name: string; name_en: string | null };
@@ -48,6 +49,12 @@ export type PropertyDetail = {
   /** the price and the day it was sold (or rented) for — told when it left the market */
   sold_price: number | null;
   sold_on: string | null;
+  video_links: string[];
+  video_path: string | null;
+  /** the own video, signed for an hour */
+  videoUrl: string | null;
+  lat: number | null;
+  lng: number | null;
   exclusive_contract: boolean;
   off_market: boolean;
   description: string | null;
@@ -115,6 +122,9 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
   );
 
   const { feature_values, price_history, ...rest } = data;
+  const videoUrl = rest.video_path
+    ? ((await supabase.storage.from(VIDEO_BUCKET).createSignedUrl(rest.video_path, 3600)).data?.signedUrl ?? null)
+    : null;
 
   return {
     ...rest,
@@ -125,6 +135,11 @@ export const getProperty = cache(async (id: string): Promise<PropertyDetail | nu
     expected_rent: toNumber(rest.expected_rent),
     sold_price: toNumber(rest.sold_price),
     sold_on: rest.sold_on ?? null,
+    video_links: rest.video_links ?? [],
+    video_path: rest.video_path ?? null,
+    videoUrl,
+    lat: toNumber(rest.lat),
+    lng: toNumber(rest.lng),
     features: ((feature_values ?? []) as { feature: Feature | null }[])
       .map((row) => row.feature)
       .filter((feature): feature is Feature => Boolean(feature)),

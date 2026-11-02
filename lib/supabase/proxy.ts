@@ -28,6 +28,8 @@ const PUBLIC_PATHS = [
   // shared listings: anyone with the link
   "/p",
   "/api/share",
+  // the agency website's visits of a listing
+  "/api/site",
   // the owner's report: the owner has the link
   "/r",
   // a market analysis sent to a client

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { closedAddress, validateClosedDeal, type ClosedDealInput } from "@/lib/closed-deal-validation";
 import { toEuro } from "@/lib/commission";
 import { sofiaToday } from "@/lib/dates";
+import { cleanVideoLinks } from "@/lib/video";
 import { CLOSED_CONDITIONS, CONSTRUCTION_TYPES, isOneOf, STATUSES } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -147,6 +148,8 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     exclusive_contract: input.exclusiveContract,
     off_market: input.offMarket,
     description: input.description.trim() || null,
+    ...(input.videoLinks !== undefined ? { video_links: cleanVideoLinks(input.videoLinks) } : {}),
+    ...(input.spot !== undefined ? { lat: input.spot?.lat ?? null, lng: input.spot?.lng ?? null } : {}),
   };
 
   return { ok: true as const, session, supabase, row, featureIds };
