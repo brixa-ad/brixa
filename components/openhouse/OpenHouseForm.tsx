@@ -6,7 +6,7 @@ import { planOpenHouse, type OpenHouseErrors, type OpenHouseInput } from "@/app/
 import { useI18n } from "@/components/I18nProvider";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { fmt } from "@/lib/i18n/dictionaries";
-import { PREP_STEPS } from "@/lib/open-houses";
+import { PREP_STEPS } from "@/lib/open-house-steps";
 
 /** Which listing, which day and hours, who hosts — BRIXA plans the rest. */
 export function OpenHouseForm({
