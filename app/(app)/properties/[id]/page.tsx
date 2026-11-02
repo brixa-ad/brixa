@@ -557,8 +557,21 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             {t.common.edit}
           </Link>
         )}
-        {session?.isManager && <DeletePropertyButton propertyId={property.id} />}
+        {session?.isManager && (
+          <DeletePropertyButton propertyId={property.id} operation={property.operation_type} currency={property.currency} today={sofiaToday()} />
+        )}
       </div>
+
+      {/* ---- off the market: when, and for how much ---- */}
+      {["sold", "rented", "sold_elsewhere"].includes(property.status) && property.sold_on && (
+        <p className="mt-4 rounded-xl bg-raised px-4 py-3 text-sm text-fg-2">
+          {fmt(t.detail.soldInfo, {
+            status: t.options.status[property.status as keyof typeof t.options.status] ?? property.status,
+            date: formatDate(property.sold_on, lang),
+          })}
+          {property.sold_price !== null && ` ${fmt(t.detail.soldFor, { price: formatPrice(property.sold_price, property.currency, lang) ?? "" })}`}
+        </p>
+      )}
 
       {!canEdit && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-fg-2">

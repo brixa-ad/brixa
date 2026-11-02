@@ -3,7 +3,10 @@
 import { composeAddress } from "@/lib/address";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isOneOf, STATUSES } from "@/lib/options";
+import { closedAddress, validateClosedDeal, type ClosedDealInput } from "@/lib/closed-deal-validation";
+import { toEuro } from "@/lib/commission";
+import { sofiaToday } from "@/lib/dates";
+import { CLOSED_CONDITIONS, CONSTRUCTION_TYPES, isOneOf, STATUSES } from "@/lib/options";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -242,6 +245,114 @@ export async function setExpectedRent(id: string, rent: number | null) {
 
   revalidatePath(`/properties/${id}`);
   return { ok: !error && Boolean(data?.length) };
+}
+
+export type LeaveOutcome = "ours" | "elsewhere" | "withdrawn";
+
+/**
+ * "Delete" asks what happened: sold (or rented) by us, by another agency, or taken off the market.
+ * The listing goes to "Sold" / "Withdrawn" with the price and the day it went for, when told;
+ * sold by us, for sale, it is written in the register of closed deals too.
+ */
+export async function leaveMarket(id: string, outcome: LeaveOutcome, price: number | null, soldOn: string | null) {
+  const session = await getSession();
+  if (!session?.isManager) return { ok: false };
+  if (!isOneOf(["ours", "elsewhere", "withdrawn"] as const, outcome)) return { ok: false };
+  const sold = outcome !== "withdrawn";
+  if (price !== null && !(Number.isFinite(price) && price > 0 && price <= 100_000_000)) return { ok: false };
+  const today = sofiaToday();
+  if (soldOn !== null && !(/^\d{4}-\d{2}-\d{2}$/.test(soldOn) && !Number.isNaN(Date.parse(soldOn)) && soldOn <= today)) return { ok: false };
+
+  const supabase = await createClient();
+  const { data: property } = await supabase
+    .from("properties")
+    .select(
+      "id, operation_type, currency, subtype_id, settlement_id, neighborhood_id, street, street_no, block, entrance, apartment, floor, area, construction_type, condition, responsible_broker_id, broker:profiles!properties_responsible_broker_id_fkey(full_name, email)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!property) return { ok: false };
+
+  const rent = property.operation_type === "rent";
+  const status = outcome === "ours" ? (rent ? "rented" : "sold") : outcome === "elsewhere" ? "sold_elsewhere" : "withdrawn";
+  const { data: changed, error } = await supabase
+    .from("properties")
+    .update({ status, sold_price: sold ? price : null, sold_on: sold ? (soldOn ?? today) : null })
+    .eq("id", id)
+    .select("id");
+  if (error || !changed?.length) {
+    console.error("Taking a listing off the market failed:", error ?? "no row changed");
+    return { ok: false };
+  }
+
+  // Sold by us: the register of closed deals learns the real price (once per listing).
+  const euro = price === null ? null : toEuro(price, property.currency);
+  if (outcome === "ours" && property.operation_type === "sale" && euro !== null && Number(property.area) > 0) {
+    const { count } = await supabase.from("closed_deals").select("id", { count: "exact", head: true }).eq("property_id", id);
+    if (!count) {
+      const broker = property.broker as unknown as { full_name: string | null; email: string } | null;
+      const input: ClosedDealInput = {
+        reportedOn: soldOn ?? today,
+        subtypeId: property.subtype_id,
+        settlementId: property.settlement_id,
+        neighborhoodId: property.neighborhood_id,
+        street: property.street ?? "",
+        streetNo: property.street_no ?? "",
+        block: property.block ?? "",
+        entrance: property.entrance ?? "",
+        floor: property.floor === null ? "" : String(property.floor),
+        apartment: property.apartment ?? "",
+        side: "sale",
+        conditions: isOneOf(CLOSED_CONDITIONS, property.condition) ? [property.condition] : [],
+        construction: isOneOf(CONSTRUCTION_TYPES, property.construction_type) ? property.construction_type : null,
+        parking: false,
+        area: Number(property.area),
+        price: Math.round(euro),
+        parkingPrice: null,
+        brokerName: (broker?.full_name || broker?.email || session.fullName || "").slice(0, 120),
+        colleagueName: "",
+        colleagueAgency: "",
+        doubleSided: false,
+        propertyId: id,
+        note: "",
+      };
+      if (Object.keys(validateClosedDeal(input)).length === 0) {
+        const { error: registerError } = await supabase.from("closed_deals").insert({
+          organization_id: session.organizationId,
+          created_by: session.userId,
+          reported_on: input.reportedOn,
+          subtype_id: input.subtypeId,
+          settlement_id: input.settlementId,
+          neighborhood_id: input.settlementId ? input.neighborhoodId : null,
+          street: input.street || null,
+          street_no: input.streetNo || null,
+          block: input.block || null,
+          entrance: input.entrance || null,
+          floor: input.floor || null,
+          apartment: input.apartment || null,
+          address: closedAddress(input) || null,
+          side: input.side,
+          conditions: input.conditions,
+          construction: input.construction,
+          area: input.area,
+          price: input.price,
+          broker_name: input.brokerName,
+          property_id: id,
+        });
+        if (registerError) console.error("Writing the sale in the register failed:", registerError.message);
+        else {
+          revalidatePath("/closed-deals");
+          revalidatePath("/market");
+        }
+      }
+    }
+  }
+
+  revalidatePath("/properties");
+  revalidatePath(`/properties/${id}`);
+  // to the tab it went to: the broker's own, or the whole agency's by status
+  const tab = outcome === "ours" ? "sold" : "withdrawn";
+  redirect(property.responsible_broker_id === session.userId ? `/properties?view=${tab}` : `/properties?status=${status}`);
 }
 
 export async function deleteProperty(id: string) {
