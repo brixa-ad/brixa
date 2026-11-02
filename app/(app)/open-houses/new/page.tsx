@@ -6,6 +6,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getMyPeople } from "@/lib/lookups";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_PREP } from "@/lib/open-houses";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -44,7 +45,7 @@ export default async function NewOpenHousePage({ searchParams }: PageProps<"/ope
       <PageHeader backHref="/open-houses" backLabel={t.openHouses.title} title={t.openHouses.new} />
       <div className="max-w-2xl">
         <OpenHouseForm
-          initial={{ propertyId: preselected, day: nextSaturday(sofiaToday()), from: "11:00", to: "13:00", hostId: session.userId, note: "" }}
+          initial={{ propertyId: preselected, day: nextSaturday(sofiaToday()), from: "11:00", to: "13:00", hostId: session.userId, note: "", steps: [...DEFAULT_PREP] }}
           listings={options}
           members={members.map((m) => ({ id: m.profile_id, name: m.full_name || m.email }))}
         />

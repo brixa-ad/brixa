@@ -15,13 +15,15 @@ export type OpenHouseInput = {
   to: string;
   hostId: string;
   note: string;
+  /** the preparation steps the host picked: only these become tasks */
+  steps: string[];
 };
 
 export type OpenHouseErrors = Partial<Record<keyof OpenHouseInput, "required" | "invalid" | "range">>;
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Plan an open house: the event, then its preparation tasks day by day for the host. */
+/** Plan an open house: the event, then the preparation steps the host picked, as tasks day by day. */
 export async function planOpenHouse(input: OpenHouseInput): Promise<{ ok: false; errors?: OpenHouseErrors }> {
   const session = await getSession();
   if (!session) return { ok: false };
@@ -65,8 +67,9 @@ export async function planOpenHouse(input: OpenHouseInput): Promise<{ ok: false;
   const earlyMinutes = h * 60 + m - 30;
   const early = `${String(Math.floor(earlyMinutes / 60)).padStart(2, "0")}:${String(earlyMinutes % 60).padStart(2, "0")}`;
   const title = (house.property as unknown as { title: string } | null)?.title ?? "";
-  const { error: tasksError } = await supabase.from("tasks").insert(
-    PREP_STEPS.map((step) => ({
+  const picked = PREP_STEPS.filter((step) => input.steps.includes(step.key));
+  const { error: tasksError } = picked.length === 0 ? { error: null } : await supabase.from("tasks").insert(
+    picked.map((step) => ({
       organization_id: session.organizationId,
       assigned_to: hostId,
       created_by: session.userId,

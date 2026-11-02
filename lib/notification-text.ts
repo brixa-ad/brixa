@@ -36,6 +36,12 @@ export type NotificationData = {
   clients?: number;
   properties?: number;
   deals?: number;
+  /** a leader's morning: the team's overdue tasks (and who is most behind), clients not called, deal steps today, clients freed */
+  team_tasks?: number;
+  team_followups?: number;
+  team_steps?: number;
+  team_released?: number;
+  team_names?: string;
 };
 
 /** Where tapping a notification leads: the morning brief opens the day's window on the home screen. */
@@ -175,7 +181,15 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
           : "",
         data.steps ? fmt(t.notifications.morning_steps, { count: data.steps }) : "",
       ].filter(Boolean);
-      return fmt(t.notifications.morning_brief, { parts: parts.join(", ") });
+      // a leader: the team's morning in the same word
+      const team = [
+        data.team_tasks ? fmt(data.team_names ? t.notifications.morning_team_tasks_names : t.notifications.morning_team_tasks, { count: data.team_tasks, names: data.team_names ?? "" }) : "",
+        data.team_followups ? fmt(t.notifications.morning_team_followups, { count: data.team_followups }) : "",
+        data.team_steps ? fmt(t.notifications.morning_team_steps, { count: data.team_steps }) : "",
+        data.team_released ? fmt(t.notifications.morning_team_released, { count: data.team_released }) : "",
+      ].filter(Boolean);
+      const mine = parts.length ? fmt(t.notifications.morning_brief, { parts: parts.join(", ") }) : t.notifications.morning_brief_free;
+      return team.length ? `${mine} ${fmt(t.notifications.morning_team, { parts: team.join(", ") })}` : mine;
     }
     case "share_viewed":
       return fmt(data.actor ? t.notifications.share_viewed : t.notifications.share_viewed_anon, vars);

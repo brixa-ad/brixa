@@ -22,6 +22,11 @@ export const PREP_STEPS: { key: "materials" | "invite_db" | "social" | "neighbor
   { key: "call_neighbors", offset: 1, type: "call" },
 ];
 
+export type PrepKey = (typeof PREP_STEPS)[number]["key"];
+
+/** Ticked when an open house is planned: the ones that matter most (the rest only when picked). */
+export const DEFAULT_PREP: PrepKey[] = ["invite_db", "host", "call_visitors"];
+
 /** The day a step is due: before the event as planned (never in the past); after it, the next working day. */
 export function prepDay(eventDay: string, offset: number, today: string) {
   if (offset > 0) {

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarPlus, Loader2 } from "lucide-react";
+import { CalendarPlus, Check, Loader2 } from "lucide-react";
 import { planOpenHouse, type OpenHouseErrors, type OpenHouseInput } from "@/app/(app)/open-houses/actions";
 import { useI18n } from "@/components/I18nProvider";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
+import { fmt } from "@/lib/i18n/dictionaries";
+import { PREP_STEPS } from "@/lib/open-houses";
 
 /** Which listing, which day and hours, who hosts — BRIXA plans the rest. */
 export function OpenHouseForm({
@@ -88,6 +90,40 @@ export function OpenHouseForm({
             )}
           </Field>
         </div>
+      </Card>
+
+      {/* the checklist: what the host will do — only the ticked steps become tasks (and reminders) */}
+      <Card title={t.openHouses.stepsTitle} description={t.openHouses.stepsHint}>
+        <ul className="space-y-1">
+          {PREP_STEPS.map((step) => {
+            const on = draft.steps.includes(step.key);
+            const when =
+              step.offset < 0
+                ? fmt(t.openHouses.stepBefore, { n: -step.offset })
+                : step.offset === 0
+                  ? t.openHouses.stepOnDay
+                  : t.openHouses.stepAfter;
+            return (
+              <li key={step.key}>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => set("steps", on ? draft.steps.filter((k) => k !== step.key) : [...draft.steps, step.key])}
+                  className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-raised"
+                >
+                  <span className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border ${on ? "border-accent bg-accent text-on-accent" : "border-line-strong"}`}>
+                    {on && <Check className="size-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{t.openHouses.prep[step.key].title}</span>
+                    <span className="block text-xs text-muted">{when}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </Card>
 
       {failed && <p className="text-sm font-medium text-danger">{t.errors.generic}</p>}
