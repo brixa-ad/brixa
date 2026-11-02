@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/properties/\\[id\\]/analysis": ["./lib/pdf/fonts/**/*"],
     "/a/\\[token\\]/pdf": ["./lib/pdf/fonts/**/*"],
+    "/academy/certificate/\\[id\\]": ["./lib/pdf/fonts/**/*"],
   },
   turbopack: {
     // The parent CRM folder has its own package-lock.json — pin the root to this project.

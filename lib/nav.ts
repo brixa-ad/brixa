@@ -38,6 +38,9 @@ export const NAV_KEYS = [
   "team",
   "goals",
   "teamReport",
+  "academy",
+  "academyTeam",
+  "academyQuestions",
   "notifications",
   "profile",
   "settings",
@@ -86,6 +89,9 @@ export const NAV_HREF: Record<NavKey, string> = {
   team: "/team",
   goals: "/team/goals",
   teamReport: "/team/report",
+  academy: "/academy",
+  academyTeam: "/academy/team",
+  academyQuestions: "/academy/questions",
   notifications: "/notifications",
   profile: "/profile",
   settings: "/settings",
@@ -95,7 +101,7 @@ export const NAV_HREF: Record<NavKey, string> = {
  * The menu: eight sections (each with its pages, shown as tabs on top) and a few single places.
  * A section leads to the first of its pages the person may open.
  */
-export const MENU_KEYS = ["home", "day", "clients", "properties", "deals", "documents", "chat", "insights", "path", "team", "brix", "notifications", "profile", "settings"] as const;
+export const MENU_KEYS = ["home", "day", "clients", "properties", "deals", "documents", "chat", "insights", "path", "academy", "team", "brix", "notifications", "profile", "settings"] as const;
 export type MenuKey = (typeof MENU_KEYS)[number];
 
 /**
@@ -113,6 +119,7 @@ export const MENU_TABS: Record<MenuKey, NavKey[][]> = {
   chat: [["chat"]],
   insights: [["stats", "statsBroker"], ["statsMarket", "market"], ["marketScout"]],
   path: [["plan"], ["business"], ["territory"]],
+  academy: [["academy"], ["academyTeam"], ["academyQuestions"]],
   team: [["team"], ["teamReport"], ["goals"]],
   brix: [["brix"]],
   notifications: [["notifications"]],
@@ -130,17 +137,17 @@ export const BOTTOM_NAV_MAX = 5;
 export const DEFAULT_BOTTOM_NAV: MenuKey[] = ["home", "day", "clients", "properties", "deals"];
 
 /**
- * Pages this person may open: goals and the agency's statistics are the managers'; Brix only once
+ * Pages this person may open: goals, the agency's statistics and the academy's team and questions are the managers'; Brix only once
  * the AI is connected; working alone there's no team and no free contacts.
  */
 export function navKeysFor(isManager: boolean, brix = false, solo = false): NavKey[] {
   return NAV_KEYS.filter(
     (key) =>
-      ((key !== "goals" && key !== "stats" && key !== "teamReport") || isManager) &&
+      ((key !== "goals" && key !== "stats" && key !== "teamReport" && key !== "academyTeam" && key !== "academyQuestions") || isManager) &&
       // Brix and what Brix does online: once the AI is connected
       ((key !== "brix" && key !== "marketScout") || brix) &&
       // working alone: no team (own targets are set in My plan), no team report, no free contacts, no colleagues
-      !(solo && (key === "team" || key === "goals" || key === "teamReport" || key === "contacts" || key === "colleaguesProperties"))
+      !(solo && (key === "team" || key === "goals" || key === "teamReport" || key === "academyTeam" || key === "contacts" || key === "colleaguesProperties"))
   );
 }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, CreditCard, MessagesSquare, Eye, AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
+import { Award, GraduationCap, Building2, CreditCard, MessagesSquare, Eye, AlarmClock, BadgeCheck, FileUp, DoorOpen, Globe, BellOff, BellRing, CalendarCheck, Inbox, ListX, PhoneMissed, Sparkles, UserPlus, CalendarClock, CheckCircle2, ClipboardList, FileBarChart, Flame, Handshake, Link2, Trophy, TrendingUp, Undo2, UserSearch } from "lucide-react";
 import { ContactButtons } from "@/components/ContactButtons";
 import { MarkNotificationsRead } from "@/components/MarkNotificationsRead";
 import { PageHeader } from "@/components/PageHeader";
@@ -50,6 +50,10 @@ const ICONS: Record<string, { icon: typeof ClipboardList; tone: string }> = {
   client_assigned: { icon: UserPlus, tone: "bg-accent-soft text-accent-fg" },
   imported: { icon: FileUp, tone: "bg-accent-soft text-accent-fg" },
   team_week: { icon: ClipboardList, tone: "bg-accent-soft text-accent-fg" },
+  academy_open: { icon: GraduationCap, tone: "bg-accent-soft text-accent-fg" },
+  academy_due: { icon: AlarmClock, tone: "bg-warning/10 text-warning" },
+  academy_result: { icon: Award, tone: "bg-success/10 text-success" },
+  academy_summary: { icon: GraduationCap, tone: "bg-accent-soft text-accent-fg" },
   chat_invite: { icon: MessagesSquare, tone: "bg-accent-soft text-accent-fg" },
   agency_signed_up: { icon: Building2, tone: "bg-accent-soft text-accent-fg" },
   plan_requested: { icon: CreditCard, tone: "bg-success/10 text-success" },

@@ -1,10 +1,10 @@
 import "server-only";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { pdfImage } from "./analysis-doc";
 import { formatNumber } from "./format";
 import { fmt, locale, type Dictionary, type Lang } from "./i18n/dictionaries";
 import { monthName, newsHasPdf, newsText, payment, type NewsData, type NewsKind } from "./news";
 import { NewsPdf, type NewsPdfProps } from "./pdf/news-pdf";
+import { renderPdf } from "./pdf/render";
 import { SOCIAL_KEYS, SOCIAL_LABEL, shortLink, type Socials } from "./socials";
 
 export const hasPdf = newsHasPdf;
@@ -108,7 +108,7 @@ export async function renderNewsPdf(input: NewsDocInput, t: Dictionary, lang: La
   // the broker's letter: the message itself (the document carries it too)
   const letter = kind === "tips" ? null : newsText(kind, data, { name: input.client.firstName, broker: input.broker.name }, t, lang, input.today);
 
-  return renderToBuffer(
+  return renderPdf(
     NewsPdf({
       docTitle: title,
       preparedFor: fmt(P.preparedFor, { name: input.client.name }),

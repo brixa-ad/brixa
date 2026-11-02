@@ -1,4 +1,5 @@
 import { formatDate, formatPrice } from "./format";
+import { levelName, periodLabel } from "./academy";
 import { fmt, type Dictionary, type Lang } from "./i18n/dictionaries";
 
 export type NotificationData = {
@@ -42,6 +43,11 @@ export type NotificationData = {
   team_steps?: number;
   team_released?: number;
   team_names?: string;
+  /** the academy: the round ('2026-11'), the level of the exam, how many there were, the minutes of the exam */
+  period?: string;
+  level?: number;
+  total?: number;
+  minutes?: number;
 };
 
 /** Where tapping a notification leads: the morning brief opens the day's window on the home screen. */
@@ -156,6 +162,15 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
       return fmt(data.again ? t.notifications.analysis_viewed_again : t.notifications.analysis_viewed, { ...vars, actor: data.actor ?? t.notifications.someone });
     case "team_week":
       return fmt(t.notifications.team_week, vars);
+    case "academy_open":
+    case "academy_due":
+    case "academy_summary":
+      return fmt(t.notifications[type], { ...vars, period: periodLabel(data.period, t, lang), minutes: data.minutes ?? 30, total: data.total ?? 0 });
+    case "academy_result":
+      return fmt(data.kind === "passed" ? t.notifications.academy_result_passed : t.notifications.academy_result_failed, {
+        ...vars,
+        level: levelName(data.level ?? 1, t),
+      });
     case "work_handed":
       return fmt(t.notifications.work_handed, {
         ...vars,

@@ -1,10 +1,10 @@
 import "server-only";
-import { renderToBuffer } from "@react-pdf/renderer";
 import type { Analysis } from "./analysis";
 import { sofiaToday } from "./dates";
 import { formatDate, formatNumber, formatPrice } from "./format";
 import { fmt, type Dictionary, type Lang } from "./i18n/dictionaries";
 import { AnalysisPdf, type PdfImage } from "./pdf/analysis-pdf";
+import { renderPdf } from "./pdf/render";
 import { rentalYield, type RentEstimate } from "./yield";
 import { ratingBasisText } from "@/lib/rating";
 
@@ -144,7 +144,7 @@ export async function renderAnalysisPdf(
     ]),
   };
 
-  return renderToBuffer(
+  return renderPdf(
     AnalysisPdf({
       audience,
       title: audience === "owner" ? p.ownerTitle : p.buyerTitle,
@@ -171,12 +171,12 @@ export async function renderAnalysisPdf(
 }
 
 /** The PDF as a download (its file name in the reader's language). */
-export function pdfResponse(buffer: Buffer, name: string, id: string) {
+export function pdfResponse(buffer: Buffer, name: string, id: string, prefix = "brixa-analysis") {
   const clean = name.replace(/[\\/:*?"<>|]+/g, " ").slice(0, 120);
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="brixa-analysis-${id.slice(0, 8)}.pdf"; filename*=UTF-8''${encodeURIComponent(clean)}.pdf`,
+      "Content-Disposition": `attachment; filename="${prefix}-${id.slice(0, 8)}.pdf"; filename*=UTF-8''${encodeURIComponent(clean)}.pdf`,
       "Cache-Control": "private, no-store",
     },
   });

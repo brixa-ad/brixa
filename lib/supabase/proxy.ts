@@ -38,6 +38,8 @@ const PUBLIC_PATHS = [
   "/o",
   // the agency's own website
   "/w",
+  // checking an academy certificate (the QR code on it)
+  "/v",
   // Google Forms send their answers (the form's token is the key)
   "/api/forms",
 ];
