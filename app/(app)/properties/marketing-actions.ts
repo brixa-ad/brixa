@@ -85,3 +85,33 @@ export async function saveMarketingTemplate(items: MarketingPoint[]): Promise<Re
   revalidatePath("/settings");
   return { ok: true };
 }
+
+/** Brix's selling plan: the picked steps become the broker's tasks on their days. */
+export async function addPlanTasks(
+  propertyId: string,
+  steps: { day: number; action: string; why: string; kind: string }[]
+): Promise<{ ok: boolean; added: number }> {
+  const session = await getSession();
+  if (!session) return { ok: false, added: 0 };
+  const { saveTask } = await import("../tasks/actions");
+  const { addDays, sofiaToday } = await import("@/lib/dates");
+  const { TASK_TYPES, isOneOf } = await import("@/lib/options");
+  const today = sofiaToday();
+  let added = 0;
+  for (const step of steps.slice(0, 15)) {
+    const day = Math.max(0, Math.min(120, Math.round(Number(step.day) || 0)));
+    const result = await saveTask({
+      title: String(step.action ?? "").trim().slice(0, 200) || "Маркетинг",
+      type: isOneOf(TASK_TYPES, step.kind) ? step.kind : "other",
+      assignedTo: session.userId,
+      clientId: null,
+      propertyId,
+      dueDate: addDays(today, day),
+      dueTime: null,
+      description: String(step.why ?? "").trim().slice(0, 2000),
+    });
+    if (result.ok) added++;
+  }
+  revalidatePath(`/properties/${propertyId}`);
+  return { ok: added > 0, added };
+}

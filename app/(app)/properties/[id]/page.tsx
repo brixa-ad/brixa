@@ -58,6 +58,7 @@ import { MarketCard } from "@/components/market/MarketCard";
 import { BuyerMatchesCard, PartnerMatchesCard } from "@/components/property/MatchCards";
 import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
+import { BrixMarketing } from "@/components/marketing/BrixMarketing";
 import { MarketingPlan } from "@/components/marketing/MarketingPlan";
 import { ColleagueLog } from "@/components/partners/ColleagueLog";
 import { LogTabs } from "@/components/partners/LogTabs";
@@ -782,6 +783,19 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
               ) },
               { key: "marketing" as const, label: t.detail.sectionMarketing, short: t.detail.sectionMarketing, anchors: ["marketing","shares","report"], content: (
                 <>
+          {listing && canEdit && process.env.ANTHROPIC_API_KEY && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-brand-cyan" />
+                  {t.brixMarketing.title}
+                </span>
+              }
+              description={t.brixMarketing.hint}
+            >
+              <BrixMarketing propertyId={property.id} photoUrls={property.photos.map((p) => p.url).filter((u): u is string => Boolean(u))} />
+            </Card>
+          )}
           {listing && (
             <Card
               id="marketing"
