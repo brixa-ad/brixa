@@ -8,7 +8,7 @@ import { getProperty } from "@/lib/properties";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** Copy that sells and a plan that sells: the most capable model, at low effort. */
 const MODEL = "claude-opus-5-5";
@@ -66,6 +66,17 @@ const PLAN = {
  * groups) or a selling plan for the next weeks — from the listing and how it stands on the market.
  */
 export async function POST(request: Request) {
+  try {
+    return await answer(request);
+  } catch (error) {
+    // whatever went wrong, the broker sees why (never a key: the API's messages don't carry one)
+    const reason = error instanceof Error ? error.message.slice(0, 200) : "unknown";
+    console.error("Brix's marketing failed:", reason);
+    return Response.json({ error: "failed", reason }, { status: 502 });
+  }
+}
+
+async function answer(request: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: "signed_out" }, { status: 401 });
   const anthropic = brixClient();
@@ -96,8 +107,8 @@ export async function POST(request: Request) {
     line("Състояние", option(t.options.condition, property.condition)),
     line("Обзавеждане", option(t.options.furnishing, property.furnishing)),
     line("Отопление", option(t.options.heating, property.heating)),
-    line("Изложение", property.exposures.map((e) => option(t.options.exposure, e)).filter(Boolean).join(", ")),
-    line("Екстри", property.features.map((f) => localName(f, lang)).join(", ")),
+    line("Изложение", (property.exposures ?? []).map((e) => option(t.options.exposure, e)).filter(Boolean).join(", ")),
+    line("Екстри", (property.features ?? []).map((f) => localName(f, lang)).join(", ")),
     line("Цена", property.current_price ? `${property.current_price} ${property.currency}` : null),
     line("Ексклузивен договор", property.exclusive_contract ? "да" : null),
     line("Описание", property.description?.slice(0, 1500)),
@@ -109,7 +120,7 @@ export async function POST(request: Request) {
     kind === "plan"
       ? [
           `Обявен преди ${daysBetween(sofiaDay(property.created_at), today)} дни.`,
-          property.priceHistory.length ? `Смени на цената: ${property.priceHistory.map((p) => `${p.old_price} → ${p.new_price} (${sofiaDay(p.changed_at)})`).join("; ")}` : "Цената не е сменяна.",
+          property.priceHistory?.length ? `Смени на цената: ${property.priceHistory.map((p) => `${p.old_price} → ${p.new_price} (${sofiaDay(p.changed_at)})`).join("; ")}` : "Цената не е сменяна.",
           analysis?.rating
             ? `Спрямо пазара: ${Math.round(analysis.rating.diff * 100)}% (${analysis.rating.stars}★), пазарна цена ~${Math.round(analysis.rating.benchSqm)} €/м², препоръчителна ${analysis.rating.estimate ? `${analysis.rating.estimate.low}–${analysis.rating.estimate.high} €` : "—"}.`
             : "Няма достатъчно данни за сравнение с пазара.",
@@ -128,7 +139,7 @@ export async function POST(request: Request) {
   try {
     const response = await anthropic.beta.messages.create({
       model: MODEL,
-      max_tokens: 6000,
+      max_tokens: 12000,
       output_config: { effort: "low", format: { type: "json_schema", schema: kind === "posts" ? POSTS : PLAN } },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
@@ -136,14 +147,16 @@ export async function POST(request: Request) {
         "You are Brix, the marketing assistant of a Bulgarian real-estate agency: a sharp copywriter and a practical sales strategist. Warm, concrete, honest; no clichés like 'уникална възможност'.",
       messages: [{ role: "user", content: prompt }],
     });
-    if (response.stop_reason === "refusal") return Response.json({ error: "failed" }, { status: 502 });
+    if (response.stop_reason === "refusal") return Response.json({ error: "failed", reason: "refusal" }, { status: 502 });
+    if (response.stop_reason === "max_tokens") return Response.json({ error: "failed", reason: "too long" }, { status: 502 });
     const text = response.content
       .filter((block): block is Anthropic.Beta.BetaTextBlock => block.type === "text")
       .map((block) => block.text)
       .join("");
     return Response.json({ kind, result: JSON.parse(text), today });
   } catch (error) {
-    console.error("Brix's marketing failed:", error instanceof Error ? error.message : error);
-    return Response.json({ error: "failed" }, { status: 502 });
+    const reason = error instanceof Error ? error.message.slice(0, 200) : "unknown";
+    console.error("Brix's marketing failed:", reason);
+    return Response.json({ error: "failed", reason }, { status: 502 });
   }
 }

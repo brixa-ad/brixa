@@ -54,9 +54,10 @@ export function BrixMarketing({ propertyId, photoUrls }: { propertyId: string; p
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ propertyId, kind }),
       });
-      const data = (await response.json().catch(() => ({}))) as { result?: unknown; today?: string; error?: string };
+      const data = (await response.json().catch(() => ({ error: "failed", reason: `HTTP ${response.status}` }))) as { result?: unknown; today?: string; error?: string; reason?: string };
       if (!response.ok || !data.result) {
-        setError(data.error === "limit" ? t.brix.limit : data.error === "not_configured" ? t.brix.notConfigured : t.brix.failed);
+        const why = data.error === "limit" ? t.brix.limit : data.error === "not_configured" ? t.brix.notConfigured : t.brix.failed;
+        setError(data.reason ? `${why} (${data.reason})` : why);
       } else if (kind === "posts") {
         setPosts(data.result as Posts);
       } else {
@@ -64,8 +65,8 @@ export function BrixMarketing({ propertyId, photoUrls }: { propertyId: string; p
         setPlan({ plan: p, today: data.today ?? new Date().toISOString().slice(0, 10) });
         setPicked(new Set(p.steps.map((_, i) => i)));
       }
-    } catch {
-      setError(t.brix.failed);
+    } catch (e) {
+      setError(`${t.brix.failed} (${e instanceof Error ? e.message : "network"})`);
     }
     setBusy(null);
   }
