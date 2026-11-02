@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ListChecks, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { TellBrix } from "@/components/brix/TellBrix";
+import { TaskSelection } from "@/components/task/TaskSelection";
 import { BrokerPicker } from "@/components/task/BrokerPicker";
 import { TaskItem } from "@/components/task/TaskItem";
 import { buttonClass } from "@/components/ui/form";
@@ -131,6 +132,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
           <p className="mt-3 text-sm text-muted">{t.tasks.empty}</p>
         </div>
       ) : (
+        <TaskSelection ids={tasks.map((task) => task.id)}>
         <div className="space-y-4">
           {[...groups.entries()].map(([day, list]) => (
             <section key={day || "all"} className="rounded-2xl border border-line bg-surface p-2 shadow-xs sm:p-3">
@@ -148,12 +150,14 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
                     viewerId={session.userId}
                     t={t}
                     showAssignee={showAssignee || tab === "given"}
+                    deletable
                   />
                 ))}
               </ul>
             </section>
           ))}
         </div>
+        </TaskSelection>
       )}
     </>
   );

@@ -199,3 +199,18 @@ export async function deleteActivity(activityId: string): Promise<{ ok: boolean 
   if (data[0].property_id) revalidatePath(`/properties/${data[0].property_id}`);
   return { ok: true };
 }
+
+/** Delete several tasks at once, from the list (only the ones this person may delete go). */
+export async function deleteTasks(taskIds: string[]): Promise<{ ok: boolean; deleted: number }> {
+  const ids = [...new Set(taskIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 500);
+  if (ids.length === 0) return { ok: false, deleted: 0 };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("tasks").delete().in("id", ids).select("id, client_id");
+  if (error) {
+    console.error("Deleting tasks failed:", error.message);
+    return { ok: false, deleted: 0 };
+  }
+  for (const clientId of new Set((data ?? []).map((row) => row.client_id).filter(Boolean))) refresh(undefined, clientId);
+  refresh();
+  return { ok: (data?.length ?? 0) > 0, deleted: data?.length ?? 0 };
+}

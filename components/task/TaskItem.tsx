@@ -5,6 +5,7 @@ import { daysBetween } from "@/lib/dates";
 import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
 import { personName, type TaskRow } from "@/lib/tasks";
 import { TaskCheckbox } from "./TaskCheckbox";
+import { TaskDeleteButton, TaskPick } from "./TaskSelection";
 import { TypeIcon } from "./TypeIcon";
 
 /** A task row: tick box, what to do, who it's with, and why it matters (carried over, from the manager). */
@@ -14,12 +15,15 @@ export function TaskItem({
   viewerId,
   t,
   showAssignee = false,
+  deletable = false,
 }: {
   task: TaskRow;
   today: string;
   viewerId: string;
   t: Dictionary;
   showAssignee?: boolean;
+  /** the list's bin and "Select" (the Tasks page) */
+  deletable?: boolean;
 }) {
   const done = task.status === "done";
   const carriedDays = done ? 0 : daysBetween(task.due_date, today);
@@ -27,6 +31,7 @@ export function TaskItem({
 
   return (
     <li className="flex items-start gap-3 rounded-xl px-3 py-3 transition hover:bg-raised">
+      {deletable && <TaskPick id={task.id} />}
       <TaskCheckbox taskId={task.id} done={done} />
       <Link href={`/tasks/${task.id}`} className="min-w-0 flex-1">
         <div>
@@ -78,6 +83,7 @@ export function TaskItem({
           )}
         </div>
       </Link>
+      {deletable && <TaskDeleteButton id={task.id} />}
     </li>
   );
 }
