@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { BedDouble, BrickWall, Building2, Compass, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
-import { MediaPanels, mapsHref } from "@/components/listing/MediaPanels";
+import { PlacePanel, mapsHref } from "@/components/listing/PlacePanel";
 import { AgencyPanel, AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
 import { YieldPanel } from "@/components/listing/YieldPanel";
 import { StarRating } from "@/components/listing/StarRating";
@@ -85,7 +85,11 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
 
       {/* the photos, edge to edge on the phone (swipe; tap: full screen) — a grid on paper */}
       <div className="no-print">
-        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} photoClass="listing-photo" />
+        <ListingHero
+          photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))}
+          videos={media}
+          photoClass="listing-photo"
+        />
       </div>
       <div className="shared-photos hidden">
         {photos.map((url, i) => (
@@ -135,7 +139,7 @@ export default async function SharedListingPage({ params }: PageProps<"/p/[token
           </Panel>
         )}
 
-        <MediaPanels media={media} t={t} />
+        <PlacePanel spot={media.spot} t={t} />
 
         {broker && (
           <BrokerPanel

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, BrickWall, Building2, Flame, Hammer, Layers, LayoutGrid, Mail, MapPinned, Phone, Ruler, Sofa } from "lucide-react";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
-import { MediaPanels, mapsHref } from "@/components/listing/MediaPanels";
+import { PlacePanel, mapsHref } from "@/components/listing/PlacePanel";
 import { SiteBeacon } from "@/components/PublicPageTools";
 import { AgencyPrivacy } from "@/components/AgencyPrivacy";
 import { AmenityChips, BrokerPanel, ContactBar, DetailRows, Panel, PriceBlock, QuickAction } from "@/components/listing/ListingParts";
@@ -88,7 +88,11 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
       </header>
 
       <div className="mt-3">
-        <ListingHero photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))} photoClass="listing-photo" />
+        <ListingHero
+          photos={photos.map((url, i) => ({ id: url, storage_path: url, position: i, url }))}
+          videos={media}
+          photoClass="listing-photo"
+        />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -130,7 +134,7 @@ export default async function SiteListingPage({ params }: PageProps<"/w/[slug]/[
               <AmenityChips names={p.features.map((f) => localName(f, lang))} />
             </Panel>
           )}
-          <MediaPanels media={media} t={t} />
+          <PlacePanel spot={media.spot} t={t} />
           {broker && (
             <ContactBar person={{ name: broker.name, avatarUrl: broker.avatarUrl }} sub={broker.job_title ?? agency?.name ?? null} phone={brokerPhone} t={t} />
           )}

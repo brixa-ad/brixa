@@ -37,7 +37,6 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { ClampText } from "@/components/listing/ClampText";
 import { ListingHero } from "@/components/listing/ListingHero";
-import { ListingVideos } from "@/components/listing/ListingVideos";
 import { SpotMap } from "@/components/listing/SpotMap";
 import { ViewsCard, type ViewRow } from "@/components/property/ViewsCard";
 import {
@@ -569,6 +568,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       {/* ---- the photos, edge to edge ---- */}
       <ListingHero
         photos={property.photos}
+        videos={{ file: property.videoUrl, links: property.video_links }}
         topLeft={
           <Link href={back?.href ?? "/properties"} aria-label={back?.label ?? t.nav.properties} className={floatingButton}>
             <ArrowLeft className="size-5" />
@@ -693,12 +693,6 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           {property.features.length > 0 && (
             <Panel title={t.listing.amenities}>
               <AmenityChips names={property.features.map((feature) => localName(feature, lang))} />
-            </Panel>
-          )}
-
-          {(property.videoUrl || property.video_links.length > 0) && (
-            <Panel title={t.video.title} id="video">
-              <ListingVideos file={property.videoUrl} links={property.video_links} />
             </Panel>
           )}
 
