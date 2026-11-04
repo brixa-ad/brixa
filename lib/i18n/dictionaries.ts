@@ -1217,6 +1217,11 @@ const bg = {
     watchOn: "Гледай в {platform}",
     open: "Отвори в нов прозорец",
     uploadFailed: "Видеото не се качи. Опитайте отново от редакцията на имота.",
+    savedAtOnce: "Записва се веднага, както снимките. Видеото излиза в снимките горе, веднага след корицата.",
+    uploading: "Видеото се качва… не затваряйте страницата.",
+    saveLinks: "Запази линковете",
+    removeConfirm: "Да махна ли видеото от обявата?",
+    saveFailed: "Видеото не се качи. Проверете интернета и опитайте пак.",
   },
   spot: {
     title: "Точка на картата",
@@ -4854,6 +4859,11 @@ const en: Dictionary = {
     watchOn: "Watch on {platform}",
     open: "Open in a new window",
     uploadFailed: "The video wasn't uploaded. Try again from the edit page.",
+    savedAtOnce: "Saved at once, like the photos. The video shows among the photos at the top, right after the cover.",
+    uploading: "The video is uploading… don't close the page.",
+    saveLinks: "Save the links",
+    removeConfirm: "Remove the video from the listing?",
+    saveFailed: "The video wasn't uploaded. Check the internet and try again.",
   },
   spot: {
     title: "Point on the map",

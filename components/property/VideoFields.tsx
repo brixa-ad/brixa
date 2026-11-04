@@ -28,6 +28,8 @@ export function VideoFields({
   const V = t.video;
   const input = useRef<HTMLInputElement>(null);
   const [tooBig, setTooBig] = useState(false);
+  // the row just added gets the cursor
+  const [added, setAdded] = useState<number | null>(null);
   // a new file plays from the phone itself, before it's uploaded
   const preview = useMemo(() => (file.next ? URL.createObjectURL(file.next) : null), [file.next]);
   useEffect(() => () => {
@@ -92,6 +94,7 @@ export function VideoFields({
                   inputMode="url"
                   value={link}
                   disabled={disabled}
+                  autoFocus={i === added}
                   placeholder="https://www.youtube.com/…"
                   aria-invalid={link.trim() && !parsed ? true : undefined}
                   onChange={(e) => onLinks(links.map((l, j) => (j === i ? e.target.value : l)))}
@@ -117,7 +120,15 @@ export function VideoFields({
           );
         })}
         {links.length < MAX_VIDEO_LINKS && (
-          <button type="button" disabled={disabled} onClick={() => onLinks([...links, ""])} className={buttonClass.ghost}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setAdded(links.length);
+              onLinks([...links, ""]);
+            }}
+            className={buttonClass.ghost}
+          >
             <Plus className="size-4" />
             {V.addLink}
           </button>

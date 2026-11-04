@@ -57,7 +57,6 @@ export function PropertyForm({
   canAssignBroker,
   solo = false,
   brix = false,
-  video,
 }: {
   mode: "create" | "edit";
   lookups: FormLookups;
@@ -73,8 +72,6 @@ export function PropertyForm({
   solo?: boolean;
   /** Brix is connected: it can write the description */
   brix?: boolean;
-  /** the listing's own video (when editing) */
-  video?: { url: string | null; path: string | null };
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -86,7 +83,8 @@ export function PropertyForm({
   const [phase, setPhase] = useState<"idle" | "saving" | "uploading" | "done">("idle");
   const [queued, setQueued] = useState<QueuedPhoto[]>([]);
   const [enhancePhotos, setEnhancePhotos] = useEnhancePhotos();
-  const [videoFile, setVideoFile] = useState<VideoFile>({ current: video?.url ?? null, next: null, remove: false });
+  // a new listing's video (an existing one's is next to its photos, saved at once)
+  const [videoFile, setVideoFile] = useState<VideoFile>({ current: null, next: null, remove: false });
   // the neighbourhood's name, for where the map starts
   const [hood, setHood] = useState<{ id: string; name: string } | null>(null);
   useEffect(() => {
@@ -112,7 +110,8 @@ export function PropertyForm({
   const features = values.subtypeId ? (lookups.subtypeFeatures[values.subtypeId] ?? []) : [];
   const showBuilding = hasBuildingFields(category?.code);
 
-  const input = toInput(values);
+  // editing, the links are saved next to the photos — the form leaves them as they are
+  const input = mode === "edit" ? { ...toInput(values), videoLinks: undefined } : toInput(values);
   const clientErrors = submitted ? validateProperty(input, category?.code) : {};
   const errors: FieldErrors = { ...serverErrors, ...clientErrors };
   const errorText = (field: keyof PropertyInput) => {
@@ -201,7 +200,7 @@ export function PropertyForm({
         organizationId,
         propertyId: result.id,
         file: videoFile.next,
-        oldPath: video?.path ?? null,
+        oldPath: null,
       }));
     }
 
@@ -540,17 +539,19 @@ export function PropertyForm({
             </Card>
           )}
 
-          {/* ---------------- Video ---------------- */}
-          <Card title={t.video.title} id="video">
-            <VideoFields
-              links={values.videoLinks}
-              onLinks={(next) => set("videoLinks", next)}
-              file={videoFile}
-              onFile={setVideoFile}
-              disabled={busy}
-            />
-            {errorText("videoLinks") && <p className="mt-2 text-xs font-medium text-danger">{t.video.badLink}</p>}
-          </Card>
+          {/* ---------------- Video (a new listing; editing, it's next to the photos) ---------------- */}
+          {mode === "create" && (
+            <Card title={t.video.title} id="video">
+              <VideoFields
+                links={values.videoLinks}
+                onLinks={(next) => set("videoLinks", next)}
+                file={videoFile}
+                onFile={setVideoFile}
+                disabled={busy}
+              />
+              {errorText("videoLinks") && <p className="mt-2 text-xs font-medium text-danger">{t.video.badLink}</p>}
+            </Card>
+          )}
 
           {/* ---------------- Price ---------------- */}
           <Card title={t.form.sectionPrice} id="price">

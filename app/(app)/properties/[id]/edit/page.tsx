@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PhotoManager } from "@/components/property/PhotoManager";
+import { VideoManager } from "@/components/property/VideoManager";
 import { PropertyForm } from "@/components/property/PropertyForm";
 import { getI18n } from "@/lib/i18n/server";
 import { getFormLookups } from "@/lib/lookups";
@@ -93,7 +94,6 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
           solo={session.solo}
           coverUrl={property.photos[0]?.url}
           existingPhotoCount={property.photos.length}
-          video={{ url: property.videoUrl, path: property.video_path }}
         />
         <div className="-mt-18 pb-24 lg:mt-0 lg:max-w-[calc(100%-344px)] lg:pb-0">
           <PhotoManager
@@ -102,6 +102,15 @@ export default async function EditPropertyPage({ params }: PageProps<"/propertie
             userId={session.userId}
             photos={property.photos}
           />
+          <div className="mt-6">
+            <VideoManager
+              key={`${property.video_path ?? ""}|${property.video_links.join("|")}`}
+              propertyId={id}
+              organizationId={session.organizationId}
+              video={{ url: property.videoUrl, path: property.video_path }}
+              links={property.video_links}
+            />
+          </div>
         </div>
       </div>
     </>
