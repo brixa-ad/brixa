@@ -170,12 +170,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
         .eq("property_id", id)
         .order("created_at", { ascending: false })
         .limit(50),
-      // who the listing can be sent to: own clients (managers: all)
+      // who the listing can be sent to: the user's own clients (a colleague's client goes through the colleague)
       listing && session
-        ? (session.isManager
-            ? supabase.from("clients").select("id, full_name, phone, email").eq("organization_id", property.organization_id).not("responsible_broker_id", "is", null)
-            : supabase.from("clients").select("id, full_name, phone, email").eq("responsible_broker_id", session.userId)
-          )
+        ? supabase
+            .from("clients")
+            .select("id, full_name, phone, email")
+            .eq("responsible_broker_id", session.userId)
             .order("full_name")
             .limit(1000)
         : Promise.resolve({ data: [] as ShareClient[] }),
@@ -189,8 +189,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // its price against the market (listings only)
       // (the market's facts come with the analysis below)
       Promise.resolve(null),
-      // who it fits: our buyers (the ones this user may see) and colleagues' searches
-      listing ? findBuyers(supabase, id) : Promise.resolve([]),
+      // who it fits: the user's own buyers, and colleagues' searches
+      listing && session ? findBuyers(supabase, id, session.userId) : Promise.resolve([]),
       listing ? findPartnerSearches(supabase, id) : Promise.resolve([]),
       // colleagues at the agency with buyers it fits (how many, not who)
       listing ? findColleagueBuyers(supabase, id) : Promise.resolve([]),

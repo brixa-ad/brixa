@@ -202,8 +202,11 @@ export type BuyerMatch = {
   areaOffPct: number | null;
 };
 
-/** The other way round: the buyers / tenants (visible to this user) whose search fits a listing. */
-export async function findBuyers(supabase: SupabaseClient, propertyId: string): Promise<BuyerMatch[]> {
+/**
+ * The other way round: this broker's own buyers / tenants whose search fits a listing. A colleague's
+ * buyers are not shown, not even to a manager — only their broker (colleague_buyers), to talk to.
+ */
+export async function findBuyers(supabase: SupabaseClient, propertyId: string, brokerId: string): Promise<BuyerMatch[]> {
   const { data: property } = await supabase
     .from("properties")
     .select(
@@ -213,7 +216,7 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
     .maybeSingle();
   if (!property || (property.operation_type !== "sale" && property.operation_type !== "rent")) return [];
 
-  // RLS: brokers get their own clients' searches, managers everyone's.
+  // only the broker's own clients (RLS would give a manager everyone's)
   const { data: rows } = await supabase
     .from("client_searches")
     .select(
@@ -222,6 +225,7 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
       client:clients!inner(id, full_name, phone, client_class, stage, responsible_broker_id)`
     )
     .eq("operation", property.operation_type)
+    .eq("client.responsible_broker_id", brokerId)
     .limit(2000);
 
   const searches = (rows ?? []) as unknown as (Record<string, unknown> & {
@@ -240,7 +244,7 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
   };
   const buyers: BuyerMatch[] = [];
   for (const row of searches) {
-    if (!row.client.responsible_broker_id || row.client.stage === "deal" || row.client.stage === "lost") continue;
+    if (row.client.responsible_broker_id !== brokerId || row.client.stage === "deal" || row.client.stage === "lost") continue;
     const search = searchFromRow(row as unknown as Parameters<typeof searchFromRow>[0]);
     if (!search) continue;
     if (search.subtypeIds.length && !search.subtypeIds.includes(property.subtype_id)) continue;

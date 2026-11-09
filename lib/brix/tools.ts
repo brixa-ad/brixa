@@ -364,7 +364,7 @@ export async function runTool(
     }
 
     case "buyers_for_property": {
-      const buyers = await findBuyers(supabase, clean(input.property_id, 60));
+      const buyers = await findBuyers(supabase, clean(input.property_id, 60), session.userId);
       return { result: buyers.slice(0, 15) };
     }
 
