@@ -358,6 +358,7 @@ export async function runTool(
           broker: m.broker?.full_name,
           score: m.score,
           over_budget_pct: m.overBudgetPct,
+          area_off_pct: m.areaOffPct,
         })),
       };
     }

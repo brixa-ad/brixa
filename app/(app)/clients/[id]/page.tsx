@@ -829,6 +829,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                                   {fmt(t.clients.overBudget, { pct: m.overBudgetPct })}
                                 </span>
                               )}
+                              {m.areaOffPct !== null && (
+                                <span className="rounded-md bg-warning/10 px-1.5 py-0.5 font-medium text-warning">
+                                  {fmt(m.areaOffPct < 0 ? t.clients.areaSmaller : t.clients.areaBigger, { pct: Math.abs(m.areaOffPct) })}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </Link>

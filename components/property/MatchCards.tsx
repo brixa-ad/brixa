@@ -36,6 +36,9 @@ export function BuyerMatchesCard({ buyers, t }: { buyers: BuyerMatch[]; t: Dicti
                 {b.overBudgetPct !== null && (
                   <p className="text-xs text-warning">{fmt(t.clients.overBudget, { pct: b.overBudgetPct })}</p>
                 )}
+                {b.areaOffPct !== null && (
+                  <p className="text-xs text-warning">{fmt(b.areaOffPct < 0 ? t.clients.areaSmaller : t.clients.areaBigger, { pct: Math.abs(b.areaOffPct) })}</p>
+                )}
               </div>
               {b.phone && (
                 <a href={telHref(b.phone)} title={t.share.call} aria-label={t.share.call} className="grid size-8 place-items-center rounded-lg text-accent-fg transition hover:bg-raised">
@@ -116,6 +119,9 @@ export function PartnerMatchesCard({ matches, t }: { matches: PartnerMatch[]; t:
               <p className="truncate text-xs text-muted">{[m.agency, m.phone].filter(Boolean).join(" · ")}</p>
               {m.overBudgetPct !== null && (
                 <p className="text-xs text-warning">{fmt(t.clients.overBudget, { pct: m.overBudgetPct })}</p>
+              )}
+              {m.areaOffPct !== null && (
+                <p className="text-xs text-warning">{fmt(m.areaOffPct < 0 ? t.clients.areaSmaller : t.clients.areaBigger, { pct: Math.abs(m.areaOffPct) })}</p>
               )}
             </div>
             {m.phone && (

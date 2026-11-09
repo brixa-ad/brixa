@@ -5,6 +5,8 @@ import { searchFromRow } from "./clients";
 
 /** A property may cost up to this much over the buyer's maximum budget. */
 export const BUDGET_TOLERANCE = 0.1;
+/** …and be up to this much smaller or bigger than the area searched (as the database's listing_fits). */
+export const AREA_TOLERANCE = 0.1;
 const CANDIDATE_LIMIT = 500;
 // The lev is pegged to the euro; USD has no fixed rate, so it's only compared with USD.
 const TO_EUR: Record<string, number | undefined> = { EUR: 1, BGN: 1 / 1.95583 };
@@ -24,6 +26,8 @@ export type Match = {
   score: number;
   /** percent over the maximum budget (only when over it) */
   overBudgetPct: number | null;
+  /** percent smaller (negative) or bigger than the area searched (only when outside it) */
+  areaOffPct: number | null;
 };
 
 type Candidate = {
@@ -72,6 +76,7 @@ type Listing = {
 function fit(p: Listing, search: SearchInput, narrowed: Set<string>) {
   let score = 100;
   let overBudgetPct: number | null = null;
+  let areaOffPct: number | null = null;
 
   if (p.settlement_id && narrowed.has(p.settlement_id)) {
     if (!p.neighborhood_id || !search.neighborhoodIds.includes(p.neighborhood_id)) return null;
@@ -102,7 +107,15 @@ function fit(p: Listing, search: SearchInput, narrowed: Set<string>) {
   const area = p.area === null ? null : Number(p.area);
   if (search.areaMin !== null || search.areaMax !== null) {
     if (area === null) score -= 5;
-    else if (!inRange(area, search.areaMin, search.areaMax)) return null;
+    else if (!inRange(area, search.areaMin, search.areaMax)) {
+      // a little smaller or bigger still fits — the broker sees by how much
+      const below = search.areaMin !== null && area < search.areaMin;
+      const edge = (below ? search.areaMin : search.areaMax) as number;
+      if (below ? area < edge * (1 - AREA_TOLERANCE) : area > edge * (1 + AREA_TOLERANCE)) return null;
+      const pct = Math.max(1, Math.round((Math.abs(area - edge) / edge) * 100));
+      areaOffPct = below ? -pct : pct;
+      score -= 10;
+    }
   }
 
   if (search.roomsMin !== null || search.roomsMax !== null) {
@@ -110,7 +123,7 @@ function fit(p: Listing, search: SearchInput, narrowed: Set<string>) {
     else if (!inRange(p.rooms, search.roomsMin, search.roomsMax)) return null;
   }
 
-  return { score, overBudgetPct, price, area };
+  return { score, overBudgetPct, areaOffPct, price, area };
 }
 
 /** Active agency listings that fit a buyer's / tenant's search, best first. */
@@ -172,13 +185,22 @@ export async function findMatches(
       broker: p.broker,
       score: result.score,
       overBudgetPct: result.overBudgetPct,
+      areaOffPct: result.areaOffPct,
     });
   }
 
   return matches.sort((a, b) => b.score - a.score || (a.price ?? Infinity) - (b.price ?? Infinity));
 }
 
-export type BuyerMatch = { clientId: string; name: string; phone: string | null; clientClass: string; score: number; overBudgetPct: number | null };
+export type BuyerMatch = {
+  clientId: string;
+  name: string;
+  phone: string | null;
+  clientClass: string;
+  score: number;
+  overBudgetPct: number | null;
+  areaOffPct: number | null;
+};
 
 /** The other way round: the buyers / tenants (visible to this user) whose search fits a listing. */
 export async function findBuyers(supabase: SupabaseClient, propertyId: string): Promise<BuyerMatch[]> {
@@ -233,6 +255,7 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
       clientClass: row.client.client_class,
       score: result.score,
       overBudgetPct: result.overBudgetPct,
+      areaOffPct: result.areaOffPct,
     });
   }
   return buyers.sort((a, b) => b.score - a.score || a.clientClass.localeCompare(b.clientClass));
@@ -262,6 +285,7 @@ export type PartnerMatch = {
   email: string | null;
   score: number;
   overBudgetPct: number | null;
+  areaOffPct: number | null;
 };
 
 /** Colleagues' searches (other agencies' buyers) that a listing fits. */
@@ -321,6 +345,7 @@ export async function findPartnerSearches(supabase: SupabaseClient, propertyId: 
       email: row.email,
       score: result.score,
       overBudgetPct: result.overBudgetPct,
+      areaOffPct: result.areaOffPct,
     });
   }
   return out.sort((a, b) => b.score - a.score);
