@@ -111,9 +111,8 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     getMyPeople(supabase),
     supabase
       .from("clients")
-      .select("id, full_name, phone")
+      .select("id, full_name, phone, types, responsible_broker_id")
       .eq("organization_id", organizationId)
-      .overlaps("types", ["seller", "landlord"])
       .not("responsible_broker_id", "is", null)
       .order("full_name"),
     getCommissionDefaults(organizationId),
@@ -140,7 +139,11 @@ export async function getFormLookups(organizationId: string): Promise<FormLookup
     regions: (regions.data ?? []).sort((a, b) => a.name.localeCompare(b.name, "bg")),
     settlements,
     members,
-    ownerClients: ownerClients.data ?? [],
+    // sellers and landlords first, then the others (a buyer may sell too)
+    ownerClients: (ownerClients.data ?? [])
+      .map((c) => ({ c, offering: (c.types as string[]).some((type) => type === "seller" || type === "landlord") }))
+      .sort((a, b) => Number(b.offering) - Number(a.offering))
+      .map(({ c }) => ({ id: c.id, full_name: c.full_name, phone: c.phone, broker_id: c.responsible_broker_id })),
     commissionDefaults,
   };
 }

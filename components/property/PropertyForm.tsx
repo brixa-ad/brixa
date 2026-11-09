@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, Check, ImageIcon, Loader2 } from "lucide-react";
+import { AlertCircle, Check, EyeOff, Globe, ImageIcon, Loader2 } from "lucide-react";
 import { createProperty, updateProperty } from "@/app/(app)/properties/actions";
 import { useI18n } from "@/components/I18nProvider";
-import { Combobox } from "@/components/ui/Combobox";
 import { Card, Field, buttonClass, inputClass } from "@/components/ui/form";
 import { commissionRate, expectedCommission, rateLabel } from "@/lib/commission";
 import { formatNumber, formatPrice, settlementLabel } from "@/lib/format";
@@ -42,6 +41,7 @@ import { BrixDescribe } from "./BrixDescribe";
 import { EnhanceSwitch, useEnhancePhotos } from "./EnhanceSwitch";
 import { PhotoDropzone } from "./PhotoDropzone";
 import { PhotoGrid } from "./PhotoGrid";
+import { SellerField } from "./SellerField";
 
 type QueuedPhoto = { key: string; file: File; url: string };
 
@@ -112,7 +112,13 @@ export function PropertyForm({
 
   // editing, the links are saved next to the photos — the form leaves them as they are
   const input = mode === "edit" ? { ...toInput(values), videoLinks: undefined } : toInput(values);
-  const clientErrors = submitted ? validateProperty(input, category?.code) : {};
+  // a new listing for sale or rent is someone's: its seller / landlord must be picked
+  const needsOwner = mode === "create" && (values.operationType === "sale" || values.operationType === "rent");
+  const check = (): FieldErrors => ({
+    ...validateProperty(input, category?.code),
+    ...(needsOwner && !values.ownerClientId ? { ownerClientId: "required" as const } : {}),
+  });
+  const clientErrors = submitted ? check() : {};
   const errors: FieldErrors = { ...serverErrors, ...clientErrors };
   const errorText = (field: keyof PropertyInput) => {
     const code = errors[field];
@@ -162,7 +168,7 @@ export function PropertyForm({
     setSubmitted(true);
     setServerMessage(null);
 
-    const localErrors = validateProperty(input, category?.code);
+    const localErrors = check();
     if (Object.keys(localErrors).length > 0) {
       focusFirstError();
       return;
@@ -325,6 +331,57 @@ export function PropertyForm({
                       {t.options.operation[op]}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* whose it is: a client of the listing's broker (the current owner stays listed) */}
+              <SellerField
+                clients={lookups.ownerClients.filter((c) => c.broker_id === (values.brokerId || userId) || c.id === values.ownerClientId)}
+                value={values.ownerClientId}
+                onChange={(id) => set("ownerClientId", id)}
+                landlord={values.operationType === "rent"}
+                brokerId={values.brokerId || userId}
+                required={needsOwner}
+                error={errorText("ownerClientId")}
+                disabled={busy}
+              />
+
+              {/* public, or hidden — for the colleagues only ("off market") */}
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-fg-2">{t.form.visibility}</span>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t.form.visibility}>
+                  {[false, true].map((hidden) => {
+                    const on = values.offMarket === hidden;
+                    const Icon = hidden ? EyeOff : Globe;
+                    return (
+                      <button
+                        key={String(hidden)}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => set("offMarket", hidden)}
+                        className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
+                          on ? "border-accent bg-accent-soft ring-1 ring-accent" : "border-line hover:border-line-strong"
+                        }`}
+                      >
+                        <Icon className={`mt-0.5 size-4 shrink-0 ${on ? "text-accent-fg" : "text-muted"}`} />
+                        <span>
+                          <span className="block text-sm font-medium text-fg">
+                            {hidden ? (solo ? t.form.visibilityHiddenSolo : t.form.visibilityHidden) : t.form.visibilityPublic}
+                          </span>
+                          <span className="block text-xs text-muted">
+                            {hidden
+                              ? solo
+                                ? t.form.offMarketHintSolo
+                                : t.form.offMarketHint
+                              : solo
+                                ? t.form.visibilityPublicHintSolo
+                                : t.form.visibilityPublicHint}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -647,38 +704,7 @@ export function PropertyForm({
                     <span className="block text-xs text-muted">{solo ? t.form.exclusiveHintSolo : t.form.exclusiveHint}</span>
                   </span>
                 </label>
-
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={values.offMarket}
-                    onChange={(e) => set("offMarket", e.target.checked)}
-                    className="peer sr-only"
-                  />
-                  <span className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition peer-checked:bg-accent peer-focus-visible:ring-3 peer-focus-visible:ring-accent/35 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow after:transition peer-checked:after:translate-x-4" />
-                  <span>
-                    <span className="block text-sm font-medium text-fg">{t.form.offMarket}</span>
-                    <span className="block text-xs text-muted">{solo ? t.form.offMarketHintSolo : t.form.offMarketHint}</span>
-                  </span>
-                </label>
               </div>
-
-              <Field label={t.clients.owner} error={errorText("ownerClientId")} hint={t.clients.ownerHint}>
-                {(props) => (
-                  <Combobox
-                    {...props}
-                    options={lookups.ownerClients.map((c) => ({
-                      value: c.id,
-                      label: c.full_name,
-                      hint: c.phone ?? undefined,
-                    }))}
-                    value={values.ownerClientId}
-                    onChange={(id) => set("ownerClientId", id)}
-                    placeholder={t.clients.ownerSearch}
-                    emptyText={t.location.noMatches}
-                  />
-                )}
-              </Field>
 
               {brix && (
                 <BrixDescribe

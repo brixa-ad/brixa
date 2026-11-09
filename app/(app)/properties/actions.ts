@@ -8,6 +8,8 @@ import { toEuro } from "@/lib/commission";
 import { sofiaToday } from "@/lib/dates";
 import { cleanVideoLinks } from "@/lib/video";
 import { CLOSED_CONDITIONS, CONSTRUCTION_TYPES, isOneOf, STATUSES } from "@/lib/options";
+import { emptyFinancing, emptyOffer, emptySearch } from "@/lib/client-validation";
+import { createClientRecord } from "@/app/(app)/clients/actions";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -70,7 +72,7 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
       input.ownerClientId
         ? supabase
             .from("clients")
-            .select("id")
+            .select("id, types")
             .eq("organization_id", session.organizationId)
             .eq("id", input.ownerClientId)
             .not("responsible_broker_id", "is", null)
@@ -152,10 +154,27 @@ async function prepare(input: PropertyInput, propertyId: string | null = null) {
     ...(input.spot !== undefined ? { lat: input.spot?.lat ?? null, lng: input.spot?.lng ?? null } : {}),
   };
 
-  return { ok: true as const, session, supabase, row, featureIds };
+  return { ok: true as const, session, supabase, row, featureIds, owner: ownerRes.data as { id: string; types: string[] } | null };
+}
+
+/** The client picked as the owner is a seller (a landlord, for rent) from now on, if they weren't. */
+async function markOwner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  owner: { id: string; types: string[] } | null,
+  operation: string
+) {
+  if (!owner || (operation !== "sale" && operation !== "rent")) return;
+  const type = operation === "rent" ? "landlord" : "seller";
+  if (owner.types.includes(type)) return;
+  const { error } = await supabase.from("clients").update({ types: [...owner.types, type] }).eq("id", owner.id);
+  if (error) console.error("Marking the owner as a seller failed:", error.message);
 }
 
 export async function createProperty(input: PropertyInput): Promise<SaveResult> {
+  // a listing for sale or rent is someone's: its seller / landlord, a client
+  if ((input.operationType === "sale" || input.operationType === "rent") && !input.ownerClientId) {
+    return { ok: false, errors: { ownerClientId: "required" } };
+  }
   const prepared = await prepare(input);
   if (!prepared.ok) return prepared;
 
@@ -184,9 +203,51 @@ export async function createProperty(input: PropertyInput): Promise<SaveResult> 
 
     if (featuresError) console.error("Saving features failed:", featuresError);
   }
+  await markOwner(supabase, prepared.owner, input.operationType);
 
   revalidatePath("/properties");
   return { ok: true, id: property.id };
+}
+
+/**
+ * A listing's seller / landlord added from the listing's form: a name and a phone — the rest is
+ * filled in on the client later. The listing's broker's client (a broker: their own).
+ */
+export async function addOwnerClient(input: {
+  fullName: string;
+  phone: string;
+  landlord: boolean;
+  brokerId: string | null;
+  note: string;
+}): Promise<{ ok: true; id: string } | { ok: false; duplicateOf?: string; error?: ErrorCode }> {
+  const result = await createClientRecord({
+    fullName: String(input.fullName ?? ""),
+    phone: String(input.phone ?? ""),
+    email: "",
+    types: [input.landlord ? "landlord" : "seller"],
+    clientClass: "C",
+    source: null,
+    referrer: "",
+    stage: "new_contact",
+    timeline: null,
+    decider: null,
+    motive: "",
+    notes: String(input.note ?? "").slice(0, 300) || "—",
+    birthDay: null,
+    birthMonth: null,
+    egn: "",
+    idCard: "",
+    brokerId: input.brokerId,
+    search: emptySearch(),
+    offer: emptyOffer(),
+    financing: emptyFinancing(),
+  });
+  if (result.ok) return { ok: true, id: result.id };
+  return {
+    ok: false,
+    duplicateOf: result.duplicateOf,
+    error: result.errors?.phone ?? result.errors?.fullName ?? (result.errors?.brokerId ? "invalid" : undefined),
+  };
 }
 
 export async function updateProperty(id: string, input: PropertyInput): Promise<SaveResult> {
@@ -206,6 +267,7 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
     console.error("Update property failed:", error);
     return { ok: false, message: error ? "generic" : "notFound" };
   }
+  await markOwner(supabase, prepared.owner, input.operationType);
 
   const { error: clearError } = await supabase
     .from("property_feature_values")

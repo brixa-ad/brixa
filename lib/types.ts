@@ -46,8 +46,8 @@ export type FormLookups = {
   regions: Region[];
   settlements: Settlement[];
   members: Member[];
-  /** sellers / landlords this user can see (own clients, or all for managers) */
-  ownerClients: { id: string; full_name: string; phone: string | null }[];
+  /** the clients a listing's owner can be (the form shows the listing's broker's), sellers and landlords first */
+  ownerClients: { id: string; full_name: string; phone: string | null; broker_id: string | null }[];
   commissionDefaults: CommissionDefaults;
 };
 
