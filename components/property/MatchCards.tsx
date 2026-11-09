@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { MessageCircle, Phone, UserSearch, Users } from "lucide-react";
+import { Handshake, MessageCircle, Phone, UserSearch, Users } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { ClassBadge } from "@/components/client/ClassBadge";
 import { Card } from "@/components/ui/form";
 import { fmt, type Dictionary } from "@/lib/i18n/dictionaries";
-import type { BuyerMatch, PartnerMatch } from "@/lib/matching";
+import type { BuyerMatch, ColleagueBuyers, PartnerMatch } from "@/lib/matching";
 import { telHref, viberHref } from "@/lib/phone";
+import { ColleagueChatButton } from "./ColleagueChatButton";
 
 /** On a listing: our clients whose search fits it. */
 export function BuyerMatchesCard({ buyers, t }: { buyers: BuyerMatch[]; t: Dictionary }) {
   return (
     <Card
+      id="buyers"
       title={
         <span className="flex items-center gap-2">
           <Users className="size-4 text-brand-cyan" />
@@ -43,6 +46,46 @@ export function BuyerMatchesCard({ buyers, t }: { buyers: BuyerMatch[]; t: Dicti
           ))}
         </ul>
       )}
+    </Card>
+  );
+}
+
+/** On a listing: colleagues at the agency with buyers it fits — how many, not who; write to them or call. */
+export function ColleagueBuyersCard({ colleagues, t }: { colleagues: ColleagueBuyers[]; t: Dictionary }) {
+  const P = t.partnerSearches;
+  return (
+    <Card
+      id="colleague-buyers"
+      title={
+        <span className="flex items-center gap-2">
+          <Handshake className="size-4 text-brand-cyan" />
+          {P.colleaguesTitle}
+          <span className="font-normal text-subtle">{colleagues.reduce((sum, c) => sum + c.buyers, 0)}</span>
+        </span>
+      }
+      description={P.colleaguesHint}
+    >
+      <ul className="divide-y divide-line-soft">
+        {colleagues.map((c) => (
+          <li key={c.brokerId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+            <Avatar path={c.avatarPath} name={c.name} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{c.name}</p>
+              <p className="truncate text-xs text-muted">
+                {[c.buyers === 1 ? P.colleagueBuyer : fmt(P.colleagueBuyers, { n: c.buyers }), c.hot > 0 ? fmt(P.colleagueHot, { n: c.hot }) : ""]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            <ColleagueChatButton person={c.brokerId} label={t.chat.writeTo} />
+            {c.phone && (
+              <a href={telHref(c.phone)} title={t.share.call} aria-label={t.share.call} className="grid size-8 place-items-center rounded-lg text-accent-fg transition hover:bg-raised">
+                <Phone className="size-4" />
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

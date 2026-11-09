@@ -57,7 +57,7 @@ import { QuickLog } from "@/components/client/QuickLog";
 import { DealCard } from "@/components/deal/DealCard";
 import { PropertyDocuments, type PropertyDocument } from "@/components/property/PropertyDocuments";
 import { MarketCard } from "@/components/market/MarketCard";
-import { BuyerMatchesCard, PartnerMatchesCard } from "@/components/property/MatchCards";
+import { BuyerMatchesCard, ColleagueBuyersCard, PartnerMatchesCard } from "@/components/property/MatchCards";
 import { OwnerReportDialog } from "@/components/property/OwnerReportDialog";
 import { ShareDialog, type ShareClient } from "@/components/property/ShareDialog";
 import { BrixMarketing } from "@/components/marketing/BrixMarketing";
@@ -79,7 +79,7 @@ import { formatDate, formatNumber, formatPrice, settlementLabel } from "@/lib/fo
 import { fmt, localName } from "@/lib/i18n/dictionaries";
 import { getI18n } from "@/lib/i18n/server";
 import { getCommissionDefaults } from "@/lib/lookups";
-import { findBuyers, findPartnerSearches } from "@/lib/matching";
+import { findBuyers, findColleagueBuyers, findPartnerSearches } from "@/lib/matching";
 import { getProperty } from "@/lib/properties";
 import { parseEstimate, rentalYield } from "@/lib/yield";
 import { YieldPanel } from "@/components/listing/YieldPanel";
@@ -125,6 +125,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
     marketSnapshot,
     buyers,
     partnerMatches,
+    colleagueBuyers,
     { data: partnerRows },
     { data: marketingRow },
     { data: doneRows },
@@ -191,6 +192,8 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       // who it fits: our buyers (the ones this user may see) and colleagues' searches
       listing ? findBuyers(supabase, id) : Promise.resolve([]),
       listing ? findPartnerSearches(supabase, id) : Promise.resolve([]),
+      // colleagues at the agency with buyers it fits (how many, not who)
+      listing ? findColleagueBuyers(supabase, id) : Promise.resolve([]),
       // colleagues from other agencies (to log a call with, to share with)
       supabase.from("partners").select("id, full_name, agency, phone").eq("organization_id", property.organization_id).order("full_name").limit(1000),
       // the marketing plan: the listing's own changes, what was done, the agency's template
@@ -708,9 +711,10 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             sections={[
               ...(listing
                 ? [
-              { key: "work" as const, label: t.detail.sectionWork, short: t.detail.sectionWorkShort, anchors: ["buyers","deals","open-houses"], content: (
+              { key: "work" as const, label: t.detail.sectionWork, short: t.detail.sectionWorkShort, anchors: ["buyers","colleague-buyers","deals","open-houses"], content: (
                 <>
           {listing && <BuyerMatchesCard buyers={buyers} t={t} />}
+          {colleagueBuyers.length > 0 && <ColleagueBuyersCard colleagues={colleagueBuyers} t={t} />}
           {partnerMatches.length > 0 && <PartnerMatchesCard matches={partnerMatches} t={t} />}
           {listing && (
             <Card

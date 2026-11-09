@@ -29,6 +29,8 @@ export type NotificationData = {
   client?: string;
   /** speed to lead: the listing that fits */
   property?: string;
+  /** a listing that fits colleagues' buyers: how many colleagues */
+  brokers?: number;
   /** an analysis opened again (another day) */
   again?: boolean;
   /** a payment's or a renewal's day */
@@ -137,6 +139,27 @@ export function notificationText(type: string, data: NotificationData, t: Dictio
         ...vars,
         property: data.property ?? "",
       });
+    case "listing_match": {
+      // a listing that fits the reader's buyers (not hot ones): by name, or how many — and whose listing
+      const N = t.notifications;
+      const many = (data.count ?? 1) > 1;
+      const text = data.kind === "cheaper" ? (many ? N.listing_match_cheaper_many : N.listing_match_cheaper) : many ? N.listing_match_many : N.listing_match;
+      return fmt(text, { ...vars, property: data.property ?? "", from: data.actor ? fmt(N.listing_from, { actor: data.actor }) : "" });
+    }
+    case "listing_buyers": {
+      // colleagues with buyers for the reader's listing: one, how many, several colleagues — or several listings
+      const N = t.notifications;
+      const listings = data.properties ?? 1;
+      const text =
+        listings > 1
+          ? N.listing_buyers_listings
+          : (data.brokers ?? 1) > 1
+            ? N.listing_buyers_colleagues
+            : (data.count ?? 1) > 1
+              ? N.listing_buyers_count
+              : N.listing_buyers;
+      return fmt(text, { ...vars, property: data.property ?? "", count: listings > 1 ? listings : vars.count });
+    }
     case "chat_message":
       return fmt(data.kind === "direct" ? t.notifications.chat_direct : t.notifications.chat_group, { ...vars, text: data.text ?? "" });
     case "chat_invite":

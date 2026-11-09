@@ -238,6 +238,22 @@ export async function findBuyers(supabase: SupabaseClient, propertyId: string): 
   return buyers.sort((a, b) => b.score - a.score || a.clientClass.localeCompare(b.clientClass));
 }
 
+export type ColleagueBuyers = { brokerId: string; name: string; phone: string | null; avatarPath: string | null; buyers: number; hot: number };
+
+/** Colleagues at the agency (not this user) with active buyers a listing fits: how many, not who — the clients are theirs. */
+export async function findColleagueBuyers(supabase: SupabaseClient, propertyId: string): Promise<ColleagueBuyers[]> {
+  const { data, error } = await supabase.rpc("colleague_buyers", { target_property: propertyId });
+  if (error) return [];
+  return ((data ?? []) as { broker_id: string; name: string; phone: string | null; avatar_path: string | null; buyers: number; hot: number }[]).map((r) => ({
+    brokerId: r.broker_id,
+    name: r.name,
+    phone: r.phone,
+    avatarPath: r.avatar_path,
+    buyers: r.buyers,
+    hot: r.hot,
+  }));
+}
+
 export type PartnerMatch = {
   id: string;
   brokerName: string;
